@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>CourtBook — Online Κρατήσεις για Padel & Tennis Clubs</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: {
+            colors: { brand: { light:'#dbeafe', DEFAULT:'#2563eb', dark:'#1d4ed8' } },
+            fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+        }}}
+    </script>
+    <style>
+        body { font-family:'Inter',sans-serif; }
+        @keyframes floaty { 0%,100%{transform:translateY(0)} 50%{transform:translateY(-12px)} }
+        .floaty { animation: floaty 5s ease-in-out infinite; }
+        .grad { background:linear-gradient(135deg,#1e3a8a 0%,#2563eb 50%,#3b82f6 100%); }
+    </style>
+</head>
+<body class="bg-white text-slate-800">
+
+<!-- NAV -->
+<nav class="fixed top-0 inset-x-0 z-40 bg-white/90 backdrop-blur border-b border-slate-100">
+    <div class="max-w-6xl mx-auto px-5 h-16 flex items-center justify-between">
+        <div class="flex items-center gap-2 font-extrabold text-lg">
+            <div class="w-8 h-8 grad rounded-lg flex items-center justify-center text-white">🎾</div>
+            Court<span class="text-brand">Book</span>
+        </div>
+        <div class="flex items-center gap-3">
+            <a href="signup.html" class="text-sm font-semibold text-slate-600 hover:text-brand transition">Είσοδος</a>
+            <a href="signup.html" class="text-sm font-bold bg-brand text-white px-4 py-2 rounded-lg hover:bg-brand-dark transition">Δωρεάν Δοκιμή</a>
+        </div>
+    </div>
+</nav>
+
+<!-- HERO -->
+<section class="grad text-white pt-32 pb-24 px-5 overflow-hidden relative">
+    <div class="max-w-4xl mx-auto text-center relative z-10">
+        <span class="inline-block bg-white/15 border border-white/25 text-xs font-bold tracking-widest uppercase px-4 py-1.5 rounded-full mb-6">Για Padel & Tennis Clubs</span>
+        <h1 class="text-4xl sm:text-6xl font-black leading-tight mb-6">Online κρατήσεις<br>για το club σου</h1>
+        <p class="text-lg text-blue-100 max-w-xl mx-auto mb-9">Σταμάτα να δέχεσαι κρατήσεις με τηλέφωνα και WhatsApp. Δώσε στους πελάτες σου ένα link — κλείνουν γήπεδο μόνοι τους, 24/7.</p>
+        <div class="flex flex-col sm:flex-row gap-3 justify-center">
+            <a href="signup.html" class="bg-white text-brand font-bold px-8 py-4 rounded-xl shadow-xl hover:scale-105 transition">🚀 Φτιάξε το club σου δωρεάν</a>
+            <a href="#how" class="border border-white/40 text-white font-semibold px-8 py-4 rounded-xl hover:bg-white/10 transition">Πώς δουλεύει</a>
+        </div>
+        <p class="text-blue-200 text-xs mt-6">Χωρίς κάρτα · Έτοιμο σε 5 λεπτά</p>
+    </div>
+    <div class="absolute -bottom-10 -right-10 text-[200px] opacity-10 floaty">🎾</div>
+    <div class="absolute -top-10 -left-10 text-[160px] opacity-10 floaty" style="animation-delay:1s">🏆</div>
+</section>
+
+<!-- FEATURES -->
+<section class="py-20 px-5 max-w-6xl mx-auto">
+    <div class="text-center mb-14">
+        <h2 class="text-3xl sm:text-4xl font-extrabold mb-3">Όλα όσα χρειάζεται το club σου</h2>
+        <p class="text-slate-500">Ένα εργαλείο — μηδέν φασαρία</p>
+    </div>
+    <div class="grid sm:grid-cols-3 gap-6">
+        <div class="bg-slate-50 rounded-2xl p-7 border border-slate-100">
+            <div class="text-3xl mb-3">📅</div>
+            <h3 class="font-bold text-lg mb-2">24/7 Κρατήσεις</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">Οι πελάτες κλείνουν γήπεδο όποτε θέλουν, χωρίς να σε παίρνουν τηλέφωνο.</p>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-7 border border-slate-100">
+            <div class="text-3xl mb-3">🎾</div>
+            <h3 class="font-bold text-lg mb-2">Όσα γήπεδα θες</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">Padel ή tennis, 1 ή 20 γήπεδα. Ρυθμίζεις ώρες, τιμές και διάρκειες.</p>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-7 border border-slate-100">
+            <div class="text-3xl mb-3">📊</div>
+            <h3 class="font-bold text-lg mb-2">Admin Panel</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">Δες όλες τις κρατήσεις, τους πελάτες σου και τα στατιστικά σου ζωντανά.</p>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-7 border border-slate-100">
+            <div class="text-3xl mb-3">🔒</div>
+            <h3 class="font-bold text-lg mb-2">Ασφαλές & Ιδιωτικό</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">Κάθε club έχει τα δικά του δεδομένα. Οι πελάτες δεν βλέπουν ονόματα άλλων.</p>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-7 border border-slate-100">
+            <div class="text-3xl mb-3">🎨</div>
+            <h3 class="font-bold text-lg mb-2">Δικό σου branding</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">Λογότυπο, όνομα και χρώματα του club σου. Το link μοιάζει δικό σου.</p>
+        </div>
+        <div class="bg-slate-50 rounded-2xl p-7 border border-slate-100">
+            <div class="text-3xl mb-3">📱</div>
+            <h3 class="font-bold text-lg mb-2">Σε κάθε συσκευή</h3>
+            <p class="text-slate-500 text-sm leading-relaxed">Δουλεύει τέλεια σε κινητό, tablet και υπολογιστή. Χωρίς εγκατάσταση.</p>
+        </div>
+    </div>
+</section>
+
+<!-- HOW IT WORKS -->
+<section id="how" class="bg-slate-50 py-20 px-5">
+    <div class="max-w-4xl mx-auto">
+        <div class="text-center mb-14">
+            <h2 class="text-3xl sm:text-4xl font-extrabold mb-3">Έτοιμο σε 3 βήματα</h2>
+        </div>
+        <div class="space-y-6">
+            <div class="flex gap-5 items-start bg-white rounded-2xl p-6 border border-slate-100">
+                <div class="w-10 h-10 grad text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">1</div>
+                <div><h3 class="font-bold text-lg mb-1">Φτιάξε το club σου</h3>
+                <p class="text-slate-500 text-sm">Όνομα, λογότυπο, γήπεδα, ώρες και τιμές. Παίρνει 5 λεπτά.</p></div>
+            </div>
+            <div class="flex gap-5 items-start bg-white rounded-2xl p-6 border border-slate-100">
+                <div class="w-10 h-10 grad text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">2</div>
+                <div><h3 class="font-bold text-lg mb-1">Μοιράσου το link</h3>
+                <p class="text-slate-500 text-sm">Βάλ' το στο Instagram, στο site σου ή στείλ' το στους πελάτες σου.</p></div>
+            </div>
+            <div class="flex gap-5 items-start bg-white rounded-2xl p-6 border border-slate-100">
+                <div class="w-10 h-10 grad text-white rounded-full flex items-center justify-center font-bold flex-shrink-0">3</div>
+                <div><h3 class="font-bold text-lg mb-1">Δέξου κρατήσεις</h3>
+                <p class="text-slate-500 text-sm">Οι πελάτες κλείνουν μόνοι τους. Εσύ τα βλέπεις όλα στο admin.</p></div>
+            </div>
+        </div>
+    </div>
+</section>
+
+<!-- CTA -->
+<section class="py-20 px-5">
+    <div class="max-w-3xl mx-auto grad rounded-3xl p-12 text-center text-white">
+        <h2 class="text-3xl sm:text-4xl font-black mb-4">Ξεκίνα σήμερα — δωρεάν</h2>
+        <p class="text-blue-100 mb-8">Δες πόσο πιο εύκολη γίνεται η ζωή σου χωρίς τηλέφωνα για κρατήσεις.</p>
+        <a href="signup.html" class="inline-block bg-white text-brand font-bold px-10 py-4 rounded-xl shadow-xl hover:scale-105 transition">🚀 Φτιάξε το club σου</a>
+    </div>
+</section>
+
+<!-- FOOTER -->
+<footer class="border-t border-slate-100 py-8 px-5 text-center text-slate-400 text-sm">
+    <p>© <span id="year"></span> CourtBook · Online κρατήσεις για Padel & Tennis clubs</p>
+</footer>
+
+<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+</body>
+</html>

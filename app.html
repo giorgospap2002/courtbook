@@ -1,0 +1,1829 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Κρατήσεις — CourtBook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet">
+    <script>
+        tailwind.config = { theme: { extend: {
+            colors: { brand: { light:'#dbeafe', DEFAULT:'#2563eb', dark:'#1d4ed8' } },
+            fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+        }}}
+    </script>
+    <style>
+        body { font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
+        .no-scrollbar::-webkit-scrollbar{display:none} .no-scrollbar{scrollbar-width:none}
+        .tab-active { color:#2563eb; border-bottom:2px solid #2563eb; font-weight:600; }
+        .slot-free      { background:linear-gradient(135deg,#eff6ff,#dbeafe); border-color:#93c5fd; }
+        .slot-pick      { background:linear-gradient(135deg,#eff6ff,#dbeafe); border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.2); }
+        .slot-mine      { background:linear-gradient(135deg,#f0fdf4,#dcfce7); border-color:#86efac; }
+        .slot-other     { background:#f8fafc; border-color:#e2e8f0; }
+        .slot-cont      { background:#f8fafc; border-color:#e2e8f0; border-style:dashed; }
+        .slot-past      { background:#f1f5f9; border-color:#cbd5e1; opacity:.5; }
+        input:focus,select:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
+        button:active { transform:scale(.97); }
+        @keyframes up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
+        .anim-up { animation: up .22s ease-out both; }
+    </style>
+</head>
+<body class="bg-slate-100 text-slate-800 min-h-screen">
+
+<!-- ═══ CLUB NOT FOUND ═══ -->
+<div id="notFound" class="hidden min-h-screen flex flex-col items-center justify-center p-6 text-center">
+    <div class="text-6xl mb-4">🤔</div>
+    <h1 class="text-2xl font-bold mb-2">Το club δεν βρέθηκε</h1>
+    <p class="text-slate-500 mb-6">Έλεγξε το link ή φτιάξε το δικό σου club.</p>
+    <a href="signup.html" class="bg-brand text-white px-6 py-3 rounded-xl font-bold">Φτιάξε Club</a>
+</div>
+
+<!-- ═══ AUTH ═══ -->
+<div id="authScreen" class="hidden min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
+    <div class="mb-8 text-center">
+        <img id="authLogo" src="" alt="" class="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-4 border-white/20 shadow-2xl hidden">
+        <div id="authLogoFallback" class="w-20 h-20 bg-brand rounded-2xl flex items-center justify-center mx-auto mb-4 text-white text-3xl font-black">🎾</div>
+        <h1 id="authClubName" class="text-2xl font-extrabold text-white"></h1>
+        <p class="text-slate-400 text-sm mt-1">Online Κρατήσεις</p>
+    </div>
+    <div class="bg-white p-8 rounded-3xl shadow-2xl w-full max-w-sm">
+        <h2 id="authTitle" class="text-xl font-bold mb-5">Είσοδος</h2>
+        <div class="space-y-3">
+            <div id="nameRow" class="hidden">
+                <label class="text-xs font-semibold text-slate-400 block mb-1">Ονοματεπώνυμο</label>
+                <input id="inpName" type="text" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+            </div>
+            <div>
+                <label class="text-xs font-semibold text-slate-400 block mb-1">Email</label>
+                <input id="inpEmail" type="email" autocomplete="off" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+            </div>
+            <div id="passRow">
+                <label class="text-xs font-semibold text-slate-400 block mb-1">Κωδικός</label>
+                <input id="inpPass" type="password" autocomplete="new-password" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+            </div>
+            <div id="phoneRow" class="hidden">
+                <label class="text-xs font-semibold text-slate-400 block mb-1">Τηλέφωνο</label>
+                <input id="inpPhone" type="tel" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+            </div>
+            <div id="levelRow" class="hidden">
+                <label class="text-xs font-semibold text-slate-400 block mb-1">Επίπεδο 0-5 (προαιρετικό)</label>
+                <input id="inpLevel" type="number" min="0" max="5" placeholder="π.χ. 3" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+            </div>
+        </div>
+        <button id="authBtn" class="w-full mt-5 py-3 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition">Είσοδος</button>
+        <p class="mt-4 text-center text-xs text-slate-400 cursor-pointer select-none" id="toggleAuth">
+            <span id="toggleText">Δεν έχεις λογαριασμό; <span class="text-brand font-semibold">Εγγραφή</span></span>
+        </p>
+        <p id="forgotLink" class="mt-2 text-center text-xs text-slate-300 cursor-pointer select-none">Ξέχασες τον κωδικό σου;</p>
+    </div>
+</div>
+
+<!-- ═══ APP ═══ -->
+<div id="appScreen" class="hidden min-h-screen flex flex-col">
+    <header class="bg-white shadow-sm sticky top-0 z-30 border-b border-slate-100">
+        <div class="max-w-4xl mx-auto px-4 pt-4 flex justify-between items-center">
+            <div class="flex items-center gap-3">
+                <img id="hdrLogo" src="" class="w-9 h-9 rounded-full object-cover border-2 border-slate-100 hidden">
+                <div id="hdrLogoFallback" class="w-9 h-9 bg-brand rounded-xl flex items-center justify-center text-white">🎾</div>
+                <div>
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-medium" id="hdrClub"></p>
+                    <h2 id="welcomeName" class="font-bold text-sm leading-tight">Παίκτης</h2>
+                </div>
+            </div>
+            <div class="flex items-center gap-2">
+                <span id="adminBadge" class="hidden bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ADMIN</span>
+                <button id="logoutBtn" class="flex items-center gap-1.5 text-xs text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">Έξοδος</button>
+            </div>
+        </div>
+        <div class="max-w-4xl mx-auto px-4 flex gap-1 mt-2">
+            <button data-tab="booking"    class="tab-btn px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📅 Κράτηση</button>
+            <button data-tab="mybookings" class="tab-btn px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📋 Οι Κρατήσεις μου</button>
+            <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
+            <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
+            <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Μητρώο</button>
+            <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
+        </div>
+    </header>
+
+    <!-- BOOKING -->
+    <div id="tab-booking" class="tab-panel flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div id="partnerCta"></div>
+        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 anim-up">
+            <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">ΤΙΜΟΚΑΤΑΛΟΓΟΣ</p>
+            <div id="priceCards" class="grid gap-3 text-center"></div>
+            <div id="extrasList" class="mt-3"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="grid grid-cols-2 gap-3 mb-4">
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1.5">Ημερομηνία</label>
+                    <input type="date" id="datePicker" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1.5">Γήπεδο</label>
+                    <select id="courtPicker" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
+                </div>
+            </div>
+            <div id="quickDates" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+        </div>
+        <div class="flex gap-4 text-xs text-slate-500 px-1">
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>Ελεύθερο</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>Δική μου</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>Κλεισμένο</span>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm">
+            <p class="text-[10px] font-semibold text-slate-400 uppercase mb-4">Διαθέσιμες Ώρες</p>
+            <div id="slots" class="grid grid-cols-2 sm:grid-cols-3 gap-3"></div>
+        </div>
+    </div>
+
+    <!-- MY BOOKINGS -->
+    <div id="tab-mybookings" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-4">Οι Κρατήσεις μου</p>
+            <div id="loyaltyBanner"></div>
+            <div id="myList"></div>
+        </div>
+    </div>
+
+    <!-- MY TRAININGS -->
+    <div id="tab-mytrainings" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">Οι Προπονήσεις μου</p>
+            <p class="text-[11px] text-slate-400 mb-4">Το ιστορικό παρουσιών σου στα γκρουπ προπόνησης.</p>
+            <div id="myTrainingsList"></div>
+        </div>
+    </div>
+
+    <!-- ADMIN -->
+    <div id="tab-admin" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div class="bg-white rounded-2xl p-4 shadow-sm anim-up flex items-center gap-2 flex-wrap">
+            <p class="font-bold text-sm">📥 Εξαγωγή Excel</p>
+            <span class="text-[11px] text-slate-400">κρατήσεις + προπονήσεις του μήνα</span>
+            <input type="month" id="exportMonth" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs ml-auto">
+            <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">Κατέβασε</button>
+        </div>
+        <div class="grid grid-cols-3 gap-3 anim-up">
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-brand" id="statToday">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σήμερα</p></div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-indigo-500" id="statWeek">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Επόμενες 7μ.</p></div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σύνολο</p></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between mb-4">
+                <p class="font-bold">Επερχόμενες Κρατήσεις</p>
+                <div class="flex items-center gap-2">
+                    <span id="upcomingCount" class="text-[10px] bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-bold"></span>
+                    <button id="refreshBtn" class="text-[10px] text-slate-400 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 font-medium">↻ Ανανέωση</button>
+                </div>
+            </div>
+            <div id="adminUpcoming"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between mb-4">
+                <p class="font-bold text-slate-500 text-sm">Φίλτρο ανά Ημέρα</p>
+                <input type="date" id="adminDate" class="px-3 py-1.5 border border-slate-200 rounded-xl text-xs">
+            </div>
+            <div id="adminDayList"></div>
+        </div>
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-2">🔗 Το link του club σου</p>
+            <p class="text-xs text-slate-500 mb-3">Μοιράσου το με τους πελάτες σου</p>
+            <div class="flex gap-2">
+                <input id="shareLink" readonly class="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50">
+                <button id="copyLink" class="bg-brand text-white px-4 rounded-xl text-sm font-bold">Copy</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- ROSTER (Μητρώο: Παίκτες + Γκρουπ + Παρουσιολόγιο) -->
+    <div id="tab-roster" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <!-- Παίκτες -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">🧑‍🤝‍🧑 Πελάτες / Μέλη</p>
+            <p class="text-[11px] text-slate-400 mb-3">Τα μέλη μπαίνουν εδώ <b>αυτόματα όταν κάνουν εγγραφή</b>. Κλικ σε μέλος για αναλυτικά stats &amp; ημερομηνίες (✏️ για επεξεργασία επιπέδου/στοιχείων).</p>
+            <div class="flex items-center gap-2 mb-4">
+                <input id="rosterSearch" placeholder="🔍 Αναζήτηση ονόματος…" oninput="renderPlayers()" class="flex-1 px-3 py-2 border border-slate-200 rounded-xl text-sm">
+                <select id="rosterLevel" onchange="renderPlayers()" class="px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
+                    <option value="">Όλα τα επίπεδα</option>
+                    <option value="0">Επ. 0</option><option value="1">Επ. 1</option><option value="2">Επ. 2</option>
+                    <option value="3">Επ. 3</option><option value="4">Επ. 4</option><option value="5">Επ. 5</option>
+                    <option value="none">Χωρίς επίπεδο</option>
+                </select>
+            </div>
+            <div id="playersList" class="space-y-2"></div>
+        </div>
+
+        <!-- Γκρουπ -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between mb-1">
+                <p class="font-bold">📋 Γκρουπ Προπόνησης</p>
+                <button id="addGroupBtn" class="text-brand text-sm font-semibold">+ Νέο Γκρουπ</button>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-4">Βάλε μέλη σε κάθε γκρουπ και πέρνα παρουσιολόγιο ανά προπόνηση.</p>
+            <div id="groupsList" class="space-y-3"></div>
+        </div>
+
+        <!-- Πρόγραμμα Προπονήσεων (επαναλαμβανόμενο) -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">🏋️ Πρόγραμμα Προπονήσεων</p>
+            <p class="text-[11px] text-slate-400 mb-4">Επαναλαμβανόμενες προπονήσεις που «κλείνουν» γήπεδο <b>κάθε βδομάδα</b> (π.χ. Group 1 · Δευτέρα 17:00 · Γήπεδο 1). Για αλλαγή: διαγράφεις και ξαναβάζεις.</p>
+            <div class="grid grid-cols-12 gap-2 mb-3">
+                <select id="tsGroup" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                <select id="tsCourt" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                <select id="tsDay" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                <select id="tsTime" class="col-span-3 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                <select id="tsDur" class="col-span-3 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                <button id="addTschedBtn" class="col-span-2 bg-brand text-white rounded-lg text-sm font-bold">+</button>
+            </div>
+            <div id="tschedList" class="space-y-2"></div>
+
+            <div class="mt-4 pt-4 border-t border-slate-100">
+                <p class="text-[11px] font-bold text-slate-500 uppercase mb-1">📌 Έκτακτη προπόνηση (μία φορά)</p>
+                <p class="text-[11px] text-slate-400 mb-2">Για «αυτή τη βδομάδα Πέμπτη αντί Τετάρτη»: ακύρωσε την Τετάρτη από το πρόγραμμα της ημέρας, και βάλε εδώ έκτακτη για την Πέμπτη.</p>
+                <div class="grid grid-cols-12 gap-2 mb-2">
+                    <select id="xtGroup" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                    <select id="xtCourt" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                    <input id="xtDate" type="date" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                    <select id="xtTime" class="col-span-3 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                    <select id="xtDur" class="col-span-3 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                    <button id="addXtrainBtn" class="col-span-2 bg-purple-600 text-white rounded-lg text-sm font-bold">+</button>
+                </div>
+
+                <p class="text-[11px] font-bold text-slate-500 uppercase mb-1 mt-4">🎾 Ιδιαίτερο μάθημα (μία φορά)</p>
+                <p class="text-[11px] text-slate-400 mb-2">1-on-1 προπόνηση, όχι επαναλαμβανόμενη. Γράψε προπονητή &amp; πελάτη — κλείνει το γήπεδο μόνο εκείνη τη μέρα.</p>
+                <div class="grid grid-cols-12 gap-2 mb-2">
+                    <input id="lsCoach" placeholder="Προπονητής" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                    <input id="lsClient" placeholder="Πελάτης" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                    <select id="lsCourt" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                    <input id="lsDate" type="date" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                    <select id="lsTime" class="col-span-2 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                    <select id="lsDur" class="col-span-1 px-1 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                    <button id="addLessonBtn" class="col-span-1 bg-emerald-600 text-white rounded-lg text-sm font-bold">+</button>
+                </div>
+
+                <div id="overridesList" class="space-y-1"></div>
+            </div>
+        </div>
+    </div>
+
+    <!-- SETTINGS -->
+    <div id="tab-settings" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <!-- Club info -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-4">🏷️ Στοιχεία Club</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Όνομα</label>
+                    <input id="setName" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Λογότυπο (URL)</label>
+                    <input id="setLogo" type="url" placeholder="https://..." class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    <p class="text-[11px] text-slate-400 mt-1">Επικόλλησε link εικόνας (π.χ. απ' το Instagram ή Imgur).</p>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Email ειδοποιήσεων</label>
+                        <input id="setEmail" type="email" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Τηλέφωνο</label>
+                        <input id="setPhone" type="tel" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Ανοίγει (ώρα)</label>
+                        <input id="setOpen" type="number" min="0" max="23" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                    <div>
+                        <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Κλείνει (ώρα)</label>
+                        <input id="setClose" type="number" min="1" max="24" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                </div>
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">🎾 Σύνδεσμος «Βρες συμπαίκτη» (WhatsApp/Viber ομάδα)</label>
+                    <input id="setPartnerLink" type="url" placeholder="https://chat.whatsapp.com/…  ή  https://invite.viber.com/…" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    <p class="text-[10px] text-slate-400 mt-1">Οι πελάτες βλέπουν κουμπί στην κράτηση για να μπουν στην ομαδική & να βρουν συμπαίκτες.</p>
+                </div>
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">🎁 Μήνυμα επιβράβευσης (πάνω από τις κρατήσεις πελάτη)</label>
+                    <input id="setLoyaltyMsg" type="text" placeholder="π.χ. Στις 10 κρατήσεις, η 1 ΔΩΡΟ! 🎁" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    <p class="text-[10px] text-slate-400 mt-1">Άφησέ το κενό για να μην εμφανίζεται.</p>
+                </div>
+                <button id="saveInfoBtn" class="w-full grad bg-brand text-white py-3 rounded-xl font-bold text-sm hover:bg-brand-dark transition">Αποθήκευση Στοιχείων</button>
+            </div>
+        </div>
+
+        <!-- Courts -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">🎾 Γήπεδα</p>
+            <p class="text-[11px] text-slate-400 mb-4">⚠️ Η διαγραφή γηπέδου σβήνει και τις κρατήσεις του.</p>
+            <div id="setCourts" class="space-y-2 mb-3"></div>
+            <div class="flex gap-2">
+                <button id="addCourtBtn" class="text-brand text-sm font-semibold">+ Προσθήκη γηπέδου</button>
+                <button id="saveCourtsBtn" class="ml-auto bg-brand text-white px-4 py-2 rounded-lg text-sm font-bold">Αποθήκευση Γηπέδων</button>
+            </div>
+        </div>
+
+        <!-- Pricing -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">💰 Διάρκειες & Τιμές</p>
+            <p class="text-[11px] text-slate-400 mb-3">Κοινές τιμές για όλα τα γήπεδα, ή διαφορετικές ανά γήπεδο (π.χ. ποδόσφαιρο ≠ squash).</p>
+            <select id="durScope" class="w-full mb-2 px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
+            <p id="durScopeHint" class="text-[11px] text-amber-600 mb-3"></p>
+            <div id="setDurs" class="space-y-2 mb-3"></div>
+            <div class="flex gap-2">
+                <button id="addDurBtn" class="text-brand text-sm font-semibold">+ Προσθήκη διάρκειας</button>
+                <button id="saveDursBtn" class="ml-auto bg-brand text-white px-4 py-2 rounded-lg text-sm font-bold">Αποθήκευση Τιμών</button>
+            </div>
+        </div>
+
+        <!-- Extras -->
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">➕ Έξτρα Χρεώσεις</p>
+            <p class="text-[11px] text-slate-400 mb-4">π.χ. ενοικίαση ρακέτας, κουτί μπαλάκια. Εμφανίζονται στον τιμοκατάλογο.</p>
+            <div id="setExtras" class="space-y-2 mb-3"></div>
+            <div class="flex gap-2">
+                <button id="addExtraBtn" class="text-brand text-sm font-semibold">+ Προσθήκη χρέωσης</button>
+                <button id="saveExtrasBtn" class="ml-auto bg-brand text-white px-4 py-2 rounded-lg text-sm font-bold">Αποθήκευση Έξτρα</button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script src="config.js"></script>
+<script src="cb.js"></script>
+<script>
+/* ══════════════ STATE ══════════════ */
+let club=null, courts=[], durations=[], extras=[], SLOTS=[], trainingSchedule=[], trainingOverrides=[];
+let me=null, isOwner=false, isReg=false, isReset=false;
+let activeTab='booking', pickerSlot=null, dayData=[], myBookings=[], _refresh=null, _busy=false;
+
+/* ══════════════ BOOT ══════════════ */
+document.addEventListener('DOMContentLoaded', async () => {
+    if (!cbConfigured()) { document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:Inter"><h2 style="font-weight:800;font-size:20px">⚠️ Λείπει το config.js</h2><p style="color:#64748b;margin-top:8px">Συμπλήρωσε το Supabase URL & anon key. Δες το README.</p></div>'; return; }
+    if (CB_CONFIG.EJS_PUBLIC_KEY && window.emailjs) { try { emailjs.init(CB_CONFIG.EJS_PUBLIC_KEY); } catch(e){} }
+
+    const slug = cbQS('club');
+    if (!slug) { document.getElementById('notFound').classList.remove('hidden'); return; }
+
+    cbLoading(true);
+    const { data, error } = await sb.from('clubs').select('*').eq('slug', slug).maybeSingle();
+    cbLoading(false);
+    if (error || !data) { document.getElementById('notFound').classList.remove('hidden'); return; }
+    club = data;
+
+    const [cRes, dRes, eRes] = await Promise.all([
+        sb.from('courts').select('*').eq('club_id', club.id).order('sort_order'),
+        sb.from('durations').select('*').eq('club_id', club.id).order('minutes'),
+        sb.from('extras').select('*').eq('club_id', club.id).order('sort_order')
+    ]);
+    courts = cRes.data || [];
+    durations = dRes.data || [];
+    extras = eRes.data || [];
+    buildSlots();
+    applyBranding();
+
+    me = await cbCurrentUser();
+    if (me) enterApp(); else showAuth();
+    wireAuth();
+});
+
+function buildSlots() {
+    SLOTS = [];
+    const step = club.slot_minutes || 30;
+    for (let m = club.open_hour*60; m < club.close_hour*60; m += step) SLOTS.push(cbM2T(m));
+}
+
+function applyBranding() {
+    document.title = `${club.name} — Κρατήσεις`;
+    document.getElementById('authClubName').textContent = club.name;
+    document.getElementById('hdrClub').textContent = club.name;
+    document.getElementById('shareLink').value = location.origin + location.pathname + '?club=' + club.slug;
+    if (club.logo_url) {
+        ['authLogo','hdrLogo'].forEach(id => { const el=document.getElementById(id); el.src=club.logo_url; el.classList.remove('hidden'); });
+        document.getElementById('authLogoFallback').classList.add('hidden');
+        document.getElementById('hdrLogoFallback').classList.add('hidden');
+    } else {
+        ['authLogo','hdrLogo'].forEach(id => document.getElementById(id).classList.add('hidden'));
+        document.getElementById('authLogoFallback').classList.remove('hidden');
+        document.getElementById('hdrLogoFallback').classList.remove('hidden');
+    }
+    // court picker + τιμοκατάλογος + extras (όλα μέσα από helpers ώστε
+    // να ανανεώνονται και μετά από αλλαγές στις Ρυθμίσεις — δες reloadClubData)
+    renderCourtPicker();
+    renderPriceList();
+    renderExtras();
+}
+
+/* Ξαναχτίζει το dropdown «Γήπεδο» — διατηρεί την επιλογή αν υπάρχει ακόμα. */
+function renderCourtPicker(){
+    const sel = document.getElementById('courtPicker');
+    if(!sel) return;
+    const prev = sel.value;
+    sel.innerHTML = courts.map(c => `<option value="${c.id}">${c.name}</option>`).join('');
+    if(prev && courts.some(c => c.id === prev)) sel.value = prev;
+}
+
+/* Ξαναχτίζει τη γραμμή έξτρα χρεώσεων. */
+function renderExtras(){
+    const ex = document.getElementById('extrasList');
+    if(!ex) return;
+    ex.innerHTML = extras.length
+        ? `<div class="flex flex-wrap gap-x-4 gap-y-1 justify-center pt-3 border-t border-blue-100">`
+            + extras.map(e => `<span class="text-[12px] text-slate-500"><span class="font-bold text-slate-700">${e.price}€</span> ${e.label}</span>`).join('')
+            + `</div>`
+        : '';
+}
+
+/* Επιστρέφει τις διάρκειες/τιμές για συγκεκριμένο γήπεδο.
+   Αν το γήπεδο έχει δικές του → αυτές. Αλλιώς οι κοινές (court_id κενό). */
+function durationsForCourt(courtId){
+    const specific = durations.filter(d => d.court_id === courtId);
+    return specific.length ? specific : durations.filter(d => !d.court_id);
+}
+
+/* Τιμοκατάλογος: αν όλα τα γήπεδα μοιράζονται ίδιες τιμές → ένας κοινός κατάλογος.
+   Αν κάποια γήπεδα έχουν δικές τους τιμές → ξεχωριστός κατάλογος ανά ομάδα γηπέδων,
+   με ετικέτα τα ονόματα των γηπέδων (π.χ. "Padel 1 · Padel 2"). */
+function renderPriceList(){
+    const pc = document.getElementById('priceCards');
+    if(!pc) return;
+    const card = d => `
+        <div class="bg-white rounded-xl py-2.5 shadow-sm">
+            <p class="text-xl font-extrabold text-slate-800">${d.price}€</p>
+            <p class="text-[11px] text-slate-400 mt-0.5">${d.label}</p>
+        </div>`;
+    // ομαδοποίησε τα γήπεδα που έχουν ίδιο σετ τιμών
+    const groups = [];
+    courts.forEach(c => {
+        const durs = durationsForCourt(c.id);
+        const key = durs.map(d => `${d.minutes}|${d.label}|${d.price}`).sort().join('~');
+        let g = groups.find(g => g.key === key);
+        if(!g){ g = { key, names:[], durs }; groups.push(g); }
+        g.names.push(c.name);
+    });
+    if(!groups.length){ // καμία εγγραφή γηπέδων → δείξε τις κοινές
+        groups.push({ names:[], durs: durations.filter(d => !d.court_id) });
+    }
+    if(groups.length <= 1){
+        const durs = groups[0].durs;
+        pc.style.gridTemplateColumns = `repeat(${Math.min(durs.length,3)||1},minmax(0,1fr))`;
+        pc.innerHTML = durs.map(card).join('');
+    } else {
+        pc.style.gridTemplateColumns = '1fr';
+        pc.innerHTML = groups.map(g => `
+            <div>
+                <p class="text-[11px] font-bold text-slate-600 mb-2 text-left uppercase tracking-wide">${g.names.join(' · ')}</p>
+                <div class="grid gap-2" style="grid-template-columns:repeat(${Math.min(g.durs.length,3)||1},minmax(0,1fr))">
+                    ${g.durs.map(card).join('')}
+                </div>
+            </div>`).join('');
+    }
+}
+
+/* ══════════════ AUTH UI ══════════════ */
+function showAuth(){ document.getElementById('authScreen').classList.remove('hidden'); document.getElementById('appScreen').classList.add('hidden'); }
+
+function setMode(mode){
+    isReg = mode==='register'; isReset = mode==='reset';
+    document.getElementById('nameRow').classList.toggle('hidden', !isReg);
+    document.getElementById('phoneRow').classList.toggle('hidden', !isReg);
+    document.getElementById('levelRow').classList.toggle('hidden', !isReg);
+    document.getElementById('passRow').classList.toggle('hidden', isReset);
+    const T={login:'Είσοδος',register:'Νέος Λογαριασμός',reset:'Επαναφορά Κωδικού'};
+    const B={login:'Είσοδος',register:'Εγγραφή',reset:'Αποστολή link'};
+    document.getElementById('authTitle').textContent=T[mode];
+    document.getElementById('authBtn').textContent=B[mode];
+    document.getElementById('toggleText').innerHTML = isReg
+        ? 'Έχεις λογαριασμό; <span class="text-brand font-semibold">Είσοδος</span>'
+        : 'Δεν έχεις λογαριασμό; <span class="text-brand font-semibold">Εγγραφή</span>';
+    document.getElementById('forgotLink').style.display = isReset ? 'none' : 'block';
+    ['inpName','inpEmail','inpPass','inpPhone'].forEach(id=>document.getElementById(id).value='');
+}
+
+function wireAuth(){
+    document.getElementById('authBtn').onclick = () => isReset ? handleReset() : handleAuth();
+    document.getElementById('toggleAuth').onclick = () => setMode(isReg?'login':'register');
+    document.getElementById('forgotLink').onclick = () => setMode('reset');
+    document.getElementById('logoutBtn').onclick = async () => { if(_refresh)clearInterval(_refresh); await cbSignOut(); location.reload(); };
+    document.querySelectorAll('.tab-btn').forEach(b => b.onclick = () => switchTab(b.dataset.tab));
+    document.getElementById('datePicker').onchange = () => { pickerSlot=null; loadDay(); };
+    document.getElementById('courtPicker').onchange = () => { pickerSlot=null; renderSlots(); };
+    document.getElementById('adminDate').onchange = renderAdminDay;
+    document.getElementById('refreshBtn').onclick = () => { loadAdmin(); cbToast('Ανανεώθηκε'); };
+    document.getElementById('exportBtn').onclick = exportExcel;
+    document.getElementById('copyLink').onclick = () => { navigator.clipboard.writeText(document.getElementById('shareLink').value); cbToast('Αντιγράφηκε!'); };
+    document.getElementById('saveInfoBtn').onclick = saveClubInfo;
+    document.getElementById('addCourtBtn').onclick = () => addCourtRow('');
+    document.getElementById('saveCourtsBtn').onclick = saveCourts;
+    document.getElementById('addDurBtn').onclick = () => addDurRow('','','');
+    document.getElementById('saveDursBtn').onclick = saveDurs;
+    document.getElementById('addExtraBtn').onclick = () => addExtraRow('','');
+    document.getElementById('saveExtrasBtn').onclick = saveExtras;
+    document.getElementById('addGroupBtn').onclick = addGroup;
+    document.getElementById('addTschedBtn').onclick = addTsched;
+    document.getElementById('addXtrainBtn').onclick = addXtrain;
+    document.getElementById('addLessonBtn').onclick = addLesson;
+}
+
+async function handleAuth(){
+    if(_busy) return; _busy=true; document.getElementById('authBtn').disabled=true;
+    try{
+        const email=document.getElementById('inpEmail').value.trim().toLowerCase();
+        const pass=document.getElementById('inpPass').value;
+        if(!cbValidEmail(email)){ cbToast('Μη έγκυρο email','err'); return; }
+        if(!pass){ cbToast('Βάλε κωδικό','err'); return; }
+        if(isReg){
+            const name=document.getElementById('inpName').value.trim();
+            const phone=document.getElementById('inpPhone').value.trim();
+            if(!name){ cbToast('Βάλε όνομα','err'); return; }
+            if(!cbValidPhone(phone)){ cbToast('Μη έγκυρο τηλέφωνο','err'); return; }
+            if(pass.length<6){ cbToast('Κωδικός ≥ 6 χαρακτήρες','err'); return; }
+            const lvlRaw=document.getElementById('inpLevel').value.trim();
+            const level=lvlRaw===''?null:Math.max(0,Math.min(5,parseInt(lvlRaw)||0));
+            cbLoading(true);
+            await cbSignUp(email,pass,name,phone,club.id,level);
+            try{ await cbSignIn(email,pass); }catch(e){}
+            me = await cbCurrentUser();
+            if(!me){ cbToast('Έλεγξε το email σου για επιβεβαίωση','ok'); setMode('login'); return; }
+            cbToast('Καλώς ήρθες!'); enterApp();
+        } else {
+            cbLoading(true);
+            await cbSignIn(email,pass);
+            me = await cbCurrentUser();
+            cbToast('Συνδέθηκες!'); enterApp();
+        }
+    }catch(e){ cbToast(e.message?.includes('Invalid')?'Λάθος email ή κωδικός':(e.message||'Σφάλμα'),'err'); }
+    finally{ _busy=false; document.getElementById('authBtn').disabled=false; cbLoading(false); }
+}
+
+async function handleReset(){
+    const email=document.getElementById('inpEmail').value.trim().toLowerCase();
+    if(!cbValidEmail(email)) return cbToast('Βάλε το email σου','err');
+    cbLoading(true);
+    try{
+        await sb.auth.resetPasswordForEmail(email, { redirectTo: location.href });
+        cbToast('📧 Στάλθηκε email επαναφοράς!');
+        setMode('login');
+    }catch(e){ cbToast(e.message||'Σφάλμα','err'); }
+    finally{ cbLoading(false); }
+}
+
+/* ══════════════ ENTER APP ══════════════ */
+async function enterApp(){
+    document.getElementById('authScreen').classList.add('hidden');
+    document.getElementById('appScreen').classList.remove('hidden');
+    isOwner = club.owner_id === me.id;
+    const prof = await sb.from('profiles').select('name').eq('id', me.id).maybeSingle();
+    document.getElementById('welcomeName').textContent = prof.data?.name || me.email.split('@')[0];
+    if(isOwner){
+        document.getElementById('adminBadge').classList.remove('hidden');
+        document.getElementById('adminTabBtn').classList.remove('hidden');
+        document.getElementById('rosterTabBtn').classList.remove('hidden');
+        document.getElementById('settingsTabBtn').classList.remove('hidden');
+        document.getElementById('mytrainingsTabBtn').classList.add('hidden'); // ο admin δεν χρειάζεται «Οι Προπονήσεις μου»
+    }
+    const today=cbToday();
+    document.getElementById('datePicker').value=today;
+    document.getElementById('adminDate').value=today;
+    if(isOwner) document.getElementById('exportMonth').value=today.slice(0,7);
+    buildQuickDates();
+    renderPartnerCta();
+    switchTab('booking');
+    await loadRoster();
+    await loadTrainingSchedule();
+    await loadMine();
+    await loadDay();
+    startRefresh();
+}
+
+function startRefresh(){ if(_refresh)clearInterval(_refresh); _refresh=setInterval(()=>{ if(activeTab==='admin')loadAdmin(); else loadDay(true); },30000); }
+
+/* ══════════════ TABS ══════════════ */
+function switchTab(tab){
+    activeTab=tab;
+    document.querySelectorAll('.tab-panel').forEach(e=>e.classList.add('hidden'));
+    document.querySelectorAll('.tab-btn').forEach(e=>{ e.classList.remove('tab-active'); e.classList.add('text-slate-400','border-transparent'); });
+    document.getElementById('tab-'+tab).classList.remove('hidden');
+    const btn=document.querySelector(`[data-tab="${tab}"]`);
+    if(btn){ btn.classList.add('tab-active'); btn.classList.remove('text-slate-400','border-transparent'); }
+    if(tab==='mybookings') renderMine();
+    if(tab==='mytrainings') renderMyTrainings();
+    if(tab==='admin') loadAdmin();
+    if(tab==='roster') renderRoster();
+    if(tab==='settings') renderSettings();
+}
+
+/* ══════════════ DAY DATA (availability) ══════════════ */
+async function loadDay(silent){
+    const date=document.getElementById('datePicker').value||cbToday();
+    if(!silent) cbLoading(true);
+    try{
+        if(isOwner){
+            const { data } = await sb.from('bookings').select('*').eq('club_id',club.id).eq('booking_date',date);
+            dayData=(data||[]).map(b=>({ id:b.id, court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.user_id===me.id, name:b.user_name, phone:b.user_phone }));
+        } else {
+            const { data } = await sb.rpc('get_availability',{ p_club_id:club.id, p_date:date });
+            dayData=(data||[]).map(b=>({ court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.mine }));
+            // attach ids ΜΟΝΟ για τις δικές μου κρατήσεις (για ακύρωση από το πλέγμα)
+            myBookings.filter(b=>b.booking_date===date && b.mine_direct!==false).forEach(mb=>{
+                const m=dayData.find(d=>d.court_id===mb.court_id && d.start_time===mb.start_time);
+                if(m) m.id=mb.id;
+            });
+        }
+        // πρόσθεσε τις επαναλαμβανόμενες προπονήσεις αυτής της ημέρας (κλείνουν το slot)
+        const wd=new Date(date+'T00:00:00').getDay();
+        const cancelled=new Set(trainingOverrides.filter(o=>o.kind==='cancel' && o.the_date===date).map(o=>o.schedule_id));
+        trainingSchedule.filter(t=>t.active!==false && t.weekday===wd && !cancelled.has(t.id)).forEach(t=>{
+            dayData.push({ court_id:t.court_id, start_time:t.start_time, duration_min:t.duration_min, mine:false, training:true, group_name:t.training_groups?.name||'Προπόνηση', schedule_id:t.id });
+        });
+        // έκτακτες προπονήσεις & ιδιαίτερα μαθήματα μόνο γι' αυτή την ημερομηνία
+        trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>{
+            const label = o.client_name
+                ? 'Ιδιαίτερο: '+o.client_name+(o.coach?(' / '+o.coach):'')
+                : (o.training_groups?.name||'Προπόνηση')+' (έκτακτη)';
+            dayData.push({ court_id:o.court_id, start_time:o.start_time, duration_min:o.duration_min, mine:false, training:true, group_name:label, override_id:o.id });
+        });
+    }catch(e){ if(!silent)cbToast('Σφάλμα φόρτωσης','err'); }
+    finally{ if(!silent)cbLoading(false); renderSlots(); }
+}
+
+async function loadMine(){
+    const { data } = await sb.rpc('get_my_bookings',{ p_club_id:club.id });
+    myBookings=(data||[]).map(b=>({
+        id:b.id, court_id:b.court_id, courts:{ name:b.court_name },
+        booking_date:b.booking_date, start_time:b.start_time, duration_min:b.duration_min,
+        price:b.price, user_name:b.user_name, guest_players:b.guest_players, mine_direct:b.mine_direct
+    }));
+}
+
+async function loadTrainingSchedule(){
+    const [sRes,oRes]=await Promise.all([
+        sb.from('training_schedule').select('*, training_groups(name)').eq('club_id',club.id),
+        sb.from('training_overrides').select('*, training_groups(name)').eq('club_id',club.id)
+    ]);
+    trainingSchedule=sRes.data||[];
+    trainingOverrides=oRes.data||[];
+}
+
+/* ══════════════ SLOTS RENDER ══════════════ */
+function covering(court_id,time){
+    const tM=cbT2M(time);
+    for(const b of dayData){
+        if(b.court_id!==court_id) continue;
+        const s=cbT2M(b.start_time), e=s+(b.duration_min||60);
+        if(tM>=s && tM<e) return b;
+    }
+    return null;
+}
+function durationFits(court_id,time,durMin){
+    const s=cbT2M(time), e=s+durMin;
+    if(e>club.close_hour*60) return false;
+    for(const b of dayData){
+        if(b.court_id!==court_id) continue;
+        const bs=cbT2M(b.start_time), be=bs+(b.duration_min||60);
+        if(s<be && e>bs) return false;
+    }
+    return true;
+}
+function slotPast(time){ const[h,m]=time.split(':').map(Number); const d=new Date(); d.setHours(h,m,0,0); return Date.now()>d; }
+
+function renderSlots(){
+    const date=document.getElementById('datePicker').value||cbToday();
+    const court=document.getElementById('courtPicker').value;
+    const ct=document.getElementById('slots'); ct.innerHTML='';
+    const today=cbToday();
+
+    SLOTS.forEach(time=>{
+        const cov=covering(court,time);
+        const isStart=cov && cov.start_time===time;
+        const isCont=cov && cov.start_time!==time;
+        const isPast=date<today || (date===today && slotPast(time));
+        const isPick=pickerSlot && pickerSlot.court===court && pickerSlot.time===time;
+        const card=document.createElement('div');
+        card.className='border rounded-xl p-3 transition-all';
+
+        if(isPast){
+            card.classList.add('slot-past');
+            card.innerHTML=`<div class="flex items-center justify-between mb-0.5"><span class="font-bold text-sm">${time}</span><span class="text-[10px] bg-slate-200 text-slate-400 px-1.5 py-0.5 rounded-full">Πέρασε</span></div>`;
+        } else if(isCont){
+            card.classList.add('slot-cont');
+            card.innerHTML=`<div class="flex items-center gap-1.5"><span class="font-bold text-sm text-slate-400">${time}</span><span class="text-[10px] text-slate-400">↳</span></div><p class="text-xs text-slate-400">${cov.mine?'Συνέχεια δικής μου':(cov.training?'Προπόνηση':'Κλεισμένο')}</p>`;
+        } else if(isStart && cov.training){
+            card.classList.add('slot-other');
+            const ownerBtn = isOwner ? (
+                cov.schedule_id ? `<button onclick="cancelTrainingDate('${cov.schedule_id}','${date}')" class="w-full mt-2 py-1.5 bg-amber-500 text-white text-xs rounded-lg font-semibold hover:bg-amber-600 transition">✕ Ακύρωση σήμερα</button>`
+              : cov.override_id ? `<button onclick="delOverride('${cov.override_id}')" class="w-full mt-2 py-1.5 bg-red-500 text-white text-xs rounded-lg font-semibold hover:bg-red-600 transition">🗑️ Διαγραφή</button>`
+              : '') : '';
+            card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">Προπόνηση</span></div>
+                <p class="text-xs font-medium text-purple-700 truncate">🏋️ ${cov.group_name}</p>
+                <p class="text-[11px] text-slate-400">${cov.duration_min}′${isOwner&&cov.schedule_id?' · επαναλαμβανόμενη':''}</p>${ownerBtn}`;
+        } else if(isStart){
+            const courtDurs=durationsForCourt(court);
+            const d=courtDurs.find(x=>x.minutes===cov.duration_min)||durations.find(x=>x.minutes===cov.duration_min)||{label:'',price:''};
+            card.classList.add(cov.mine?'slot-mine':'slot-other');
+            const label = cov.mine ? 'Δική μου' : (isOwner ? (cov.name||'Κλεισμένο') : 'Κλεισμένο');
+            card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] ${cov.mine?'bg-green-100 text-green-700':'bg-slate-100 text-slate-500'} px-1.5 py-0.5 rounded-full font-medium">${cov.mine?'Δική μου':'Κλεισμένο'}</span></div>
+                <p class="text-xs font-medium text-slate-600 truncate">${label}</p>
+                <p class="text-[11px] text-slate-400">${(cov.mine||isOwner)?`${d.label} · ${d.price}€`:'&nbsp;'}</p>
+                ${(cov.mine||isOwner)&&cov.id?`<button onclick="doCancel('${cov.id}')" class="w-full mt-2 py-1.5 bg-red-500 text-white text-xs rounded-lg font-semibold hover:bg-red-600 transition">Ακύρωση</button>`:''}`;
+        } else {
+            if(isPick){
+                card.classList.add('slot-pick');
+                const btns=durationsForCourt(court).map(d=>{
+                    const fits=durationFits(court,time,d.minutes);
+                    return fits
+                        ? `<button onclick="doBook('${court}','${time}',${d.minutes},${d.price})" class="flex-1 py-2 bg-brand text-white text-xs rounded-lg font-bold hover:bg-brand-dark transition">${d.label}<br><span class="font-normal opacity-80">${d.price}€</span></button>`
+                        : `<button disabled class="flex-1 py-2 bg-slate-100 text-slate-300 text-xs rounded-lg font-bold cursor-not-allowed">${d.label}<br><span class="font-normal">${d.price}€</span></button>`;
+                }).join('');
+                const adminFields = isOwner ? `
+                    <div class="mb-2 p-2 bg-indigo-50 rounded-lg">
+                        <p class="text-[10px] text-indigo-600 font-bold mb-1.5">📞 Τηλεφωνική κράτηση</p>
+                        <div id="bfChip" class="mb-1">${bfChipHtml()}</div>
+                        <input id="bfSearch" oninput="bfSearchInput(this.value)" onfocus="bfSearchInput(this.value)" autocomplete="off" placeholder="🔍 Ψάξε εγγεγραμμένο πελάτη…" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                        <div id="bfSuggest" class="mt-1 max-h-28 overflow-y-auto"></div>
+                        <p class="text-[10px] text-slate-400 my-1 text-center">— ή νέος πελάτης (χωρίς ιστορικό) —</p>
+                        <input id="bfNewName" placeholder="Όνομα" class="w-full mb-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                        <input id="bfNewPhone" type="tel" placeholder="Τηλέφωνο" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                    </div>` : '';
+                const coPlayerField = `
+                    <div class="mb-2">
+                        <p class="text-[10px] text-slate-400 font-bold mb-1">👥 Συμπαίκτες (προαιρετικό)</p>
+                        <div id="coChips" class="flex flex-wrap gap-1 mb-1">${coChipsHtml()}</div>
+                        <input id="coSearch" oninput="coSearchInput(this.value)" onfocus="coSearchInput(this.value)" autocomplete="off" placeholder="🔍 Γράψε όνομα εγγεγραμμένου παίκτη…" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                        <div id="coSuggest" class="mt-1 max-h-32 overflow-y-auto"></div>
+                        <button type="button" onclick="coAddGuest()" class="mt-1 text-[11px] text-slate-500 border border-dashed border-slate-300 rounded-lg px-2 py-1 hover:bg-slate-50 w-full">+ Παίκτης χωρίς λογαριασμό</button>
+                    </div>`;
+                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>`;
+            } else {
+                card.classList.add('slot-free');
+                card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">Ελεύθερο</span></div><button onclick="openPicker('${court}','${time}')" class="w-full mt-2 py-1.5 bg-brand text-white text-xs rounded-lg font-semibold hover:bg-brand-dark transition">Κράτηση</button>`;
+            }
+        }
+        ct.appendChild(card);
+    });
+}
+function openPicker(court,time){ pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerSlot={court,time}; renderSlots(); }
+
+/* ── Τηλεφωνική κράτηση: «για ποιον» (εγγεγραμμένος ή ελεύθερο όνομα) ── */
+let pickerBookFor=null;
+function bfChipHtml(){
+    return pickerBookFor?`<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5 text-[11px]">✓ ${pickerBookFor.name} (εγγεγραμμένος)<button onclick="bfClear()" class="text-indigo-400 font-bold">✕</button></span>`:'';
+}
+function bfSearchInput(v){
+    const box=document.getElementById('bfSuggest'); if(!box) return;
+    const q=(v||'').trim().toLowerCase();
+    if(!q){ box.innerHTML=''; return; }
+    const matches=roster.filter(p=>(p.name||'').toLowerCase().includes(q)).slice(0,6);
+    box.innerHTML=matches.length
+        ? matches.map(p=>`<button onclick="bfSelect('${p.id}')" class="block w-full text-left px-2 py-1.5 text-xs hover:bg-slate-100 rounded-lg">${p.name} <span class="text-[10px] text-indigo-500">· εγγεγραμμένος</span></button>`).join('')
+        : `<p class="text-[11px] text-slate-400 px-2 py-1">Δεν βρέθηκε — γράψε τον κάτω ως «νέο πελάτη»</p>`;
+}
+function bfSelect(id){
+    const p=roster.find(x=>x.id===id); if(!p) return;
+    pickerBookFor={ id:p.id, name:p.name };
+    const s=document.getElementById('bfSearch'); if(s) s.value='';
+    const box=document.getElementById('bfSuggest'); if(box) box.innerHTML='';
+    const chip=document.getElementById('bfChip'); if(chip) chip.innerHTML=bfChipHtml();
+}
+function bfClear(){ pickerBookFor=null; const chip=document.getElementById('bfChip'); if(chip) chip.innerHTML=''; }
+
+/* ── Typeahead συμπαικτών (εγγεγραμμένοι + guests χωρίς λογαριασμό) ── */
+let pickerCoPlayers=[];   // εγγεγραμμένοι {id,name}
+let pickerGuests=[];      // ονόματα/placeholders χωρίς λογαριασμό
+function coChipsHtml(){
+    const reg=pickerCoPlayers.map(p=>`<span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-[11px]">${p.name}<button onclick="coRemove('${p.id}')" class="text-blue-400 font-bold">✕</button></span>`).join('');
+    const gs=pickerGuests.map((g,i)=>`<span class="inline-flex items-center gap-1 bg-slate-200 text-slate-600 rounded-full px-2 py-0.5 text-[11px]">${g}<button onclick="coRemoveGuest(${i})" class="text-slate-400 font-bold">✕</button></span>`).join('');
+    return reg+gs;
+}
+function renderCoChips(){ const el=document.getElementById('coChips'); if(el) el.innerHTML=coChipsHtml(); }
+function coSearchInput(v){
+    const box=document.getElementById('coSuggest'); if(!box) return;
+    const q=(v||'').trim().toLowerCase();
+    if(!q){ box.innerHTML=''; return; }
+    const chosen=new Set(pickerCoPlayers.map(p=>p.id));
+    const matches=roster.filter(p=>!chosen.has(p.id) && (p.name||'').toLowerCase().includes(q)).slice(0,6);
+    box.innerHTML=matches.length
+        ? matches.map(p=>`<button onclick="coAdd('${p.id}')" class="block w-full text-left px-2 py-1.5 text-xs hover:bg-slate-100 rounded-lg">${p.name}</button>`).join('')
+        : `<p class="text-[11px] text-slate-400 px-2 py-1">Δεν βρέθηκε εγγεγραμμένος — χρησιμοποίησε «+ Παίκτης χωρίς λογαριασμό»</p>`;
+}
+function coAdd(id){
+    const p=roster.find(x=>x.id===id); if(!p) return;
+    if(!pickerCoPlayers.some(x=>x.id===id)) pickerCoPlayers.push({ id:p.id, name:p.name });
+    const s=document.getElementById('coSearch'); if(s) s.value='';
+    const box=document.getElementById('coSuggest'); if(box) box.innerHTML='';
+    renderCoChips();
+}
+function coRemove(id){ pickerCoPlayers=pickerCoPlayers.filter(x=>x.id!==id); renderCoChips(); }
+function coAddGuest(){
+    // «Παίκτης N» — N = θέση στη συνολική παρέα (booker=1)
+    const n=pickerCoPlayers.length+pickerGuests.length+2;
+    pickerGuests.push('Παίκτης '+n);
+    renderCoChips();
+}
+function coRemoveGuest(i){ pickerGuests.splice(i,1); renderCoChips(); }
+
+/* ══════════════ BOOK / CANCEL ══════════════ */
+async function doBook(court,time,durMin,price){
+    const date=document.getElementById('datePicker').value;
+    if(!durationFits(court,time,durMin)){ cbToast('Δεν χωράει — δοκίμασε άλλη ώρα','err'); return; }
+    const prof=await sb.from('profiles').select('name,phone').eq('id',me.id).maybeSingle();
+    let uName=prof.data?.name||me.email, uPhone=prof.data?.phone||'', uEmail=me.email;
+    // Αν ο admin κλείνει για πελάτη (τηλεφωνική κράτηση), χρησιμοποίησε τα στοιχεία του πελάτη
+    let bookForId=null;
+    if(isOwner){
+        if(pickerBookFor){
+            // επιλέχθηκε εγγεγραμμένος → η κράτηση περνάει στο ιστορικό του
+            uName=pickerBookFor.name; uPhone=''; uEmail=''; bookForId=pickerBookFor.id;
+        } else {
+            // νέος πελάτης: όνομα + τηλέφωνο στην κράτηση (χωρίς μητρώο/ιστορικό)
+            const nm=document.getElementById('bfNewName')?.value.trim();
+            const ph=document.getElementById('bfNewPhone')?.value.trim();
+            if(nm){ uName=nm; uPhone=ph||''; uEmail=''; }
+        }
+    }
+    // κράτα τους συμπαίκτες ΠΡΙΝ σβηστεί η κάρτα
+    const coPlayerIds=pickerCoPlayers.map(p=>p.id);
+    const guests=pickerGuests.slice();
+    pickerSlot=null; cbLoading(true);
+    try{
+        const { data:ins, error }=await sb.from('bookings').insert({
+            club_id:club.id, court_id:court, user_id:me.id,
+            booking_date:date, start_time:time, duration_min:durMin, price,
+            user_name:uName, user_phone:uPhone, user_email:uEmail,
+            guest_players: guests.length?guests:null
+        }).select('id').single();
+        if(error) throw error;
+        const allPlayerIds=[...new Set([...(bookForId?[bookForId]:[]), ...coPlayerIds])];
+        if(allPlayerIds.length && ins?.id){
+            await sb.from('booking_players').insert(allPlayerIds.map(pid=>({ booking_id:ins.id, player_id:pid })));
+        }
+        const end=cbM2T(cbT2M(time)+durMin);
+        cbToast(`✓ Κράτηση ${time}–${end} (${uName})!`);
+        const d=durations.find(x=>x.minutes===durMin)||{label:'',price};
+        sendBookingEmail('book', { court, time, end, dur:d, name:uName, phone:uPhone, email:uEmail, date });
+        await loadMine(); await loadDay(true);
+    }catch(e){ cbToast('Σφάλμα κράτησης','err'); }
+    finally{ cbLoading(false); }
+}
+
+/* ── Email ειδοποιήσεις (customer + club) ── */
+async function sendBookingEmail(type, b){
+    if(!CB_CONFIG.EJS_PUBLIC_KEY || !window.emailjs) return;
+    const tpl = type==='book' ? CB_CONFIG.EJS_TPL_BOOK : CB_CONFIG.EJS_TPL_CANCEL;
+    if(!tpl) return;
+    const courtName = (courts.find(c=>c.id===b.court)||{}).name || '';
+    const params = {
+        club_name:    club.name,
+        court_name:   courtName,
+        booking_date: cbFmtDate(b.date),
+        booking_time: b.time,
+        end_time:     b.end||'—',
+        duration:     b.dur?.label||'—',
+        price:        b.dur?.price||'—',
+        user_name:    b.name||b.email,
+        user_email:   b.email,
+        user_phone:   b.phone||'—',
+        event_type:   type==='book' ? 'ΝΕΑ ΚΡΑΤΗΣΗ' : 'ΑΚΥΡΩΣΗ'
+    };
+    // Ειδοποίηση ΜΟΝΟ στο club (ο πελάτης δεν λαμβάνει email)
+    if(club.email){
+        try { await emailjs.send(CB_CONFIG.EJS_SERVICE, tpl, { ...params, to_name:club.name, to_email:club.email }); }
+        catch(e){ console.warn('email club', e); }
+    }
+}
+
+async function doCancel(id){
+    if(!confirm('Ακύρωση κράτησης;')) return;
+    cbLoading(true);
+    try{
+        // πάρε τα στοιχεία πριν τη διαγραφή (για το email)
+        const { data:bk }=await sb.from('bookings').select('*').eq('id',id).maybeSingle();
+        const { error }=await sb.from('bookings').delete().eq('id',id);
+        if(error) throw error;
+        cbToast('Ακυρώθηκε');
+        if(bk){
+            const d=durations.find(x=>x.minutes===bk.duration_min)||{label:'',price:bk.price};
+            sendBookingEmail('cancel', { court:bk.court_id, time:bk.start_time, end:cbM2T(cbT2M(bk.start_time)+bk.duration_min), dur:d, name:bk.user_name, phone:bk.user_phone, email:bk.user_email, date:bk.booking_date });
+        }
+        await loadMine();
+        if(activeTab==='admin') loadAdmin(); else await loadDay(true);
+        if(activeTab==='mybookings') renderMine();
+    }catch(e){ cbToast('Σφάλμα ακύρωσης','err'); }
+    finally{ cbLoading(false); }
+}
+
+/* ══════════════ MY BOOKINGS ══════════════ */
+/* Κουμπί «Βρες συμπαίκτη» — μόνο για πελάτες, αν το έχει βάλει ο admin */
+function renderPartnerCta(){
+    const el=document.getElementById('partnerCta'); if(!el) return;
+    if(isOwner || !club.partner_link){ el.innerHTML=''; return; }
+    el.innerHTML=`<a href="${club.partner_link}" target="_blank" rel="noopener"
+        class="block bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl p-4 shadow-sm anim-up hover:opacity-95 transition">
+        <p class="font-bold text-sm">🎾 Ψάχνεις συμπαίκτη;</p>
+        <p class="text-[12px] opacity-90 mt-0.5">Μπες στην ομαδική μας & βρες παρέα για το επόμενο ματς →</p>
+    </a>`;
+}
+
+/* Μήνυμα επιβράβευσης πάνω από τις κρατήσεις πελάτη */
+function renderLoyaltyBanner(){
+    const el=document.getElementById('loyaltyBanner'); if(!el) return;
+    if(isOwner || !club.loyalty_msg){ el.innerHTML=''; return; }
+    const mine=myBookings.filter(b=>b.mine_direct!==false).length;
+    el.innerHTML=`<div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3.5 mb-4">
+        <p class="text-sm font-semibold text-amber-800">🎁 ${club.loyalty_msg}</p>
+        <p class="text-[11px] text-amber-600 mt-0.5">Έχεις μέχρι τώρα <b>${mine}</b> κρατήσεις.</p>
+    </div>`;
+}
+
+function renderMine(){
+    renderLoyaltyBanner();
+    const list=document.getElementById('myList'); const today=cbToday();
+    if(!myBookings.length){ list.innerHTML=`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις κρατήσεις ακόμα</p><button onclick="switchTab('booking')" class="mt-3 text-brand text-sm font-semibold">Κάνε την πρώτη σου →</button></div>`; return; }
+    const sorted=[...myBookings].sort((a,b)=>(a.booking_date+a.start_time).localeCompare(b.booking_date+b.start_time));
+    const up=sorted.filter(b=>b.booking_date>=today), past=sorted.filter(b=>b.booking_date<today);
+    let html='';
+    if(up.length){ html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Επερχόμενες (${up.length})</p>`+up.map(b=>myCard(b,false)).join(''); }
+    if(past.length){ html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mt-5 mb-2">Ιστορικό</p>`+past.slice(-10).reverse().map(b=>myCard(b,true)).join(''); }
+    list.innerHTML=html;
+}
+function myCard(b,isPast){
+    const d=durations.find(x=>x.minutes===b.duration_min)||{label:b.duration_min+'′'};
+    const price=b.price!=null?b.price:(d.price||'');
+    return `<div class="flex items-center justify-between p-3.5 ${isPast?'bg-slate-50 opacity-60':'bg-blue-50 border border-blue-100'} rounded-xl mb-2">
+        <div><p class="font-semibold text-sm">${cbFmtDate(b.booking_date)} · ${b.start_time}</p>
+        <p class="text-xs text-slate-400">${b.courts?.name||''} · ${d.label} · ${price}€</p>
+        ${b.guest_players&&b.guest_players.length?`<p class="text-[11px] text-slate-400 mt-0.5">👥 + ${b.guest_players.join(', ')}</p>`:''}
+        ${(b.mine_direct===false)?`<p class="text-[11px] text-indigo-500 mt-0.5">📞 κλείστηκε από το club</p>`:''}
+        ${isOwner?`<p class="text-[11px] text-slate-500 mt-1">👤 ${b.user_name||'—'}${b.user_phone?` · 📞 ${b.user_phone}`:''}${b.user_email?` · ${b.user_email}`:''}</p>`:''}</div>
+        ${isPast?`<span class="text-[10px] text-slate-400 font-medium">Τελείωσε</span>`:(b.mine_direct===false?`<span class="text-[10px] text-slate-400 font-medium">🎾 συμμετοχή</span>`:`<button onclick="doCancel('${b.id}')" class="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 font-medium">Ακύρωση</button>`)}
+    </div>`;
+}
+
+/* ══════════════ MY TRAININGS ══════════════ */
+async function renderMyTrainings(){
+    const list=document.getElementById('myTrainingsList');
+    list.innerHTML=`<p class="text-slate-400 text-sm py-4 text-center">Φόρτωση…</p>`;
+    const { data, error }=await sb.rpc('get_my_trainings',{ p_club_id:club.id });
+    if(error){ list.innerHTML=`<p class="text-slate-400 text-sm py-4 text-center">Δεν βρέθηκαν προπονήσεις</p>`; return; }
+    const rows=data||[];
+    if(!rows.length){ list.innerHTML=`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις προπονήσεις ακόμα</p></div>`; return; }
+    const present=rows.filter(r=>r.present).length;
+    list.innerHTML=`<div class="flex gap-3 mb-4">
+            <div class="flex-1 bg-green-50 border border-green-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-green-600">${present}</p><p class="text-[10px] text-slate-400">Παρών</p></div>
+            <div class="flex-1 bg-slate-50 border rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-slate-400">${rows.length-present}</p><p class="text-[10px] text-slate-400">Απών</p></div>
+            <div class="flex-1 bg-blue-50 border border-blue-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-brand">${rows.length}</p><p class="text-[10px] text-slate-400">Σύνολο</p></div>
+        </div>`+rows.map(r=>`
+        <div class="flex items-center justify-between p-3.5 ${r.present?'bg-green-50 border border-green-100':'bg-slate-50 opacity-70'} rounded-xl mb-2">
+            <div><p class="font-semibold text-sm">${cbFmtDate(r.session_date)}</p>
+            <p class="text-xs text-slate-400">${r.group_name||''}</p></div>
+            <span class="text-[11px] font-bold px-2 py-1 rounded-full ${r.present?'bg-green-100 text-green-700':'bg-slate-200 text-slate-500'}">${r.present?'✓ Παρών':'Απών'}</span>
+        </div>`).join('');
+}
+
+/* ══════════════ ADMIN ══════════════ */
+let _allBookings=[];
+async function loadAdmin(){
+    if(!isOwner) return;
+    const { data }=await sb.from('bookings').select('*, courts(name)').eq('club_id',club.id).order('booking_date');
+    _allBookings=data||[];
+    renderAdmin();
+}
+function renderAdmin(){
+    const today=cbToday();
+    const wEnd=new Date(); wEnd.setDate(wEnd.getDate()+7); const wStr=wEnd.toISOString().split('T')[0];
+    let t=0,w=0;
+    _allBookings.forEach(b=>{ if(b.booking_date===today)t++; if(b.booking_date>=today&&b.booking_date<=wStr)w++; });
+    document.getElementById('statToday').textContent=t;
+    document.getElementById('statWeek').textContent=w;
+    document.getElementById('statTotal').textContent=_allBookings.length;
+
+    const up=_allBookings.filter(b=>b.booking_date>=today).sort((a,b)=>(a.booking_date+a.start_time).localeCompare(b.booking_date+b.start_time));
+    document.getElementById('upcomingCount').textContent=up.length?`${up.length} κρατήσεις`:'';
+    document.getElementById('adminUpcoming').innerHTML=up.length?up.map(b=>adminCard(b,true)).join(''):`<p class="text-center text-slate-400 text-sm py-6">Δεν υπάρχουν επερχόμενες κρατήσεις</p>`;
+
+    renderAdminDay();
+}
+function renderAdminDay(){
+    const date=document.getElementById('adminDate').value||cbToday();
+    const rows=_allBookings.filter(b=>b.booking_date===date).sort((a,b)=>a.start_time.localeCompare(b.start_time));
+    document.getElementById('adminDayList').innerHTML=rows.length?rows.map(b=>adminCard(b,false)).join(''):`<p class="text-center text-slate-400 text-sm py-6">Καμία κράτηση αυτή την ημέρα</p>`;
+}
+function adminCard(b,showDate){
+    const d=durations.find(x=>x.minutes===b.duration_min)||{label:b.duration_min+'′'};
+    const price=b.price!=null?b.price:(d.price||'');
+    const end=cbM2T(cbT2M(b.start_time)+b.duration_min);
+    return `<div class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border mb-2">
+        <div class="flex items-center gap-3"><div class="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">👤</div>
+        <div><p class="font-semibold text-sm">${b.user_name||b.user_email||'—'}</p>
+        ${showDate?`<p class="text-[11px] text-indigo-500 font-medium">${cbFmtDate(b.booking_date)}</p>`:''}
+        <p class="text-[11px] text-slate-400">${b.courts?.name||''} · ${b.start_time}–${end} · ${d.label} · ${price}€</p>
+        ${(b.user_phone||b.user_email)?`<p class="text-[11px] text-slate-400">📞 ${b.user_phone||'—'} · ${b.user_email||'—'}</p>`:''}
+        ${b.guest_players&&b.guest_players.length?`<p class="text-[11px] text-slate-400">👥 + ${b.guest_players.join(', ')}</p>`:''}</div></div>
+        <button onclick="doCancel('${b.id}')" class="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 font-medium flex-shrink-0">Ακύρωση</button>
+    </div>`;
+}
+/* ══════════════ EXPORT EXCEL (owner) ══════════════ */
+async function exportExcel(){
+    if(typeof XLSX==='undefined'){ cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err'); return; }
+    const ym=document.getElementById('exportMonth').value || cbToday().slice(0,7);
+    const [y,m]=ym.split('-').map(Number);
+    const start=`${ym}-01`;
+    const end=`${ym}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+    cbLoading(true);
+    try{
+        // ── Κρατήσεις του μήνα ──
+        const { data:bk }=await sb.from('bookings').select('*, courts(name)').eq('club_id',club.id)
+            .gte('booking_date',start).lte('booking_date',end).order('booking_date').order('start_time');
+        const { data:bp }=await sb.from('booking_players').select('booking_id, players(name)');
+        const coMap={};
+        (bp||[]).forEach(r=>{ if(r.players) (coMap[r.booking_id]=coMap[r.booking_id]||[]).push(r.players.name); });
+        const bookRows=(bk||[]).map(b=>{
+            const d=durations.find(x=>x.minutes===b.duration_min)||{label:b.duration_min+'′'};
+            const e2=cbM2T(cbT2M(b.start_time)+b.duration_min);
+            return {
+                'Ημερομηνία':b.booking_date, 'Ώρα':`${b.start_time}-${e2}`,
+                'Γήπεδο':b.courts?.name||'', 'Διάρκεια':d.label,
+                'Τιμή (€)':b.price!=null?b.price:'', 'Πελάτης':b.user_name||'',
+                'Τηλέφωνο':b.user_phone||'', 'Email':b.user_email||'',
+                'Συμπαίκτες':(coMap[b.id]||[]).join(', ')
+            };
+        });
+        // ── Προπονήσεις / Παρουσίες του μήνα ──
+        const { data:sess }=await sb.from('training_sessions')
+            .select('id, session_date, training_groups(name, club_id)')
+            .gte('session_date',start).lte('session_date',end).order('session_date');
+        const mySess=(sess||[]).filter(s=>s.training_groups && s.training_groups.club_id===club.id);
+        const byId={}; mySess.forEach(s=>byId[s.id]=s);
+        let attRows=[];
+        if(mySess.length){
+            const { data:att }=await sb.from('attendance').select('session_id, present, players(name)').in('session_id',mySess.map(s=>s.id));
+            attRows=(att||[]).map(a=>{ const s=byId[a.session_id]||{}; return {
+                'Ημερομηνία':s.session_date||'', 'Γκρουπ':s.training_groups?.name||'',
+                'Παίκτης':a.players?.name||'', 'Παρουσία':a.present?'Παρών':'Απών'
+            };}).sort((x,y)=>(x['Ημερομηνία']+x['Γκρουπ']).localeCompare(y['Ημερομηνία']+y['Γκρουπ']));
+        }
+        const wb=XLSX.utils.book_new();
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bookRows.length?bookRows:[{'Ημερομηνία':'— καμία κράτηση —'}]), 'Κρατήσεις');
+        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attRows.length?attRows:[{'Ημερομηνία':'— καμία προπόνηση —'}]), 'Προπονήσεις');
+        XLSX.writeFile(wb, `${club.slug||'club'}-${ym}.xlsx`);
+        cbToast('✓ Κατέβηκε το Excel');
+    }catch(e){ cbToast('Σφάλμα εξαγωγής','err'); }
+    finally{ cbLoading(false); }
+}
+
+/* ══════════════ SETTINGS (owner) ══════════════ */
+function renderSettings(){
+    if(!isOwner) return;
+    document.getElementById('setName').value  = club.name || '';
+    document.getElementById('setLogo').value  = club.logo_url || '';
+    document.getElementById('setEmail').value = club.email || '';
+    document.getElementById('setPhone').value = club.phone || '';
+    document.getElementById('setOpen').value  = club.open_hour;
+    document.getElementById('setClose').value = club.close_hour;
+    document.getElementById('setPartnerLink').value = club.partner_link || '';
+    document.getElementById('setLoyaltyMsg').value  = club.loyalty_msg || '';
+    // courts
+    const cw=document.getElementById('setCourts'); cw.innerHTML='';
+    courts.forEach(c=>addCourtRow(c.name, c.id));
+    // durations — scope selector (όλα τα γήπεδα / ανά γήπεδο)
+    const scope=document.getElementById('durScope');
+    scope.innerHTML = `<option value="">Κοινές τιμές — Όλα τα γήπεδα</option>`
+        + courts.map(c=>`<option value="${c.id}">Μόνο για: ${c.name}</option>`).join('');
+    scope.onchange = renderDursForScope;
+    renderDursForScope();
+    // extras
+    const ew=document.getElementById('setExtras'); ew.innerHTML='';
+    extras.forEach(e=>addExtraRow(e.label, e.price));
+}
+
+function renderDursForScope(){
+    const scopeId=document.getElementById('durScope').value;
+    const dw=document.getElementById('setDurs'); dw.innerHTML='';
+    const hint=document.getElementById('durScopeHint');
+    const own = scopeId ? durations.filter(d=>d.court_id===scopeId)
+                        : durations.filter(d=>!d.court_id);
+    if(own.length){
+        // έχει ήδη δικές του (ή κοινές) → δείξ' τες
+        own.forEach(d=>addDurRow(d.minutes, d.label, d.price));
+        if(hint) hint.textContent = scopeId ? 'Αυτό το γήπεδο έχει δικές του τιμές.' : '';
+    } else if(scopeId){
+        // το γήπεδο ΔΕΝ έχει δικές του → ξεκίνα από αντίγραφο των κοινών για εύκολη αλλαγή
+        const common = durations.filter(d=>!d.court_id);
+        if(common.length){
+            common.forEach(d=>addDurRow(d.minutes, d.label, d.price));
+            if(hint) hint.textContent = '↑ Αντιγράφηκαν οι κοινές τιμές. Άλλαξέ τες και πάτα «Αποθήκευση Τιμών» για να ισχύουν μόνο γι’ αυτό το γήπεδο.';
+        } else {
+            addDurRow('','','');
+            if(hint) hint.textContent = '';
+        }
+    } else {
+        addDurRow('','','');
+        if(hint) hint.textContent = '';
+    }
+}
+
+function addCourtRow(name='', id=''){
+    const wrap=document.getElementById('setCourts');
+    const row=document.createElement('div');
+    row.className='flex gap-2'; row.dataset.id=id;
+    row.innerHTML=`<input type="text" value="${name}" placeholder="Όνομα γηπέδου" class="court-inp flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <button class="del-court px-3 text-red-400 hover:text-red-600">✕</button>`;
+    row.querySelector('.del-court').onclick=()=>delCourt(row);
+    wrap.appendChild(row);
+}
+async function delCourt(row){
+    const id=row.dataset.id;
+    if(id){
+        if(!confirm('Διαγραφή γηπέδου; Θα σβηστούν ΚΑΙ οι κρατήσεις του.')) return;
+        cbLoading(true);
+        const { error }=await sb.from('courts').delete().eq('id',id);
+        cbLoading(false);
+        if(error){ cbToast('Σφάλμα διαγραφής','err'); return; }
+        cbToast('Διαγράφηκε');
+    }
+    row.remove();
+}
+async function saveCourts(){
+    const rows=[...document.querySelectorAll('#setCourts > div')];
+    const names=rows.map(r=>r.querySelector('.court-inp').value.trim());
+    if(names.some(n=>!n)) return cbToast('Συμπλήρωσε όλα τα ονόματα','err');
+    if(!names.length) return cbToast('Πρέπει να υπάρχει ≥1 γήπεδο','err');
+    cbLoading(true);
+    try{
+        for(let i=0;i<rows.length;i++){
+            const r=rows[i], nm=names[i], id=r.dataset.id;
+            if(id){ await sb.from('courts').update({ name:nm, sort_order:i }).eq('id',id); }
+            else  { const { data }=await sb.from('courts').insert({ club_id:club.id, name:nm, sort_order:i }).select().single(); if(data) r.dataset.id=data.id; }
+        }
+        await reloadClubData();
+        cbToast('✓ Τα γήπεδα αποθηκεύτηκαν');
+    }catch(e){ cbToast('Σφάλμα αποθήκευσης','err'); }
+    finally{ cbLoading(false); }
+}
+
+function addDurRow(min='', label='', price=''){
+    const wrap=document.getElementById('setDurs');
+    const row=document.createElement('div');
+    row.className='flex gap-2 items-center';
+    row.innerHTML=`
+        <input type="number" value="${min}" placeholder="λεπτά" class="dur-min w-20 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <input type="text" value="${label}" placeholder="ετικέτα" class="dur-label flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <input type="number" value="${price}" placeholder="€" class="dur-price w-20 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <button class="px-2 text-red-400 hover:text-red-600">✕</button>`;
+    row.querySelector('button').onclick=()=>row.remove();
+    wrap.appendChild(row);
+}
+async function saveDurs(){
+    const scopeId=document.getElementById('durScope').value || null;
+    const rows=[...document.querySelectorAll('#setDurs > div')];
+    const durs=rows.map(r=>({
+        minutes:parseInt(r.querySelector('.dur-min').value),
+        label:r.querySelector('.dur-label').value.trim(),
+        price:parseFloat(r.querySelector('.dur-price').value)
+    })).filter(d=>d.minutes&&d.label&&!isNaN(d.price));
+    // Επιτρέπεται 0 γραμμές σε γήπεδο (σημαίνει "χρησιμοποίησε τις κοινές")
+    if(!scopeId && !durs.length) return cbToast('Πρόσθεσε ≥1 κοινή διάρκεια','err');
+    cbLoading(true);
+    try{
+        // διέγραψε μόνο του τρέχοντος scope (κοινές = court_id null, αλλιώς το γήπεδο)
+        let del=sb.from('durations').delete().eq('club_id',club.id);
+        del = scopeId ? del.eq('court_id',scopeId) : del.is('court_id',null);
+        await del;
+        if(durs.length) await sb.from('durations').insert(durs.map(d=>({ club_id:club.id, court_id:scopeId, ...d })));
+        await reloadClubData();
+        renderDursForScope();
+        cbToast(scopeId ? '✓ Τιμές γηπέδου αποθηκεύτηκαν' : '✓ Κοινές τιμές αποθηκεύτηκαν');
+    }catch(e){ cbToast('Σφάλμα αποθήκευσης','err'); }
+    finally{ cbLoading(false); }
+}
+
+function addExtraRow(label='', price=''){
+    const wrap=document.getElementById('setExtras');
+    const row=document.createElement('div');
+    row.className='flex gap-2 items-center';
+    row.innerHTML=`
+        <input type="text" value="${label}" placeholder="π.χ. Ρακέτα" class="ex-label flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <input type="number" value="${price}" placeholder="€" class="ex-price w-24 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <button class="px-2 text-red-400 hover:text-red-600">✕</button>`;
+    row.querySelector('button').onclick=()=>row.remove();
+    wrap.appendChild(row);
+}
+async function saveExtras(){
+    const rows=[...document.querySelectorAll('#setExtras > div')];
+    const items=rows.map((r,i)=>({
+        label:r.querySelector('.ex-label').value.trim(),
+        price:parseFloat(r.querySelector('.ex-price').value),
+        sort_order:i
+    })).filter(e=>e.label && !isNaN(e.price));
+    cbLoading(true);
+    try{
+        await sb.from('extras').delete().eq('club_id',club.id);
+        if(items.length) await sb.from('extras').insert(items.map(e=>({ club_id:club.id, ...e })));
+        await reloadClubData();
+        cbToast('✓ Οι έξτρα χρεώσεις αποθηκεύτηκαν');
+    }catch(e){ cbToast('Σφάλμα αποθήκευσης','err'); }
+    finally{ cbLoading(false); }
+}
+
+async function saveClubInfo(){
+    const name=document.getElementById('setName').value.trim();
+    if(!name) return cbToast('Βάλε όνομα','err');
+    const open=parseInt(document.getElementById('setOpen').value);
+    const close=parseInt(document.getElementById('setClose').value);
+    if(isNaN(open)||isNaN(close)||close<=open) return cbToast('Λάθος ώρες λειτουργίας','err');
+    cbLoading(true);
+    try{
+        const { error }=await sb.from('clubs').update({
+            name,
+            logo_url: document.getElementById('setLogo').value.trim()||null,
+            email:    document.getElementById('setEmail').value.trim()||null,
+            phone:    document.getElementById('setPhone').value.trim()||null,
+            partner_link: document.getElementById('setPartnerLink').value.trim()||null,
+            loyalty_msg:  document.getElementById('setLoyaltyMsg').value.trim()||null,
+            open_hour: open, close_hour: close
+        }).eq('id',club.id);
+        if(error) throw error;
+        await reloadClubData();
+        renderPartnerCta();
+        cbToast('✓ Τα στοιχεία αποθηκεύτηκαν');
+    }catch(e){ cbToast('Σφάλμα αποθήκευσης','err'); }
+    finally{ cbLoading(false); }
+}
+
+/* ξαναφορτώνει club/courts/durations + ανανεώνει UI */
+async function reloadClubData(){
+    const { data:cl }=await sb.from('clubs').select('*').eq('id',club.id).single();
+    if(cl) club=cl;
+    const [cRes,dRes,eRes]=await Promise.all([
+        sb.from('courts').select('*').eq('club_id',club.id).order('sort_order'),
+        sb.from('durations').select('*').eq('club_id',club.id).order('minutes'),
+        sb.from('extras').select('*').eq('club_id',club.id).order('sort_order')
+    ]);
+    courts=cRes.data||[]; durations=dRes.data||[]; extras=eRes.data||[];
+    await loadTrainingSchedule();
+    buildSlots(); applyBranding(); renderCourtPicker(); renderPriceList(); renderExtras(); renderSlots();
+}
+
+function buildQuickDates(){
+    const strip=document.getElementById('quickDates'); strip.innerHTML='';
+    const days=['Κυρ','Δευ','Τρι','Τετ','Πεμ','Παρ','Σαβ']; const today=new Date();
+    for(let i=0;i<7;i++){
+        const d=new Date(today); d.setDate(today.getDate()+i);
+        const dStr=d.toISOString().split('T')[0];
+        const btn=document.createElement('button');
+        btn.className=`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold text-center min-w-[50px] ${i===0?'bg-brand text-white':'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
+        btn.innerHTML=`<span class="block text-[10px] opacity-70">${days[d.getDay()]}</span><span class="text-base font-extrabold">${d.getDate()}</span>`;
+        btn.onclick=()=>{ document.getElementById('datePicker').value=dStr; strip.querySelectorAll('button').forEach(b=>b.className=b.className.replace('bg-brand text-white','bg-slate-100 text-slate-600 hover:bg-slate-200')); btn.className=btn.className.replace('bg-slate-100 text-slate-600 hover:bg-slate-200','bg-brand text-white'); pickerSlot=null; loadDay(); };
+        strip.appendChild(btn);
+    }
+}
+
+/* ══════════════ ΜΗΤΡΩΟ: Παίκτες / Γκρουπ / Παρουσιολόγιο ══════════════ */
+let roster=[];       // {id,name} — για το dropdown συμπαικτών (όλοι οι χρήστες)
+let playersFull=[];  // πλήρη στοιχεία παικτών (owner μόνο)
+let groups=[];       // training_groups + memberIds
+
+// Λίστα για dropdown (RPC: μόνο id+name — χωρίς προσωπικά)
+async function loadRoster(){
+    const { data }=await sb.rpc('get_club_players',{ p_club_id:club.id });
+    roster=data||[];
+}
+
+let _rosterBookings=[];
+async function renderRoster(){
+    if(!isOwner) return;
+    const res=await Promise.all([loadPlayersFull(), loadGroups(), loadPlayerActivity(), loadTrainingSchedule(),
+        sb.from('bookings').select('id,user_name,user_phone,user_email,booking_date,start_time,court_id').eq('club_id',club.id)]);
+    _rosterBookings=res[4].data||[];
+    mergeSelfBookings();
+    renderPlayers();
+    renderGroups();
+    renderTschedule();
+}
+
+/* ── Πρόγραμμα Προπονήσεων (επαναλαμβανόμενο) ── */
+const _GRDAYS=['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];
+// ώρες μέσα στο ωράριο του club, ανά 30 λεπτά
+function trainingTimeOptions(){
+    const out=[];
+    for(let mins=club.open_hour*60; mins<club.close_hour*60; mins+=30) out.push(cbM2T(mins));
+    return out;
+}
+function renderTschedule(){
+    const gSel=document.getElementById('tsGroup'), cSel=document.getElementById('tsCourt'),
+          dSel=document.getElementById('tsDay'), durSel=document.getElementById('tsDur');
+    gSel.innerHTML=groups.length?groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join(''):`<option value="">— φτιάξε γκρουπ πρώτα —</option>`;
+    cSel.innerHTML=courts.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
+    dSel.innerHTML=[1,2,3,4,5,6,0].map(wd=>`<option value="${wd}">${_GRDAYS[wd]}</option>`).join('');
+    const durMins=[...new Set(durations.map(d=>d.minutes))].sort((a,b)=>a-b);
+    durSel.innerHTML=durMins.map(m=>`<option value="${m}">${m}′</option>`).join('');
+    // ώρες: ωράριο club, βήμα 30 λεπτών (:00 και :30)
+    const timeOpts=trainingTimeOptions().map(t=>`<option value="${t}">${t}</option>`).join('');
+    document.getElementById('tsTime').innerHTML=timeOpts;
+    document.getElementById('xtTime').innerHTML=timeOpts;
+    // ίδια dropdowns και για την έκτακτη
+    document.getElementById('xtGroup').innerHTML=gSel.innerHTML;
+    document.getElementById('xtCourt').innerHTML=cSel.innerHTML;
+    document.getElementById('xtDur').innerHTML=durSel.innerHTML;
+    // dropdowns για το ιδιαίτερο μάθημα
+    document.getElementById('lsCourt').innerHTML=cSel.innerHTML;
+    document.getElementById('lsTime').innerHTML=timeOpts;
+    document.getElementById('lsDur').innerHTML=durSel.innerHTML;
+
+    const el=document.getElementById('tschedList');
+    if(!trainingSchedule.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-1">Καμία προπόνηση στο πρόγραμμα ακόμα</p>`; }
+    else {
+        const sorted=[...trainingSchedule].sort((a,b)=> (a.weekday||0)-(b.weekday||0) || a.start_time.localeCompare(b.start_time));
+        el.innerHTML=sorted.map(t=>{
+            const cName=(courts.find(c=>c.id===t.court_id)||{}).name||'';
+            const end=cbM2T(cbT2M(t.start_time)+t.duration_min);
+            return `<div class="flex items-center justify-between gap-2 p-3 bg-purple-50 rounded-xl border border-purple-100">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate">🏋️ ${t.training_groups?.name||'Προπόνηση'}</p>
+                    <p class="text-[11px] text-slate-500">${_GRDAYS[t.weekday]} · ${t.start_time}–${end} · ${cName}</p>
+                </div>
+                <button onclick="delTsched('${t.id}')" class="text-red-400 text-xs border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50 flex-shrink-0">🗑️</button>
+            </div>`;
+        }).join('');
+    }
+    // λίστα εξαιρέσεων (μελλοντικές)
+    const oEl=document.getElementById('overridesList');
+    const today=cbToday();
+    const ups=trainingOverrides.filter(o=>o.the_date>=today).sort((a,b)=>a.the_date.localeCompare(b.the_date));
+    oEl.innerHTML=ups.length?ups.map(o=>{
+        const cName=(courts.find(c=>c.id===o.court_id)||{}).name||'';
+        let txt;
+        if(o.kind==='cancel'){
+            const s=trainingSchedule.find(x=>x.id===o.schedule_id);
+            const sCourt=s?((courts.find(c=>c.id===s.court_id)||{}).name||''):'';
+            const sInfo=s?`${s.training_groups?.name||'Προπόνηση'} · ${s.start_time}${sCourt?' · '+sCourt:''}`:'προπόνηση';
+            txt=`❌ Ακύρωση · ${sInfo} · ${cbFmtDate(o.the_date)}`;
+        } else if(o.client_name){
+            txt=`🎾 Ιδιαίτερο · ${o.client_name}${o.coach?(' / '+o.coach):''} · ${cbFmtDate(o.the_date)} ${o.start_time||''}${cName?' · '+cName:''}`;
+        } else {
+            txt=`📌 Έκτακτη · ${o.training_groups?.name||''} · ${cbFmtDate(o.the_date)} ${o.start_time||''} ${cName?'· '+cName:''}`;
+        }
+        return `<div class="flex items-center justify-between gap-2 text-[11px] text-slate-500 bg-slate-50 rounded-lg px-2 py-1.5">
+            <span class="truncate">${txt}</span>
+            <button onclick="delOverride('${o.id}')" class="text-red-400 flex-shrink-0">✕</button></div>`;
+    }).join(''):'';
+}
+
+async function cancelTrainingDate(scheduleId, date){
+    if(!confirm('Ακύρωση αυτής της προπόνησης μόνο για σήμερα;')) return;
+    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, schedule_id:scheduleId, the_date:date, kind:'cancel' });
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Ακυρώθηκε για τη μέρα');
+    await loadTrainingSchedule(); loadDay(true); if(activeTab==='roster') renderTschedule();
+}
+
+async function addXtrain(){
+    const group_id=document.getElementById('xtGroup').value;
+    const court_id=document.getElementById('xtCourt').value;
+    const the_date=document.getElementById('xtDate').value;
+    const start_time=document.getElementById('xtTime').value;
+    const duration_min=parseInt(document.getElementById('xtDur').value);
+    if(!group_id) return cbToast('Φτιάξε πρώτα γκρουπ','err');
+    if(!court_id||!the_date||!start_time||!duration_min) return cbToast('Συμπλήρωσε όλα τα πεδία','err');
+    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, group_id, court_id, the_date, start_time, duration_min, kind:'extra' });
+    if(error) return cbToast('Σφάλμα','err');
+    document.getElementById('xtDate').value=''; document.getElementById('xtTime').value='';
+    cbToast('Προστέθηκε έκτακτη');
+    await loadTrainingSchedule(); renderTschedule(); if(activeTab==='booking') loadDay(true);
+}
+
+async function addLesson(){
+    const coach=document.getElementById('lsCoach').value.trim();
+    const client=document.getElementById('lsClient').value.trim();
+    const court_id=document.getElementById('lsCourt').value;
+    const the_date=document.getElementById('lsDate').value;
+    const start_time=document.getElementById('lsTime').value;
+    const duration_min=parseInt(document.getElementById('lsDur').value);
+    if(!client) return cbToast('Βάλε όνομα πελάτη','err');
+    if(!court_id||!the_date||!start_time||!duration_min) return cbToast('Συμπλήρωσε όλα τα πεδία','err');
+    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, court_id, the_date, start_time, duration_min, kind:'extra', coach:coach||null, client_name:client });
+    if(error) return cbToast('Σφάλμα','err');
+    document.getElementById('lsCoach').value=''; document.getElementById('lsClient').value='';
+    document.getElementById('lsDate').value=''; document.getElementById('lsTime').selectedIndex=0;
+    cbToast('Προστέθηκε ιδιαίτερο');
+    await loadTrainingSchedule(); renderTschedule(); if(activeTab==='booking') loadDay(true);
+}
+
+async function delOverride(id){
+    if(!confirm('Διαγραφή εξαίρεσης; (η προπόνηση επανέρχεται κανονικά)')) return;
+    const { error }=await sb.from('training_overrides').delete().eq('id',id);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Διαγράφηκε');
+    await loadTrainingSchedule(); renderTschedule(); loadDay(true);
+}
+
+async function addTsched(){
+    const group_id=document.getElementById('tsGroup').value;
+    const court_id=document.getElementById('tsCourt').value;
+    const weekday=parseInt(document.getElementById('tsDay').value);
+    const start_time=document.getElementById('tsTime').value;
+    const duration_min=parseInt(document.getElementById('tsDur').value);
+    if(!group_id) return cbToast('Φτιάξε πρώτα γκρουπ','err');
+    if(!court_id||!start_time||isNaN(weekday)||!duration_min) return cbToast('Συμπλήρωσε όλα τα πεδία','err');
+    const { error }=await sb.from('training_schedule').insert({ club_id:club.id, group_id, court_id, weekday, start_time, duration_min });
+    if(error) return cbToast('Σφάλμα','err');
+    document.getElementById('tsTime').value='';
+    cbToast('Προστέθηκε στο πρόγραμμα');
+    await loadTrainingSchedule(); renderTschedule();
+    if(activeTab==='booking') loadDay(true);
+}
+
+async function delTsched(id){
+    if(!confirm('Διαγραφή προπόνησης από το πρόγραμμα;')) return;
+    const { error }=await sb.from('training_schedule').delete().eq('id',id);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Διαγράφηκε');
+    await loadTrainingSchedule(); renderTschedule();
+    if(activeTab==='booking') loadDay(true);
+}
+
+async function loadPlayersFull(){
+    const { data }=await sb.from('players').select('*').eq('club_id',club.id).order('name');
+    playersFull=data||[];
+}
+
+async function loadGroups(){
+    const { data:gs }=await sb.from('training_groups').select('*').eq('club_id',club.id).order('sort_order');
+    const { data:gm }=await sb.from('group_members').select('group_id,player_id');
+    const members=gm||[];
+    groups=(gs||[]).map(g=>({ ...g, memberIds: members.filter(m=>m.group_id===g.id).map(m=>m.player_id) }));
+}
+
+/* ── Παίκτες ── */
+async function addPlayer(){
+    const name=document.getElementById('npName').value.trim();
+    if(!name) return cbToast('Βάλε όνομα','err');
+    const phone=document.getElementById('npPhone').value.trim()||null;
+    const email=document.getElementById('npEmail').value.trim()||null;
+    const lvlRaw=document.getElementById('npLevel').value.trim();
+    const level=lvlRaw===''?null:Math.max(0,Math.min(5,parseInt(lvlRaw)||0));
+    const { error }=await sb.from('players').insert({ club_id:club.id, name, phone, email, level });
+    if(error) return cbToast('Σφάλμα','err');
+    document.getElementById('npName').value=''; document.getElementById('npPhone').value=''; document.getElementById('npEmail').value=''; document.getElementById('npLevel').value='';
+    cbToast('Προστέθηκε');
+    await loadRoster(); await renderRoster();
+}
+
+async function delPlayer(id){
+    if(!confirm('Διαγραφή παίκτη; Θα φύγει από γκρουπ, παρουσιολόγια & δηλωμένες κρατήσεις.')) return;
+    const { error }=await sb.from('players').delete().eq('id',id);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Διαγράφηκε');
+    await loadRoster(); await renderRoster();
+}
+
+// Επεξεργασία μέλους από τη γραμματεία (όνομα/τηλέφωνο/email/επίπεδο)
+function editPlayer(id){
+    const p=playersFull.find(x=>x.id===id); if(!p) return;
+    const det=document.getElementById('pdet-'+id), chev=document.getElementById('pchev-'+id);
+    det.classList.remove('hidden'); if(chev)chev.textContent='▲';
+    const esc=s=>(s||'').replace(/"/g,'&quot;');
+    det.innerHTML=`
+        <div class="bg-white rounded-lg p-3 space-y-2 border border-blue-100">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">✏️ Επεξεργασία μέλους</p>
+            <input id="ep-name-${id}" value="${esc(p.name)}" placeholder="Όνομα" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+            <input id="ep-phone-${id}" value="${esc(p.phone)}" placeholder="Τηλέφωνο" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+            <input id="ep-email-${id}" value="${esc(p.email)}" placeholder="Email" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+            <input id="ep-level-${id}" type="number" min="0" max="5" value="${p.level!=null?p.level:''}" placeholder="Επίπεδο 0-5" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+            <div class="flex gap-2 pt-1">
+                <button onclick="savePlayer('${id}')" class="flex-1 bg-brand text-white py-2 rounded-lg text-sm font-bold">💾 Αποθήκευση</button>
+                <button onclick="renderPlayers()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">Άκυρο</button>
+            </div>
+        </div>`;
+}
+
+async function savePlayer(id){
+    const name=document.getElementById('ep-name-'+id).value.trim();
+    if(!name) return cbToast('Βάλε όνομα','err');
+    const phone=document.getElementById('ep-phone-'+id).value.trim()||null;
+    const email=document.getElementById('ep-email-'+id).value.trim()||null;
+    const lvlRaw=document.getElementById('ep-level-'+id).value.trim();
+    const level=lvlRaw===''?null:Math.max(0,Math.min(5,parseInt(lvlRaw)||0));
+    const { error }=await sb.from('players').update({ name, phone, email, level }).eq('id',id);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Αποθηκεύτηκε');
+    await loadRoster(); await renderRoster();
+}
+
+// Δραστηριότητα ανά παίκτη: παιχνίδια (booking_players+ημ/νία) & προπονήσεις (attendance παρών+ημ/νία)
+let playerActivity={};
+async function loadPlayerActivity(){
+    const [{ data:bp },{ data:at }]=await Promise.all([
+        sb.from('booking_players').select('player_id, booking_id, bookings(booking_date, start_time, court_id)'),
+        sb.from('attendance').select('player_id, present, training_sessions(session_date, group_id)')
+    ]);
+    const act={};
+    (bp||[]).forEach(r=>{
+        if(!r.bookings) return;
+        (act[r.player_id]=act[r.player_id]||{games:[],trains:[]}).games.push({ bid:r.booking_id, date:r.bookings.booking_date, time:r.bookings.start_time, court:r.bookings.court_id });
+    });
+    (at||[]).forEach(r=>{
+        if(!r.present || !r.training_sessions) return;
+        (act[r.player_id]=act[r.player_id]||{games:[],trains:[]}).trains.push({ date:r.training_sessions.session_date, group:r.training_sessions.group_id });
+    });
+    playerActivity=act;
+}
+
+// Ενώνει στα stats του μέλους ΚΑΙ τα παιχνίδια που έκλεισε ΜΟΝΟΣ του
+// (ταίριασμα με email ή τηλέφωνο), χωρίς διπλομέτρημα (dedupe ανά booking id).
+function mergeSelfBookings(){
+    playersFull.forEach(p=>{
+        const a=playerActivity[p.id]||(playerActivity[p.id]={games:[],trains:[]});
+        const have=new Set(a.games.map(g=>g.bid).filter(Boolean));
+        const pe=(p.email||'').toLowerCase().trim();
+        if(!pe) return;   // μέλη χωρίς email δεν ταιριάζουν αυτόματα (όλοι οι εγγεγραμμένοι έχουν email)
+        _rosterBookings.forEach(b=>{
+            if(!b.id || have.has(b.id)) return;
+            const be=(b.user_email||'').toLowerCase().trim();
+            if(be && be===pe){   // ταίριασμα ΜΟΝΟ με email — αξιόπιστο
+                have.add(b.id);
+                a.games.push({ bid:b.id, date:b.booking_date, time:b.start_time, court:b.court_id });
+            }
+        });
+    });
+}
+
+const _GRMONTH=['Ιαν','Φεβ','Μαρ','Απρ','Μάι','Ιουν','Ιουλ','Αυγ','Σεπ','Οκτ','Νοε','Δεκ'];
+let _derived=[];
+function renderPlayers(){
+    const el=document.getElementById('playersList');
+    const nowKey=new Date().toISOString().slice(0,7);
+    const q=(document.getElementById('rosterSearch')?.value||'').trim().toLowerCase();
+    const lv=document.getElementById('rosterLevel')?.value||'';
+    let list=playersFull;
+    if(q) list=list.filter(p=>(p.name||'').toLowerCase().includes(q));
+    if(lv==='none') list=list.filter(p=>p.level==null);
+    else if(lv!=='') list=list.filter(p=>String(p.level)===lv);
+    el.innerHTML = !playersFull.length
+        ? `<p class="text-slate-400 text-sm py-1">Κανένα μέλος ακόμα. Οι εγγεγραμμένοι χρήστες μπαίνουν αυτόματα.</p>`
+        : (list.length ? list.map(p=>memberRow(p,nowKey)).join('')
+                       : `<p class="text-slate-400 text-sm py-2">Κανένα μέλος με αυτά τα κριτήρια.</p>`);
+}
+
+function memberRow(p,nowKey){
+    const a=playerActivity[p.id]||{games:[],trains:[]};
+    const gM=a.games.filter(x=>x.date.slice(0,7)===nowKey).length;
+    const tM=a.trains.filter(x=>x.date.slice(0,7)===nowKey).length;
+    return `
+        <div class="bg-slate-50 rounded-xl border overflow-hidden mb-2">
+            <div class="flex items-center justify-between gap-2 p-3 cursor-pointer" onclick="togglePlayer('${p.id}')">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate">${p.name}${p.level!=null?` <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Επ. ${p.level}</span>`:''}</p>
+                    <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: 🎾 ${gM} · 🏃 ${tM}</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-slate-300 text-xs" id="pchev-${p.id}">▼</span>
+                    <button onclick="event.stopPropagation();editPlayer('${p.id}')" class="text-slate-500 text-xs border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-100">✏️</button>
+                    <button onclick="event.stopPropagation();delPlayer('${p.id}')" class="text-red-400 text-xs border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">🗑️</button>
+                </div>
+            </div>
+            <div id="pdet-${p.id}" class="hidden px-3 pb-3"></div>
+        </div>`;
+}
+
+// Πελάτες που βγαίνουν από τις κρατήσεις & ΔΕΝ είναι ήδη μέλη του μητρώου
+function deriveCustomers(){
+    const map={};
+    _rosterBookings.forEach(b=>{
+        const key=(b.user_email||b.user_phone||b.user_name||'').toLowerCase().trim();
+        if(!key) return;
+        const c=map[key]||(map[key]={name:b.user_name,phone:b.user_phone,email:b.user_email,games:[]});
+        c.games.push({ date:b.booking_date, time:b.start_time, court:b.court_id });
+        if(!c.name&&b.user_name)c.name=b.user_name;
+        if(!c.phone&&b.user_phone)c.phone=b.user_phone;
+        if(!c.email&&b.user_email)c.email=b.user_email;
+    });
+    const mEmails=new Set(playersFull.map(p=>(p.email||'').toLowerCase().trim()).filter(Boolean));
+    const mNames=new Set(playersFull.map(p=>(p.name||'').trim().toLowerCase()).filter(Boolean));
+    return Object.values(map).filter(c=>{
+        const ce=(c.email||'').toLowerCase().trim(), nm=(c.name||'').trim().toLowerCase();
+        if(ce&&mEmails.has(ce)) return false;   // ίδιο email με μέλος → είναι ήδη μέλος
+        if(nm&&mNames.has(nm)) return false;    // ίδιο όνομα με μέλος
+        return true;                            // κοινό τηλέφωνο ΔΕΝ τον κρύβει πλέον
+    }).sort((a,b)=>b.games.length-a.games.length);
+}
+
+function derivedRow(c,i,nowKey){
+    const gM=c.games.filter(x=>x.date.slice(0,7)===nowKey).length;
+    return `
+        <div class="bg-amber-50 rounded-xl border border-amber-100 overflow-hidden mb-2">
+            <div class="flex items-center justify-between gap-2 p-3 cursor-pointer" onclick="toggleDerived(${i})">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate">${c.name||'—'}</p>
+                    <p class="text-[11px] text-slate-400 truncate">${c.phone||''}${(c.phone&&c.email)?' · ':''}${c.email||''}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: 🎾 ${gM} · σύνολο ${c.games.length}</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-slate-300 text-xs" id="dchev-${i}">▼</span>
+                    <button onclick="event.stopPropagation();addDerivedToRoster(${i})" class="text-brand text-[11px] border border-brand/30 px-2 py-1 rounded-lg font-semibold hover:bg-blue-50">➕ Μητρώο</button>
+                </div>
+            </div>
+            <div id="ddet-${i}" class="hidden px-3 pb-3"></div>
+        </div>`;
+}
+
+function toggleDerived(i){
+    const det=document.getElementById('ddet-'+i), chev=document.getElementById('dchev-'+i);
+    if(det.classList.contains('hidden')){
+        det.classList.remove('hidden'); if(chev)chev.textContent='▲';
+        const c=_derived[i]||{games:[]};
+        const courtName=cid=>(courts.find(x=>x.id===cid)||{}).name||'';
+        const rows=c.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time))
+            .map(g=>`<div class="text-[11px] text-slate-500 py-0.5">🎾 ${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
+        det.innerHTML=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παιχνίδια (${c.games.length})</p>${rows}</div>`;
+    } else { det.classList.add('hidden'); if(chev)chev.textContent='▼'; }
+}
+
+async function addDerivedToRoster(i){
+    const c=_derived[i]; if(!c) return;
+    const { error }=await sb.from('players').insert({ club_id:club.id, name:c.name||'—', phone:c.phone||null, email:c.email||null });
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Προστέθηκε στο μητρώο');
+    await loadRoster(); await renderRoster();
+}
+
+function togglePlayer(id){
+    const det=document.getElementById('pdet-'+id), chev=document.getElementById('pchev-'+id);
+    if(det.classList.contains('hidden')){ det.classList.remove('hidden'); if(chev)chev.textContent='▲'; det.innerHTML=playerDetailHtml(id); }
+    else { det.classList.add('hidden'); if(chev)chev.textContent='▼'; }
+}
+
+function playerDetailHtml(id){
+    const a=playerActivity[id]||{games:[],trains:[]};
+    const months={};
+    a.games.forEach(g=>{ const k=g.date.slice(0,7); (months[k]=months[k]||{g:0,t:0}).g++; });
+    a.trains.forEach(t=>{ const k=t.date.slice(0,7); (months[k]=months[k]||{g:0,t:0}).t++; });
+    const mName=k=>{ const [y,m]=k.split('-'); return _GRMONTH[+m-1]+' '+y; };
+    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">🎾 ${months[k].g} · 🏃 ${months[k].t}</span></div>`).join('')||'<p class="text-[11px] text-slate-400">Καμία δραστηριότητα</p>';
+    const courtName=cid=>(courts.find(c=>c.id===cid)||{}).name||'';
+    const groupName=gid=>(groups.find(g=>g.id===gid)||{}).name||'';
+    const gDates=a.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).map(g=>`<div class="text-[11px] text-slate-500 py-0.5">🎾 ${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
+    const tDates=a.trains.slice().sort((x,y)=>y.date.localeCompare(x.date)).map(t=>`<div class="text-[11px] text-slate-500 py-0.5">🏃 ${cbFmtDate(t.date)}${groupName(t.group)?' · '+groupName(t.group):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
+    return `
+        <div class="bg-white rounded-lg p-2 mb-2">
+            <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Ανά μήνα</p>${mRows}
+        </div>
+        <div class="grid grid-cols-2 gap-2">
+            <div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παιχνίδια (${a.games.length})</p>${gDates}</div>
+            <div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Προπονήσεις (${a.trains.length})</p>${tDates}</div>
+        </div>`;
+}
+
+/* ── Γκρουπ ── */
+async function addGroup(){
+    const name=prompt('Όνομα γκρουπ (π.χ. Γκρουπ 1):');
+    if(!name||!name.trim()) return;
+    const coach=prompt('Όνομα προπονητή (προαιρετικό):')||'';
+    const { error }=await sb.from('training_groups').insert({ club_id:club.id, name:name.trim(), coach:coach.trim()||null, sort_order:groups.length });
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Δημιουργήθηκε'); await renderRoster();
+}
+
+async function setCoach(gid){
+    const g=groups.find(x=>x.id===gid);
+    const coach=prompt('Όνομα προπονητή:', g?.coach||'');
+    if(coach===null) return;
+    const { error }=await sb.from('training_groups').update({ coach:coach.trim()||null }).eq('id',gid);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups();
+}
+
+async function delGroup(id){
+    if(!confirm('Διαγραφή γκρουπ; Θα σβηστούν μέλη & παρουσιολόγια του.')) return;
+    await sb.from('training_groups').delete().eq('id',id);
+    cbToast('Διαγράφηκε'); await renderRoster();
+}
+
+function renderGroups(){
+    const el=document.getElementById('groupsList');
+    if(!groups.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-2">Δεν υπάρχουν γκρουπ ακόμα</p>`; return; }
+    el.innerHTML=groups.map(g=>{
+        const chips=g.memberIds.map(pid=>{
+            const p=playersFull.find(x=>x.id===pid); if(!p) return '';
+            return `<span class="inline-flex items-center gap-1 bg-white border rounded-full px-2 py-0.5 text-xs">${p.name}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
+        }).join('');
+        const opts=playersFull.filter(p=>!g.memberIds.includes(p.id)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
+        return `
+        <div class="border rounded-xl p-3">
+            <div class="flex items-start justify-between mb-2">
+                <div>
+                    <p class="font-bold text-sm">${g.name} <span class="text-[10px] text-slate-400">(${g.memberIds.length} μέλη)</span></p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">👤 ${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'} <button onclick="setCoach('${g.id}')" class="text-brand ml-0.5">✏️</button></p>
+                </div>
+                <button onclick="delGroup('${g.id}')" class="text-red-400 text-xs">🗑️</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5 mb-2">${chips||'<span class="text-[11px] text-slate-400">Χωρίς μέλη</span>'}</div>
+            <div class="flex gap-2 mb-3">
+                <select id="am-${g.id}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"><option value="">+ Προσθήκη μέλους…</option>${opts}</select>
+                <button onclick="addMember('${g.id}')" class="bg-brand text-white px-3 rounded-lg text-xs font-bold">OK</button>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-2 mb-2">
+                <p class="text-[10px] font-bold text-slate-500 mb-1.5">📋 Παρουσιολόγιο (ανά μέρα)</p>
+                <div class="flex gap-2 mb-2">
+                    <input type="date" id="ad-${g.id}" value="${cbToday()}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                    <button onclick="openAttendance('${g.id}')" class="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold">Άνοιγμα</button>
+                </div>
+                <div id="att-${g.id}"></div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-2">
+                <p class="text-[10px] font-bold text-slate-500 mb-1.5">📅 Παρουσιολόγιο μήνα</p>
+                <div class="flex gap-2 mb-2">
+                    <input type="month" id="gm-${g.id}" value="${cbToday().slice(0,7)}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                    <button onclick="showGroupMonth('${g.id}')" class="bg-purple-600 text-white px-3 rounded-lg text-xs font-bold">Δες</button>
+                </div>
+                <div id="gmres-${g.id}" class="overflow-x-auto"></div>
+            </div>
+        </div>`;
+    }).join('');
+}
+
+// Μηνιαίο παρουσιολόγιο γκρουπ: πίνακας μέλη × ημερομηνίες με ✓/✗ + σύνολο
+async function showGroupMonth(gid){
+    const ym=document.getElementById('gm-'+gid).value; if(!ym) return;
+    const [y,m]=ym.split('-').map(Number);
+    const start=`${ym}-01`, end=`${ym}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+    const box=document.getElementById('gmres-'+gid);
+    box.innerHTML='<p class="text-[11px] text-slate-400 py-1">Φόρτωση…</p>';
+    const { data:sess }=await sb.from('training_sessions').select('id,session_date').eq('group_id',gid)
+        .gte('session_date',start).lte('session_date',end).order('session_date');
+    const sessions=sess||[];
+    if(!sessions.length){ box.innerHTML='<p class="text-[11px] text-slate-400 py-1">Καμία προπόνηση αυτόν τον μήνα</p>'; return; }
+    const { data:att }=await sb.from('attendance').select('session_id,player_id,present').in('session_id',sessions.map(s=>s.id));
+    const map={}; (att||[]).forEach(a=>{ map[a.session_id+'|'+a.player_id]=a.present; });
+    const g=groups.find(x=>x.id===gid);
+    const members=((g?g.memberIds:[])||[]).map(pid=>playersFull.find(p=>p.id===pid)).filter(Boolean);
+    const dCols=sessions.map(s=>{ const dd=s.session_date.slice(8)+'/'+s.session_date.slice(5,7); return `<th class="px-1.5 py-1 text-[10px] font-bold text-slate-500 whitespace-nowrap">${dd}</th>`; }).join('');
+    const rows=members.map(p=>{
+        let pres=0;
+        const cells=sessions.map(s=>{
+            const v=map[s.id+'|'+p.id];
+            if(v===true){ pres++; return `<td class="text-center text-green-600 font-bold">✓</td>`; }
+            if(v===false) return `<td class="text-center text-red-400">✗</td>`;
+            return `<td class="text-center text-slate-300">–</td>`;
+        }).join('');
+        return `<tr class="border-t border-slate-100"><td class="px-1.5 py-1 text-[11px] whitespace-nowrap font-medium">${p.name}</td>${cells}<td class="text-center text-[11px] font-bold text-purple-700 whitespace-nowrap">${pres}/${sessions.length}</td></tr>`;
+    }).join('');
+    box.innerHTML=`<table class="text-[11px] w-full border-collapse"><thead><tr><th class="text-left px-1.5 py-1 text-[10px] text-slate-500">Παίκτης</th>${dCols}<th class="px-1.5 text-[10px] text-slate-500">Σύν.</th></tr></thead><tbody>${rows}</tbody></table>`;
+}
+
+async function addMember(gid){
+    const pid=document.getElementById('am-'+gid).value;
+    if(!pid) return;
+    const { error }=await sb.from('group_members').insert({ group_id:gid, player_id:pid });
+    if(error) return cbToast('Σφάλμα','err');
+    await loadGroups(); renderGroups();
+}
+async function removeMember(gid,pid){
+    await sb.from('group_members').delete().eq('group_id',gid).eq('player_id',pid);
+    await loadGroups(); renderGroups();
+}
+
+/* ── Παρουσιολόγιο ── */
+async function openAttendance(gid){
+    const date=document.getElementById('ad-'+gid).value; if(!date) return;
+    const g=groups.find(x=>x.id===gid); if(!g) return;
+    const box=document.getElementById('att-'+gid);
+    if(!g.memberIds.length){ box.innerHTML='<p class="text-[11px] text-slate-400">Πρόσθεσε μέλη πρώτα</p>'; return; }
+    const { data:sess }=await sb.from('training_sessions').select('id').eq('group_id',gid).eq('session_date',date).maybeSingle();
+    const existing={};
+    if(sess?.id){
+        const { data:at }=await sb.from('attendance').select('player_id,present').eq('session_id',sess.id);
+        (at||[]).forEach(r=>existing[r.player_id]=r.present);
+    }
+    box.innerHTML=g.memberIds.map(pid=>{
+        const p=playersFull.find(x=>x.id===pid); if(!p) return '';
+        const checked = sess?.id ? (existing[pid]!==false) : true; // default: παρών
+        return `<label class="flex items-center justify-between py-1 text-xs border-b last:border-0"><span>${p.name}</span><input type="checkbox" class="att-chk" data-pid="${pid}" ${checked?'checked':''}></label>`;
+    }).join('')+`<button onclick="saveAttendance('${gid}','${date}')" class="w-full mt-2 bg-green-500 text-white py-1.5 rounded-lg text-xs font-bold">💾 Αποθήκευση Παρουσιολογίου</button>`;
+}
+
+async function saveAttendance(gid,date){
+    let { data:sess }=await sb.from('training_sessions').select('id').eq('group_id',gid).eq('session_date',date).maybeSingle();
+    let sessionId=sess?.id;
+    if(!sessionId){
+        const { data:ins,error }=await sb.from('training_sessions').insert({ group_id:gid, session_date:date }).select('id').single();
+        if(error) return cbToast('Σφάλμα','err');
+        sessionId=ins.id;
+    }
+    const rows=[...document.getElementById('att-'+gid).querySelectorAll('.att-chk')].map(c=>({ session_id:sessionId, player_id:c.dataset.pid, present:c.checked }));
+    const { error }=await sb.from('attendance').upsert(rows,{ onConflict:'session_id,player_id' });
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('✓ Παρουσιολόγιο αποθηκεύτηκε');
+    await loadPlayerActivity(); renderPlayers();
+}
+</script>
+</body>
+</html>
