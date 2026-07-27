@@ -90,6 +90,8 @@ function cbT2M(t)        { const [h,m] = t.split(':').map(Number); return h*60+m
 function cbM2T(m)        { return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
 function cbFmtDate(str)  { return new Date(str+'T12:00:00').toLocaleDateString('el-GR',{weekday:'short',day:'numeric',month:'short'}); }
 function cbQS(name)      { return new URLSearchParams(location.search).get(name); }
+// Κείμενο γραμμένο από χρήστη πριν μπει σε innerHTML (προστασία από HTML injection)
+function cbEsc(s)        { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
 function cbSlugify(s) {
     return s.toLowerCase().trim()
         .replace(/[άαà]/g,'a').replace(/[έεè]/g,'e').replace(/[ήηίϊîì]/g,'i')
