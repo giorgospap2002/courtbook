@@ -714,6 +714,9 @@ async function handleReset(){
     try{
         // γυρνάει στο app με το club — εκεί θα ζητηθεί ΝΕΟΣ κωδικός
         const back = location.origin + location.pathname + '?club=' + club.slug;
+        // αν το Supabase αγνοήσει το redirect και στείλει στη ρίζα, το index.html
+        // θα ξέρει σε ποιο club να προωθήσει
+        try{ localStorage.setItem('cb_reset_club', club.slug); }catch(e){}
         await sb.auth.resetPasswordForEmail(email, { redirectTo: back });
         cbToast('📧 Σου στείλαμε email — πάτα το link για να βάλεις νέο κωδικό');
         setMode('login');

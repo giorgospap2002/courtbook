@@ -431,6 +431,21 @@
     </div>
 </footer>
 
-<script>document.getElementById('year').textContent = new Date().getFullYear();</script>
+<script>
+document.getElementById('year').textContent = new Date().getFullYear();
+
+/* Επαναφορά κωδικού: αν το Supabase στείλει τον χρήστη στη ρίζα αντί για
+   την εφαρμογή, τον προωθούμε εμείς στο app.html κρατώντας το token. */
+(function(){
+    const h = location.hash || '';
+    const q = new URLSearchParams(location.search);
+    const isRecovery = /type=recovery/.test(h) || q.get('type') === 'recovery' || q.has('code');
+    if (!isRecovery) return;
+    let slug = 'test';
+    try { slug = localStorage.getItem('cb_reset_club') || slug; } catch(e) {}
+    const extra = q.has('code') ? '&code=' + encodeURIComponent(q.get('code')) : '';
+    location.replace('app.html?club=' + encodeURIComponent(slug) + extra + h);
+})();
+</script>
 </body>
 </html>
