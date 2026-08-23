@@ -177,29 +177,30 @@
 <!-- ═══ APP ═══ -->
 <div id="appScreen" class="hidden min-h-screen flex flex-col">
     <header class="bg-white shadow-sm sticky top-0 z-30 border-b border-slate-100">
-        <div class="max-w-4xl mx-auto px-4 pt-4 flex justify-between items-center">
-            <div class="flex items-center gap-3">
-                <img id="hdrLogo" src="" class="w-9 h-9 rounded-full object-cover border-2 border-slate-100 hidden">
-                <div id="hdrLogoFallback" class="w-9 h-9 bg-brand rounded-xl flex items-center justify-center text-white">🎾</div>
-                <div>
-                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-medium" id="hdrClub"></p>
-                    <h2 id="welcomeName" class="font-bold text-sm leading-tight">Παίκτης</h2>
+        <div class="max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 flex justify-between items-center gap-2">
+            <div class="flex items-center gap-2 sm:gap-3 min-w-0">
+                <img id="hdrLogo" src="" class="w-9 h-9 rounded-full object-cover border-2 border-slate-100 hidden flex-shrink-0">
+                <div id="hdrLogoFallback" class="w-9 h-9 bg-brand rounded-xl flex items-center justify-center text-white flex-shrink-0">🎾</div>
+                <div class="min-w-0">
+                    <p class="text-[10px] text-slate-400 uppercase tracking-wider font-medium truncate" id="hdrClub"></p>
+                    <h2 id="welcomeName" class="font-bold text-sm leading-tight truncate">Παίκτης</h2>
                 </div>
             </div>
-            <div class="flex items-center gap-2">
+            <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
                 <span id="adminBadge" class="hidden bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ADMIN</span>
-                <button onclick="showChangePass()" class="text-xs text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">Κωδικός</button>
-                <button id="logoutBtn" class="flex items-center gap-1.5 text-xs text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium">Έξοδος</button>
+                <button onclick="showChangePass()" title="Αλλαγή κωδικού" class="text-xs text-slate-500 border border-slate-200 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium whitespace-nowrap">Κωδικός</button>
+                <button id="logoutBtn" class="text-xs text-slate-500 border border-slate-200 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium whitespace-nowrap">Έξοδος</button>
             </div>
         </div>
-        <div class="max-w-4xl mx-auto px-4 flex gap-1 mt-2">
-            <button data-tab="booking"    class="tab-btn px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📅 Κράτηση</button>
-            <button data-tab="mybookings" class="tab-btn px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📋 Οι Κρατήσεις μου</button>
-            <button data-tab="openmatches" class="tab-btn px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Ανοιχτά Ματς <span id="openMatchBadge" class="hidden ml-1 bg-brand text-white rounded-full px-1.5 text-[10px]"></span></button>
-            <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
-            <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
-            <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Μητρώο</button>
-            <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
+        <!-- Οι καρτέλες κυλούν οριζόντια στο κινητό αντί να στριμώχνονται -->
+        <div class="max-w-4xl mx-auto px-3 sm:px-4 flex gap-1 mt-2 overflow-x-auto no-scrollbar">
+            <button data-tab="booking"    class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📅 Κράτηση</button>
+            <button data-tab="mybookings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📋 Οι Κρατήσεις μου</button>
+            <button data-tab="openmatches" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Ανοιχτά Ματς <span id="openMatchBadge" class="hidden ml-1 bg-brand text-white rounded-full px-1.5 text-[10px]"></span></button>
+            <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
+            <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
+            <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Μητρώο</button>
+            <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
         </div>
     </header>
 
@@ -830,7 +831,11 @@ function switchTab(tab){
     document.querySelectorAll('.tab-btn').forEach(e=>{ e.classList.remove('tab-active'); e.classList.add('text-slate-400','border-transparent'); });
     document.getElementById('tab-'+tab).classList.remove('hidden');
     const btn=document.querySelector(`[data-tab="${tab}"]`);
-    if(btn){ btn.classList.add('tab-active'); btn.classList.remove('text-slate-400','border-transparent'); }
+    if(btn){
+        btn.classList.add('tab-active'); btn.classList.remove('text-slate-400','border-transparent');
+        // στο κινητό η μπάρα κυλάει — φέρε την ενεργή καρτέλα μέσα στην οθόνη
+        try{ btn.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' }); }catch(e){}
+    }
     if(tab==='mybookings') renderMine();
     if(tab==='openmatches'){ renderOpenMatches(); loadOpenMatches().then(renderOpenMatches); }
     if(tab==='mytrainings') renderMyTrainings();
