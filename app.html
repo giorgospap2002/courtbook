@@ -100,6 +100,28 @@
         <p id="forgotLink" class="mt-2 text-center text-xs text-slate-300 cursor-pointer select-none">Ξέχασες τον κωδικό σου;</p>
         </div><!-- /authFormBox -->
 
+        <!-- Έχει λογαριασμό αλλά ΔΕΝ είναι μέλος αυτού του club -->
+        <div id="joinClubBox" class="hidden">
+            <h2 class="text-xl font-bold mb-1">Εγγραφή στο club</h2>
+            <p class="text-xs text-slate-400 mb-5">Έχεις ήδη λογαριασμό CourtBook, αλλά δεν είσαι μέλος του <b id="jcClub" class="text-slate-600"></b>. Συμπλήρωσε τα στοιχεία σου για να γραφτείς.</p>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-xs font-semibold text-slate-400 block mb-1">Ονοματεπώνυμο</label>
+                    <input id="jcName" type="text" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-400 block mb-1">Τηλέφωνο</label>
+                    <input id="jcPhone" type="tel" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
+                <div>
+                    <label class="text-xs font-semibold text-slate-400 block mb-1">Επίπεδο 0-5 (προαιρετικό)</label>
+                    <input id="jcLevel" type="number" min="0" max="5" placeholder="π.χ. 3" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
+            </div>
+            <button onclick="doJoinClub()" class="w-full mt-5 py-3 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition">Εγγραφή στο club</button>
+            <p class="mt-3 text-center text-xs text-slate-400 cursor-pointer select-none" onclick="cbSignOut().then(()=>location.reload())">Δεν είμαι εγώ — Έξοδος</p>
+        </div>
+
         <p class="mt-6 pt-4 border-t border-slate-100 text-center text-[11px] text-slate-400 leading-relaxed">
             Συνεχίζοντας αποδέχεσαι την επεξεργασία των στοιχείων σου (όνομα, email, τηλέφωνο)
             αποκλειστικά για τη διαχείριση των κρατήσεών σου.
@@ -535,7 +557,11 @@ document.addEventListener('DOMContentLoaded', async () => {
     me = await cbCurrentUser();
     wireAuth();
     if (_isRecovery) showNewPassword();   // ήρθε από link επαναφοράς → νέος κωδικός
-    else if (me) enterApp();
+    else if (me) {
+        // μέλος αυτού του club; αλλιώς ζητάμε ρητή εγγραφή
+        const st = await checkMembership();
+        if (st === 'guest') showJoinClub(); else enterApp();
+    }
     else showAuth();
 });
 
@@ -702,9 +728,17 @@ async function handleAuth(){
             cbLoading(true);
             await cbSignIn(email,pass);
             me = await cbCurrentUser();
-            cbToast('Συνδέθηκες!'); enterApp();
+            const st = await checkMembership();
+            if(st==='guest'){ cbToast('Συνδέθηκες — μια τελευταία λεπτομέρεια'); showJoinClub(); }
+            else { cbToast('Συνδέθηκες!'); enterApp(); }
         }
-    }catch(e){ cbToast(e.message?.includes('Invalid')?'Λάθος email ή κωδικός':(e.message||'Σφάλμα'),'err'); }
+    }catch(e){
+        const m=e.message||'';
+        if(/already|registered|exists/i.test(m)){
+            cbToast('Έχεις ήδη λογαριασμό CourtBook — κάνε Είσοδος και θα γραφτείς σε αυτό το club','err');
+            setMode('login');
+        } else cbToast(/Invalid/.test(m)?'Λάθος email ή κωδικός':(m||'Σφάλμα'),'err');
+    }
     finally{ _busy=false; document.getElementById('authBtn').disabled=false; cbLoading(false); }
 }
 
@@ -789,6 +823,50 @@ function showPrivacy(){
     document.getElementById('privacyModal').classList.remove('hidden');
 }
 function hidePrivacy(){ document.getElementById('privacyModal').classList.add('hidden'); }
+
+/* ══════════════ ΙΔΙΟΤΗΤΑ ΜΕΛΟΥΣ ΑΝΑ CLUB ══════════════
+   Ο λογαριασμός είναι ένας για όλο το CourtBook, αλλά μέλος
+   γίνεσαι ΞΕΧΩΡΙΣΤΑ σε κάθε club. Αν μπεις σε club όπου δεν
+   είσαι μέλος, ζητείται ρητή εγγραφή. */
+async function checkMembership(){
+    const { data, error }=await sb.rpc('club_membership',{ p_club_id:club.id });
+    if(error) return 'member';         // αν κάτι πάει στραβά, μην κλειδώσεις έξω τον χρήστη
+    return data;
+}
+
+async function showJoinClub(){
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('appScreen').classList.add('hidden');
+    document.getElementById('authFormBox').classList.add('hidden');
+    document.getElementById('newPassBox').classList.add('hidden');
+    document.getElementById('joinClubBox').classList.remove('hidden');
+    document.getElementById('jcClub').textContent = club.name || 'club';
+    applyBranding();
+    // προσυμπλήρωση από το προφίλ του χρήστη
+    const { data:prof }=await sb.from('profiles').select('name,phone').eq('id',me.id).maybeSingle();
+    document.getElementById('jcName').value  = prof?.name  || '';
+    document.getElementById('jcPhone').value = prof?.phone || '';
+}
+
+async function doJoinClub(){
+    const name=document.getElementById('jcName').value.trim();
+    const phone=document.getElementById('jcPhone').value.trim();
+    const lvRaw=document.getElementById('jcLevel').value;
+    const level=lvRaw===''?null:parseInt(lvRaw);
+    if(!name) return cbToast('Βάλε το ονοματεπώνυμό σου','err');
+    if(level!==null && (isNaN(level)||level<0||level>5)) return cbToast('Το επίπεδο είναι 0-5','err');
+    cbLoading(true);
+    try{
+        const { data, error }=await sb.rpc('join_club',{ p_club_id:club.id, p_name:name, p_phone:phone||null, p_level:level });
+        if(error) throw error;
+        if(data!=='ok' && data!=='already') return cbToast('Δεν ολοκληρώθηκε η εγγραφή','err');
+        cbToast('Καλώς ήρθες στο ' + (club.name||'club') + '!');
+        document.getElementById('joinClubBox').classList.add('hidden');
+        document.getElementById('authFormBox').classList.remove('hidden');
+        enterApp();
+    }catch(e){ cbToast('Σφάλμα εγγραφής','err'); }
+    finally{ cbLoading(false); }
+}
 
 /* ══════════════ ENTER APP ══════════════ */
 async function enterApp(){
