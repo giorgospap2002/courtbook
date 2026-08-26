@@ -988,6 +988,24 @@ function covering(court_id,time){
     }
     return null;
 }
+// Πόσα λεπτά μένουν ελεύθερα από αυτή την ώρα μέχρι το επόμενο εμπόδιο
+// (επόμενη κράτηση/προπόνηση, ή το κλείσιμο του club).
+function freeGap(court_id,time){
+    const s=cbT2M(time);
+    let end=club.close_hour*60;
+    for(const b of dayData){
+        if(b.court_id!==court_id) continue;
+        const bs=cbT2M(b.start_time);
+        if(bs>=s && bs<end) end=bs;
+    }
+    return { minutes:Math.max(0,end-s), until:cbM2T(end) };
+}
+
+// Χωράει έστω μία από τις διαθέσιμες διάρκειες;
+function anyDurationFits(court_id,time){
+    return durationsForCourt(court_id).some(d=>durationFits(court_id,time,d.minutes));
+}
+
 function durationFits(court_id,time,durMin){
     const s=cbT2M(time), e=s+durMin;
     if(e>club.close_hour*60) return false;
@@ -1093,7 +1111,20 @@ function renderSlots(){
                             placeholder="${isOwner?'π.χ. πληρώνει μετρητά, θέλει μπαλάκια…':'π.χ. θα αργήσουμε 10΄, θέλουμε μπαλάκια…'}"
                             class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs resize-none">${pickerNote||''}</textarea>
                     </div>`;
-                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>`;
+                // Αν κάποιες διάρκειες δεν χωράνε, εξήγησε γιατί
+                const gap=freeGap(court,time);
+                const allFit=durationsForCourt(court).every(d=>durationFits(court,time,d.minutes));
+                const hint = allFit ? '' :
+                    `<p class="text-[10px] text-amber-600 mt-1.5">Ελεύθερο μέχρι τις ${gap.until} (${gap.minutes}′) — οι μεγαλύτερες διάρκειες δεν χωράνε.</p>`;
+                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
+            } else if(!anyDurationFits(court,time)){
+                // Το slot είναι ελεύθερο, αλλά το κενό μέχρι την επόμενη κράτηση
+                // είναι μικρότερο από τη συντομότερη διάρκεια. Μην το προσφέρεις.
+                const g=freeGap(court,time);
+                card.classList.add('slot-other');
+                card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-medium">Κενό ${g.minutes}′</span></div>
+                    <p class="text-xs font-medium text-slate-500">Δεν χωράει κράτηση</p>
+                    <p class="text-[11px] text-slate-400">${g.minutes>0?`Επόμενη κράτηση ${g.until}`:'Κλείνει το club'}</p>`;
             } else {
                 card.classList.add('slot-free');
                 card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">Ελεύθερο</span></div><button onclick="openPicker('${court}','${time}')" class="w-full mt-2 py-1.5 bg-brand text-white text-xs rounded-lg font-semibold hover:bg-brand-dark transition">Κράτηση</button>`;
