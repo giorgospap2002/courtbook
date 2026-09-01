@@ -917,6 +917,7 @@ function switchTab(tab){
         // στο κινητό η μπάρα κυλάει — φέρε την ενεργή καρτέλα μέσα στην οθόνη
         try{ btn.scrollIntoView({ behavior:'smooth', block:'nearest', inline:'center' }); }catch(e){}
     }
+    if(tab==='booking') loadDay(true);
     if(tab==='mybookings') renderMine();
     if(tab==='openmatches'){ renderOpenMatches(); loadOpenMatches().then(renderOpenMatches); }
     if(tab==='mytrainings') renderMyTrainings();
@@ -1415,9 +1416,13 @@ async function doCancel(id){
             const d=durations.find(x=>x.minutes===bk.duration_min)||{label:'',price:bk.price};
             sendBookingEmail('cancel', { court:bk.court_id, time:bk.start_time, end:cbM2T(cbT2M(bk.start_time)+bk.duration_min), dur:d, name:bk.user_name, phone:bk.user_phone, email:bk.user_email, date:bk.booking_date });
         }
+        // Ανανέωσε ΟΛΕΣ τις όψεις — αλλιώς η ακυρωμένη κράτηση έμενε
+        // ορατή στο πλέγμα «Κράτηση» μέχρι το επόμενο αυτόματο refresh.
         await loadMine();
-        if(activeTab==='admin') loadAdmin(); else await loadDay(true);
+        await loadDay(true);
+        if(activeTab==='admin') await loadAdmin();
         if(activeTab==='mybookings') renderMine();
+        if(activeTab==='openmatches'){ await loadOpenMatches(); renderOpenMatches(); }
     }catch(e){ cbToast('Σφάλμα ακύρωσης','err'); }
     finally{ cbLoading(false); }
 }
