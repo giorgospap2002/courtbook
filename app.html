@@ -178,8 +178,10 @@
                <b>Δεν πουλάμε και δεν μοιραζόμαστε</b> τα στοιχεία σου με τρίτους για διαφήμιση.</p>
 
             <p><b class="text-slate-800">Τι βλέπουν οι άλλοι παίκτες</b><br>
-               Στα «Ανοιχτά Ματς» φαίνεται μόνο το <b>μικρό σου όνομα</b>.
-               Ποτέ το τηλέφωνο ή το email σου.</p>
+               Στα «Ανοιχτά Ματς» φαίνεται το <b>μικρό σου όνομα</b> και το επίπεδό σου.
+               Αν ανοίξεις ματς ψάχνοντας συμπαίκτες, τα άλλα <b>μέλη του club</b>
+               βλέπουν και το τηλέφωνό σου, ώστε να μπορούν να συνεννοηθούν μαζί σου.
+               Το email σου δεν φαίνεται ποτέ.</p>
 
             <p><b class="text-slate-800">Πόσο τα κρατάμε</b><br>
                Όσο έχεις λογαριασμό στο club. Αν ζητήσεις διαγραφή, σβήνονται.</p>
@@ -1178,8 +1180,13 @@ function renderOpenMatches(){
     el.innerHTML=openMatches.map(m=>{
         const d=durations.find(x=>x.minutes===m.duration_min)||{label:m.duration_min+'′'};
         const end=cbM2T(cbT2M(m.start_time)+m.duration_min);
-        const who=(m.joined||[]).length?`<p class="text-[11px] text-slate-500 mt-0.5">Παίζουν: ${m.organizer}, ${m.joined.join(', ')}</p>`
-                                       :`<p class="text-[11px] text-slate-500 mt-0.5">Διοργανωτής: ${m.organizer}</p>`;
+        const lvl = (m.organizer_level!=null && m.organizer_level!=='')
+            ? `<span class="ml-1 bg-slate-100 text-slate-600 rounded px-1.5 py-0.5 text-[10px] font-bold">Επ. ${m.organizer_level}</span>` : '';
+        const tel = m.organizer_phone
+            ? `<a href="tel:${cbEsc(m.organizer_phone)}" onclick="event.stopPropagation()" class="text-brand font-semibold">${cbEsc(m.organizer_phone)}</a>` : '';
+        const who = `<p class="text-[11px] text-slate-500 mt-0.5">Διοργανωτής: <b>${cbEsc(m.organizer)}</b>${lvl}</p>`
+            + ((m.joined||[]).length ? `<p class="text-[11px] text-slate-500">Παίζουν επίσης: ${cbEsc(m.joined.join(', '))}</p>` : '')
+            + (tel ? `<p class="text-[11px] text-slate-500 mt-0.5">📞 ${tel}</p>` : '');
         let action;
         if(m.is_mine)         action=`<button onclick="copyMatchLink('${m.id}')" class="text-xs text-brand border border-brand/30 px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-50">Αντιγραφή link</button>`;
         else if(m.already_in) action=`<button onclick="doLeaveMatch('${m.id}')" class="text-xs text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg font-semibold hover:bg-slate-50">Αποχώρηση</button>`;
@@ -1256,7 +1263,9 @@ async function handleJoinParam(){
     if(m.already_in)   return cbToast('Είσαι ήδη σε αυτό το ματς');
     if(!m.is_member)   return cbToast('Πρέπει να είσαι εγγεγραμμένο μέλος του club','err');
     if(m.spots_left<=0)return cbToast('Το ματς συμπληρώθηκε','err');
-    const ok=confirm(`Ματς του ${m.organizer}\n\n${cbFmtDate(m.booking_date)} · ${m.start_time}–${end}\n${m.court_name} · ${m.club_name}\n\nΨάχνει ${m.spots_left} ακόμα. Θέλεις να μπεις;`);
+    const lvlTxt = (m.organizer_level!=null && m.organizer_level!=='') ? ` (επίπεδο ${m.organizer_level})` : '';
+    const telTxt = m.organizer_phone ? `\nΤηλέφωνο: ${m.organizer_phone}` : '';
+    const ok=confirm(`Ματς του ${m.organizer}${lvlTxt}\n\n${cbFmtDate(m.booking_date)} · ${m.start_time}–${end}\n${m.court_name} · ${m.club_name}${telTxt}\n\nΨάχνει ${m.spots_left} ακόμα. Θέλεις να μπεις;`);
     if(ok) await doJoinMatch(id);
 }
 
@@ -1436,12 +1445,21 @@ function renderLoyaltyBanner(){
     </div>`;
 }
 
+// Έχει τελειώσει η κράτηση; (ημερομηνία + ώρα έναρξης + διάρκεια)
+function bookingEnded(b){
+    const end=new Date(b.booking_date+'T'+b.start_time+':00');
+    end.setMinutes(end.getMinutes()+(b.duration_min||60));
+    return end < new Date();
+}
+
 function renderMine(){
     renderLoyaltyBanner();
     const list=document.getElementById('myList'); const today=cbToday();
     if(!myBookings.length){ list.innerHTML=`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις κρατήσεις ακόμα</p><button onclick="switchTab('booking')" class="mt-3 text-brand text-sm font-semibold">Κάνε την πρώτη σου →</button></div>`; return; }
     const sorted=[...myBookings].sort((a,b)=>(a.booking_date+a.start_time).localeCompare(b.booking_date+b.start_time));
-    const up=sorted.filter(b=>b.booking_date>=today), past=sorted.filter(b=>b.booking_date<today);
+    // Μια κράτηση είναι «επερχόμενη» μέχρι να ΤΕΛΕΙΩΣΕΙ, όχι μέχρι να αλλάξει
+    // η μέρα — αλλιώς το παιχνίδι των 19:00 έδειχνε επερχόμενο στις 23:00.
+    const up=sorted.filter(b=>!bookingEnded(b)), past=sorted.filter(b=>bookingEnded(b));
     let html='';
     if(up.length){ html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Επερχόμενες (${up.length})</p>`+up.map(b=>myCard(b,false)).join(''); }
     if(past.length){ html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mt-5 mb-2">Ιστορικό</p>`+past.slice(-10).reverse().map(b=>myCard(b,true)).join(''); }
