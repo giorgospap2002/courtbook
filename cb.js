@@ -83,7 +83,10 @@ function cbConfigured() {
 }
 
 /* ── Utils ───────────────────────────────────────────────── */
-function cbToday()      { return new Date().toISOString().split('T')[0]; }
+// ΤΟΠΙΚΗ ημερομηνία, όχι UTC. Με toISOString() στην Ελλάδα (UTC+2/+3)
+// από τα μεσάνυχτα ως τις 02:00-03:00 επέστρεφε ΧΘΕΣ.
+function cbDateStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
+function cbToday()      { return cbDateStr(new Date()); }
 function cbValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
 function cbValidPhone(p){ return /^[0-9+\s\-]{10,15}$/.test(p); }
 function cbT2M(t)        { const [h,m] = t.split(':').map(Number); return h*60+m; }
