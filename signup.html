@@ -144,11 +144,11 @@
             <div class="grid grid-cols-2 gap-3">
                 <div>
                     <label class="text-xs font-semibold text-slate-400 block mb-1">Ανοίγει (ώρα)</label>
-                    <input id="clubOpen" type="number" min="0" max="23" value="9" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    <select id="clubOpen" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
                 </div>
                 <div>
                     <label class="text-xs font-semibold text-slate-400 block mb-1">Κλείνει (ώρα)</label>
-                    <input id="clubClose" type="number" min="1" max="24" value="23" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    <select id="clubClose" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
                 </div>
             </div>
             <div class="bg-slate-50 rounded-xl p-3 text-xs text-slate-500">
@@ -218,6 +218,15 @@ document.addEventListener('DOMContentLoaded', async () => {
 /* Τύπος συλλόγου. «training» = μόνο προπονήσεις: χωρίς κρατήσεις
    γηπέδων και χωρίς τιμοκατάλογο — άρα ούτε βήμα τιμών. */
 let _clubMode = 'full';
+
+/* Ωράριο ανά μισή ώρα — υπάρχουν club που ανοίγουν «τέσσερις και μισή». */
+(function fillHours(){
+    const opts=(a,b)=>{ let o=''; for(let m=a;m<=b;m+=30) o+=`<option value="${m}">${cbM2T(m)}</option>`; return o; };
+    document.getElementById('clubOpen').innerHTML  = opts(0, 23*60+30);
+    document.getElementById('clubClose').innerHTML = opts(30, 24*60);
+    document.getElementById('clubOpen').value  = 9*60;
+    document.getElementById('clubClose').value = 23*60;
+})();
 function setClubMode(v) {
     _clubMode = v;
     const full = v === 'full';
@@ -328,6 +337,9 @@ function addDurRow(min='', label='', price='') {
 }
 
 /* ── Finish: create club + courts + durations ── */
+function _openM(){  return parseInt(document.getElementById('clubOpen').value)  || 540;  }
+function _closeM(){ return parseInt(document.getElementById('clubClose').value) || 1380; }
+
 async function finish() {
     if (!_account) { cbToast('Κάνε πρώτα λογαριασμό', 'err'); return goStep(1); }
     const name = document.getElementById('clubName').value.trim();
@@ -342,6 +354,8 @@ async function finish() {
         price:   parseFloat(r.querySelector('.dur-price').value)
     })).filter(d => d.minutes && d.label && !isNaN(d.price));
     if (_clubMode === 'full' && !durs.length) return cbToast('Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή', 'err');
+
+    if (_closeM() <= _openM()) return cbToast('Το club κλείνει πριν ανοίξει', 'err');
 
     let slug = cbSlugify(name);
     document.getElementById('finishBtn').disabled = true;
@@ -358,8 +372,12 @@ async function finish() {
             phone:      document.getElementById('clubPhone').value.trim() || null,
             email:      document.getElementById('clubEmail').value.trim() || _account.email || null,
             address:    document.getElementById('clubAddress').value.trim() || null,
-            open_hour:  parseInt(document.getElementById('clubOpen').value)  || 9,
-            close_hour: parseInt(document.getElementById('clubClose').value) || 23,
+            open_hour:  Math.floor(_openM()/60),
+            close_hour: Math.floor(_closeM()/60),
+            // Μπαίνουν μόνο όταν δεν είναι ακέραια ώρα, ώστε η σελίδα να
+            // δουλεύει και πριν τρέξει το migration της μισής ώρας.
+            ...(_openM()%60  ? { open_min:  _openM()%60  } : {}),
+            ...(_closeM()%60 ? { close_min: _closeM()%60 } : {}),
             slot_minutes: 30,
             owner_id:   _account.id,
             // Μπαίνουν μόνο όταν διαφέρουν από τα προεπιλεγμένα, ώστε η σελίδα

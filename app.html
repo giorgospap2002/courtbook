@@ -463,11 +463,11 @@
                 <div class="grid grid-cols-2 gap-3">
                     <div>
                         <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Ανοίγει (ώρα)</label>
-                        <input id="setOpen" type="number" min="0" max="23" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                        <select id="setOpen" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
                     </div>
                     <div>
                         <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Κλείνει (ώρα)</label>
-                        <input id="setClose" type="number" min="1" max="24" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                        <select id="setClose" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
                     </div>
                 </div>
                 <div>
@@ -589,7 +589,7 @@ document.addEventListener('DOMContentLoaded', async () => {
 function buildSlots() {
     SLOTS = [];
     const step = club.slot_minutes || 30;
-    for (let m = club.open_hour*60; m < club.close_hour*60; m += step) SLOTS.push(cbM2T(m));
+    for (let m = clubOpenMin(); m < clubCloseMin(); m += step) SLOTS.push(cbM2T(m));
 }
 
 function applyBranding() {
@@ -950,6 +950,12 @@ function applyClubMode(){
     });
 }
 
+/* Ωράριο σε λεπτά. Τα open_min/close_min είναι 0 ή 30, ώστε ένα club
+   να μπορεί να ανοίγει «εννιά και μισή». Αν λείπουν (πριν τρέξει το
+   migration) διαβάζονται ως 0 και το ωράριο μένει ακριβώς όπως ήταν. */
+function clubOpenMin(){  return (club.open_hour||0)*60  + (club.open_min||0);  }
+function clubCloseMin(){ return (club.close_hour||0)*60 + (club.close_min||0); }
+
 /* ══════════════ TABS ══════════════ */
 function switchTab(tab){
     activeTab=tab;
@@ -1041,7 +1047,7 @@ function covering(court_id,time){
 // (επόμενη κράτηση/προπόνηση, ή το κλείσιμο του club).
 function freeGap(court_id,time){
     const s=cbT2M(time);
-    let end=club.close_hour*60;
+    let end=clubCloseMin();
     for(const b of dayData){
         if(b.court_id!==court_id) continue;
         const bs=cbT2M(b.start_time);
@@ -1057,7 +1063,7 @@ function anyDurationFits(court_id,time){
 
 function durationFits(court_id,time,durMin){
     const s=cbT2M(time), e=s+durMin;
-    if(e>club.close_hour*60) return false;
+    if(e>clubCloseMin()) return false;
     for(const b of dayData){
         if(b.court_id!==court_id) continue;
         const bs=cbT2M(b.start_time), be=bs+(b.duration_min||60);
@@ -1755,8 +1761,12 @@ function renderSettings(){
     document.getElementById('setLogo').value  = club.logo_url || '';
     document.getElementById('setEmail').value = club.email || '';
     document.getElementById('setPhone').value = club.phone || '';
-    document.getElementById('setOpen').value  = club.open_hour;
-    document.getElementById('setClose').value = club.close_hour;
+    // Ωράριο ανά μισή ώρα: άνοιγμα 00:00–23:30, κλείσιμο 00:30–24:00
+    const optsFrom=(a,b)=>{ let o=''; for(let m=a;m<=b;m+=30) o+=`<option value="${m}">${cbM2T(m)}</option>`; return o; };
+    document.getElementById('setOpen').innerHTML  = optsFrom(0,23*60+30);
+    document.getElementById('setClose').innerHTML = optsFrom(30,24*60);
+    document.getElementById('setOpen').value  = clubOpenMin();
+    document.getElementById('setClose').value = clubCloseMin();
     document.getElementById('setPartnerLink').value = club.partner_link || '';
     document.getElementById('setLoyaltyMsg').value  = club.loyalty_msg || '';
     // courts
@@ -1905,9 +1915,9 @@ async function saveExtras(){
 async function saveClubInfo(){
     const name=document.getElementById('setName').value.trim();
     if(!name) return cbToast('Βάλε όνομα','err');
-    const open=parseInt(document.getElementById('setOpen').value);
-    const close=parseInt(document.getElementById('setClose').value);
-    if(isNaN(open)||isNaN(close)||close<=open) return cbToast('Λάθος ώρες λειτουργίας','err');
+    const openM=parseInt(document.getElementById('setOpen').value);
+    const closeM=parseInt(document.getElementById('setClose').value);
+    if(isNaN(openM)||isNaN(closeM)||closeM<=openM) return cbToast('Λάθος ώρες λειτουργίας','err');
     cbLoading(true);
     try{
         const { error }=await sb.from('clubs').update({
@@ -1917,7 +1927,8 @@ async function saveClubInfo(){
             phone:    document.getElementById('setPhone').value.trim()||null,
             partner_link: document.getElementById('setPartnerLink').value.trim()||null,
             loyalty_msg:  document.getElementById('setLoyaltyMsg').value.trim()||null,
-            open_hour: open, close_hour: close
+            open_hour: Math.floor(openM/60),  open_min:  openM%60,
+            close_hour: Math.floor(closeM/60), close_min: closeM%60
         }).eq('id',club.id);
         if(error) throw error;
         await reloadClubData();
@@ -2006,7 +2017,7 @@ const _GRDAYS=['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','
 // ώρες μέσα στο ωράριο του club, ανά 30 λεπτά
 function trainingTimeOptions(){
     const out=[];
-    for(let mins=club.open_hour*60; mins<club.close_hour*60; mins+=30) out.push(cbM2T(mins));
+    for(let mins=clubOpenMin(); mins<clubCloseMin(); mins+=30) out.push(cbM2T(mins));
     return out;
 }
 function renderTschedule(){
