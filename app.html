@@ -291,11 +291,11 @@
         <div class="grid grid-cols-3 gap-3 anim-up">
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-brand" id="statToday">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σήμερα</p></div>
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-indigo-500" id="statWeek">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Επόμενες 7μ.</p></div>
-            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σύνολο</p></div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p id="statTotalLbl" class="text-[10px] text-slate-400 mt-0.5 font-medium">Σύνολο</p></div>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-4">
-                <p class="font-bold">Επερχόμενες Κρατήσεις</p>
+                <p id="upcomingTitle" class="font-bold">Επερχόμενες Κρατήσεις</p>
                 <div class="flex items-center gap-2">
                     <span id="upcomingCount" class="text-[10px] bg-indigo-50 text-indigo-600 px-2.5 py-1 rounded-full font-bold"></span>
                     <button id="refreshBtn" class="text-[10px] text-slate-400 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 font-medium">↻ Ανανέωση</button>
@@ -949,6 +949,11 @@ function applyClubMode(){
         const el=document.getElementById(id);
         if(el) el.classList.add('hidden');
     });
+    // Το Admin γίνεται πίνακας προπονήσεων: δεν υπάρχουν κρατήσεις να δείξει.
+    const t1=document.getElementById('upcomingTitle');
+    if(t1) t1.textContent='Επερχόμενες Προπονήσεις';
+    const t2=document.getElementById('statTotalLbl');
+    if(t2) t2.textContent='Στο πρόγραμμα';
 }
 
 /* Ωράριο σε λεπτά. Τα open_min/close_min είναι 0 ή 30, ώστε ένα club
@@ -1646,7 +1651,50 @@ function bookingPlayers(b){
 
 let _openBooking=null;
 function toggleBooking(id){ _openBooking = _openBooking===id ? null : id; renderAdmin(); }
+/* Όλες οι προπονήσεις μιας ημέρας, σε ενιαία μορφή: το εβδομαδιαίο
+   πρόγραμμα χωρίς τις ακυρωμένες, συν ό,τι έκτακτο έχει μπει γι' αυτή
+   την ημερομηνία (αναπληρώσεις, ιδιαίτερα). */
+function trainingItemsOnDate(date){
+    const out=trainingsOnDate(date).map(t=>({
+        date, start_time:t.start_time, duration_min:t.duration_min, court_id:t.court_id,
+        title:(t.training_groups?.name||'Προπόνηση'),
+        coach:(t.coach||t.training_groups?.coach||''), kind:'εβδομαδιαία'
+    }));
+    trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>out.push({
+        date, start_time:o.start_time, duration_min:o.duration_min, court_id:o.court_id,
+        title:(o.client_name ? 'Ιδιαίτερο: '+o.client_name : (o.training_groups?.name||'Προπόνηση')),
+        coach:(o.coach||o.training_groups?.coach||''),
+        kind:(o.makeup_for?'αναπλήρωση':'έκτακτη')
+    }));
+    return out.sort((a,b)=>a.start_time.localeCompare(b.start_time));
+}
+
+function trainingItemsRange(fromDate,days){
+    const out=[]; const d=new Date(fromDate+'T12:00:00');
+    for(let i=0;i<days;i++){
+        out.push(...trainingItemsOnDate(cbDateStr(d)));
+        d.setDate(d.getDate()+1);
+    }
+    return out;
+}
+
+function trainingCard(it,showDate){
+    const end=cbM2T(cbT2M(it.start_time)+it.duration_min);
+    const court=courts.find(c=>c.id===it.court_id);
+    return `
+        <div class="flex items-center gap-3 p-3.5 bg-purple-50 border border-purple-100 rounded-xl mb-2">
+            <div class="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">🏋️</div>
+            <div class="min-w-0">
+                <p class="font-semibold text-sm truncate">${cbEsc(it.title)}</p>
+                ${showDate?`<p class="text-[11px] text-indigo-500 font-medium">${cbFmtDate(it.date)}</p>`:''}
+                <p class="text-[11px] text-slate-400">${court?.name||''} · ${it.start_time}–${end}${it.coach?' · '+cbEsc(it.coach):''}</p>
+            </div>
+            <span class="ml-auto text-[10px] text-purple-600 bg-white border border-purple-200 px-2 py-0.5 rounded-full font-bold flex-shrink-0">${it.kind}</span>
+        </div>`;
+}
+
 function renderAdmin(){
+    if(!bookingsOn) return renderAdminTrainings();
     const today=cbToday();
     const wEnd=new Date(); wEnd.setDate(wEnd.getDate()+7); const wStr=cbDateStr(wEnd);
     let t=0,w=0;
@@ -1661,8 +1709,31 @@ function renderAdmin(){
 
     renderAdminDay();
 }
+function renderAdminTrainings(){
+    const today=cbToday();
+    const todayN=trainingItemsOnDate(today).length;
+    const weekN=trainingItemsRange(today,7).length;
+    document.getElementById('statToday').textContent=todayN;
+    document.getElementById('statWeek').textContent=weekN;
+    document.getElementById('statTotal').textContent=trainingSchedule.filter(t=>t.active!==false).length;
+
+    const up=trainingItemsRange(today,7);
+    document.getElementById('upcomingCount').textContent=up.length?`${up.length} προπονήσεις`:'';
+    document.getElementById('adminUpcoming').innerHTML=up.length
+        ? up.map(it=>trainingCard(it,true)).join('')
+        : `<p class="text-center text-slate-400 text-sm py-6">Καμία προπόνηση τις επόμενες 7 μέρες</p>`;
+    renderAdminDay();
+}
+
 function renderAdminDay(){
     const date=document.getElementById('adminDate').value||cbToday();
+    if(!bookingsOn){
+        const items=trainingItemsOnDate(date);
+        document.getElementById('adminDayList').innerHTML=items.length
+            ? items.map(it=>trainingCard(it,false)).join('')
+            : `<p class="text-center text-slate-400 text-sm py-6">Καμία προπόνηση αυτή την ημέρα</p>`;
+        return;
+    }
     const rows=_allBookings.filter(b=>b.booking_date===date).sort((a,b)=>a.start_time.localeCompare(b.start_time));
     document.getElementById('adminDayList').innerHTML=rows.length?rows.map(b=>adminCard(b,false)).join(''):`<p class="text-center text-slate-400 text-sm py-6">Καμία κράτηση αυτή την ημέρα</p>`;
 }
@@ -1768,14 +1839,17 @@ function renderSettings(){
     const stepH = bookingsOn ? 60 : 30;
     // Η τρέχουσα τιμή μπαίνει πάντα στη λίστα, ώστε να μη χαθεί ωράριο
     // που ορίστηκε όσο ο σύλλογος ήταν σε άλλη λειτουργία.
+    // Υπάρχουν club που κλείνουν μετά τα μεσάνυχτα (ο Ωρίων στις 01:00),
+    // οπότε το κλείσιμο φτάνει ως τις 04:00 της επόμενης μέρας.
+    const hLbl = m => m<=1440 ? cbM2T(m) : cbM2T(m-1440)+' (επόμ. μέρα)';
     const optsFrom=(a,b,cur)=>{
         const set=new Set();
         for(let m=a;m<=b;m+=stepH) set.add(m);
         if(cur>=a && cur<=b) set.add(cur);
-        return [...set].sort((x,y)=>x-y).map(m=>`<option value="${m}">${cbM2T(m)}</option>`).join('');
+        return [...set].sort((x,y)=>x-y).map(m=>`<option value="${m}">${hLbl(m)}</option>`).join('');
     };
     document.getElementById('setOpen').innerHTML  = optsFrom(0, 1440-stepH, clubOpenMin());
-    document.getElementById('setClose').innerHTML = optsFrom(stepH, 1440, clubCloseMin());
+    document.getElementById('setClose').innerHTML = optsFrom(stepH, 28*60, clubCloseMin());
     document.getElementById('setOpen').value  = clubOpenMin();
     document.getElementById('setClose').value = clubCloseMin();
     document.getElementById('setPartnerLink').value = club.partner_link || '';

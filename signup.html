@@ -226,9 +226,12 @@ function fillHours(){
     const step = _clubMode === 'full' ? 60 : 30;
     const o=document.getElementById('clubOpen'), c=document.getElementById('clubClose');
     const prevO=parseInt(o.value)||9*60, prevC=parseInt(c.value)||23*60;
-    const opts=(a,b)=>{ let out=''; for(let m=a;m<=b;m+=step) out+=`<option value="${m}">${cbM2T(m)}</option>`; return out; };
+    // Το κλείσιμο φτάνει ως τις 04:00 της επόμενης μέρας — υπάρχουν club
+    // που δουλεύουν μετά τα μεσάνυχτα.
+    const lbl = m => m<=1440 ? cbM2T(m) : cbM2T(m-1440)+' (επόμ. μέρα)';
+    const opts=(a,b)=>{ let out=''; for(let m=a;m<=b;m+=step) out+=`<option value="${m}">${lbl(m)}</option>`; return out; };
     o.innerHTML = opts(0, 1440-step);
-    c.innerHTML = opts(step, 1440);
+    c.innerHTML = opts(step, 28*60);
     // κράτα ό,τι είχε διαλέξει, αν χωράει στο νέο βήμα
     o.value = prevO % step === 0 ? prevO : Math.floor(prevO/step)*step;
     c.value = prevC % step === 0 ? prevC : Math.ceil(prevC/step)*step;

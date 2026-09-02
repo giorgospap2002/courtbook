@@ -95,9 +95,19 @@ function cbFmtDate(str)  { return new Date(str+'T12:00:00').toLocaleDateString('
 function cbQS(name)      { return new URLSearchParams(location.search).get(name); }
 // Κείμενο γραμμένο από χρήστη πριν μπει σε innerHTML (προστασία από HTML injection)
 function cbEsc(s)        { return String(s ?? '').replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+// Ελληνικά → λατινικά. Παλιά μεταγράφονταν μόνο τα φωνήεντα, οπότε τα
+// σύμφωνα έπεφταν και το «Αθλητικός Όμιλος Αντισφαίρισης Πατρών» έβγαινε
+// «a-i-o-o-o-a-ai-i-a». Τώρα υπάρχει πλήρης χάρτης.
+const _GR2LAT = {
+    'α':'a','β':'v','γ':'g','δ':'d','ε':'e','ζ':'z','η':'i','θ':'th','ι':'i',
+    'κ':'k','λ':'l','μ':'m','ν':'n','ξ':'x','ο':'o','π':'p','ρ':'r','σ':'s',
+    'ς':'s','τ':'t','υ':'y','φ':'f','χ':'ch','ψ':'ps','ω':'o',
+    'ά':'a','έ':'e','ή':'i','ί':'i','ό':'o','ύ':'y','ώ':'o',
+    'ϊ':'i','ϋ':'y','ΐ':'i','ΰ':'y',
+    'à':'a','è':'e','ì':'i','î':'i','ò':'o','ù':'u'
+};
 function cbSlugify(s) {
-    return s.toLowerCase().trim()
-        .replace(/[άαà]/g,'a').replace(/[έεè]/g,'e').replace(/[ήηίϊîì]/g,'i')
-        .replace(/[όοò]/g,'o').replace(/[ύυϋù]/g,'y').replace(/ω/g,'w')
+    return String(s).toLowerCase().trim()
+        .replace(/./g, ch => _GR2LAT[ch] !== undefined ? _GR2LAT[ch] : ch)
         .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
 }
