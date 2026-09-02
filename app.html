@@ -1121,8 +1121,9 @@ function renderSlots(){
                 ${(cov.mine||isOwner)&&cov.id?`<button onclick="doCancel('${cov.id}')" class="w-full mt-2 py-1.5 bg-red-500 text-white text-xs rounded-lg font-semibold hover:bg-red-600 transition">Ακύρωση</button>`:''}`;
         } else {
             // Σε σύλλογο μόνο-προπονήσεων το ελεύθερο slot είναι πληροφορία,
-            // όχι προσφορά: κανείς εκτός γραμματείας δεν κλείνει γήπεδο.
-            if(!bookingsOn && !isOwner){
+            // όχι προσφορά: δεν κλείνει γήπεδο κανείς — ούτε η γραμματεία.
+            // Το ημερολόγιο δείχνει απλώς ποιο γκρουπ έχει ποια ώρα.
+            if(!bookingsOn){
                 card.classList.add('slot-free');
                 card.innerHTML=`<div class="flex items-center justify-between"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">Ελεύθερο</span></div>`;
             } else if(isPick){
@@ -1200,7 +1201,7 @@ function renderSlots(){
     });
 }
 let pickerNote='';   // ελεύθερο σχόλιο της κράτησης που φτιάχνεται
-function openPicker(court,time){ if(!bookingsOn && !isOwner) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerOpenSpots=0; pickerNote=''; pickerSlot={court,time}; renderSlots(); }
+function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerOpenSpots=0; pickerNote=''; pickerSlot={court,time}; renderSlots(); }
 
 /* ══════════════ ΑΝΟΙΧΤΑ ΜΑΤΣ ══════════════ */
 let pickerOpenSpots=0;   // πόσους παίκτες ψάχνει η κράτηση που φτιάχνεται
@@ -1392,6 +1393,8 @@ function coRemoveGuest(i){ pickerGuests.splice(i,1); renderCoChips(); }
 
 /* ══════════════ BOOK / CANCEL ══════════════ */
 async function doBook(court,time,durMin,price){
+    // Σύλλογος μόνο-προπονήσεων: δεν γίνεται καμία κράτηση γηπέδου.
+    if(!bookingsOn) return;
     const date=document.getElementById('datePicker').value;
     if(!durationFits(court,time,durMin)){ cbToast('Δεν χωράει — δοκίμασε άλλη ώρα','err'); return; }
     const prof=await sb.from('profiles').select('name,phone').eq('id',me.id).maybeSingle();
