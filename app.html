@@ -470,12 +470,12 @@
                         <select id="setClose" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
                     </div>
                 </div>
-                <div>
+                <div id="partnerField">
                     <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">🎾 Σύνδεσμος «Βρες συμπαίκτη» (WhatsApp/Viber ομάδα)</label>
                     <input id="setPartnerLink" type="url" placeholder="https://chat.whatsapp.com/…  ή  https://invite.viber.com/…" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
                     <p class="text-[10px] text-slate-400 mt-1">Οι πελάτες βλέπουν κουμπί στην κράτηση για να μπουν στην ομαδική & να βρουν συμπαίκτες.</p>
                 </div>
-                <div>
+                <div id="loyaltyField">
                     <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">🎁 Μήνυμα επιβράβευσης (πάνω από τις κρατήσεις πελάτη)</label>
                     <input id="setLoyaltyMsg" type="text" placeholder="π.χ. Στις 10 κρατήσεις, η 1 ΔΩΡΟ! 🎁" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
                     <p class="text-[10px] text-slate-400 mt-1">Άφησέ το κενό για να μην εμφανίζεται.</p>
@@ -943,8 +943,9 @@ function applyClubMode(){
         const b=document.querySelector('[data-tab="'+t+'"]');
         if(b) b.classList.add('hidden');
     });
-    // Τιμές πουθενά: ούτε κάρτα στην αρχική, ούτε διαχείριση στις Ρυθμίσεις.
-    ['priceBox','pricingSection','extrasSection'].forEach(id=>{
+    // Τιμές πουθενά, ούτε τα πεδία που αφορούν κρατήσεις γηπέδου:
+    // ο σύνδεσμος «βρες συμπαίκτη» και το μήνυμα επιβράβευσης.
+    ['priceBox','pricingSection','extrasSection','partnerField','loyaltyField'].forEach(id=>{
         const el=document.getElementById(id);
         if(el) el.classList.add('hidden');
     });
