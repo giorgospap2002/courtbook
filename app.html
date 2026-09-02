@@ -1761,10 +1761,20 @@ function renderSettings(){
     document.getElementById('setLogo').value  = club.logo_url || '';
     document.getElementById('setEmail').value = club.email || '';
     document.getElementById('setPhone').value = club.phone || '';
-    // Ωράριο ανά μισή ώρα: άνοιγμα 00:00–23:30, κλείσιμο 00:30–24:00
-    const optsFrom=(a,b)=>{ let o=''; for(let m=a;m<=b;m+=30) o+=`<option value="${m}">${cbM2T(m)}</option>`; return o; };
-    document.getElementById('setOpen').innerHTML  = optsFrom(0,23*60+30);
-    document.getElementById('setClose').innerHTML = optsFrom(30,24*60);
+    // Η μισή ώρα προσφέρεται ΜΟΝΟ σε συλλόγους προπονήσεων: εκεί τα
+    // τμήματα ξεκινούν «τέσσερις και μισή». Ένα club που νοικιάζει
+    // γήπεδα ανοίγει σε ακέραιες ώρες, όπως πάντα.
+    const stepH = bookingsOn ? 60 : 30;
+    // Η τρέχουσα τιμή μπαίνει πάντα στη λίστα, ώστε να μη χαθεί ωράριο
+    // που ορίστηκε όσο ο σύλλογος ήταν σε άλλη λειτουργία.
+    const optsFrom=(a,b,cur)=>{
+        const set=new Set();
+        for(let m=a;m<=b;m+=stepH) set.add(m);
+        if(cur>=a && cur<=b) set.add(cur);
+        return [...set].sort((x,y)=>x-y).map(m=>`<option value="${m}">${cbM2T(m)}</option>`).join('');
+    };
+    document.getElementById('setOpen').innerHTML  = optsFrom(0, 1440-stepH, clubOpenMin());
+    document.getElementById('setClose').innerHTML = optsFrom(stepH, 1440, clubCloseMin());
     document.getElementById('setOpen').value  = clubOpenMin();
     document.getElementById('setClose').value = clubCloseMin();
     document.getElementById('setPartnerLink').value = club.partner_link || '';

@@ -219,14 +219,21 @@ document.addEventListener('DOMContentLoaded', async () => {
    γηπέδων και χωρίς τιμοκατάλογο — άρα ούτε βήμα τιμών. */
 let _clubMode = 'full';
 
-/* Ωράριο ανά μισή ώρα — υπάρχουν club που ανοίγουν «τέσσερις και μισή». */
-(function fillHours(){
-    const opts=(a,b)=>{ let o=''; for(let m=a;m<=b;m+=30) o+=`<option value="${m}">${cbM2T(m)}</option>`; return o; };
-    document.getElementById('clubOpen').innerHTML  = opts(0, 23*60+30);
-    document.getElementById('clubClose').innerHTML = opts(30, 24*60);
-    document.getElementById('clubOpen').value  = 9*60;
-    document.getElementById('clubClose').value = 23*60;
-})();
+/* Ωράριο. Η μισή ώρα προσφέρεται ΜΟΝΟ σε συλλόγους προπονήσεων —
+   εκεί τα τμήματα ξεκινούν «τέσσερις και μισή». Ένα club που νοικιάζει
+   γήπεδα ανοίγει σε ακέραιες ώρες, όπως πάντα. */
+function fillHours(){
+    const step = _clubMode === 'full' ? 60 : 30;
+    const o=document.getElementById('clubOpen'), c=document.getElementById('clubClose');
+    const prevO=parseInt(o.value)||9*60, prevC=parseInt(c.value)||23*60;
+    const opts=(a,b)=>{ let out=''; for(let m=a;m<=b;m+=step) out+=`<option value="${m}">${cbM2T(m)}</option>`; return out; };
+    o.innerHTML = opts(0, 1440-step);
+    c.innerHTML = opts(step, 1440);
+    // κράτα ό,τι είχε διαλέξει, αν χωράει στο νέο βήμα
+    o.value = prevO % step === 0 ? prevO : Math.floor(prevO/step)*step;
+    c.value = prevC % step === 0 ? prevC : Math.ceil(prevC/step)*step;
+}
+fillHours();
 function setClubMode(v) {
     _clubMode = v;
     const full = v === 'full';
@@ -241,6 +248,7 @@ function setClubMode(v) {
     document.getElementById('step3Sub').textContent = full
         ? 'Πρόσθεσε όσα γήπεδα θες'
         : 'Πρόσθεσε τα γήπεδα όπου γίνονται οι προπονήσεις';
+    fillHours();
 }
 
 function goStep(n) {
