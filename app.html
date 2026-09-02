@@ -232,7 +232,7 @@
     <!-- BOOKING -->
     <div id="tab-booking" class="tab-panel flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <div id="partnerCta"></div>
-        <div class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 anim-up">
+        <div id="priceBox" class="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-100 rounded-2xl p-4 anim-up">
             <p class="text-[10px] font-bold text-slate-500 uppercase tracking-widest mb-3">ΤΙΜΟΚΑΤΑΛΟΓΟΣ</p>
             <div id="priceCards" class="grid gap-3 text-center"></div>
             <div id="extrasList" class="mt-3"></div>
@@ -275,7 +275,7 @@
     <div id="tab-mytrainings" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4">
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-1">Οι Προπονήσεις μου</p>
-            <p class="text-[11px] text-slate-400 mb-4">Το ιστορικό παρουσιών σου στα γκρουπ προπόνησης.</p>
+            <p class="text-[11px] text-slate-400 mb-4">Οι παρουσίες και η συνδρομή σου ανά μήνα. Κλικ σε μήνα για αναλυτικά.</p>
             <div id="myTrainingsList"></div>
         </div>
     </div>
@@ -352,6 +352,11 @@
                 <div class="flex gap-2 mb-4">
                     <button onclick="showAllPlayers()" class="flex-1 py-2 text-xs font-semibold text-slate-600 border border-slate-200 rounded-xl hover:bg-slate-50 transition">Όλοι οι πελάτες</button>
                     <button onclick="exportPlayers()" class="flex-1 py-2 text-xs font-semibold text-white bg-green-600 rounded-xl hover:bg-green-700 transition">Εξαγωγή σε Excel</button>
+                </div>
+                <div id="subsBar" class="hidden items-center gap-2 mb-3 pb-3 border-b">
+                    <span class="text-[11px] font-bold text-slate-500 uppercase">Συνδρομή</span>
+                    <input type="month" id="subMonth" onchange="renderPlayers()" class="px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                    <span id="subsCount" class="text-[11px] text-slate-400"></span>
                 </div>
                 <div id="playersList" class="space-y-2"></div>
             </div>
@@ -491,7 +496,7 @@
         </div>
 
         <!-- Pricing -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+        <div id="pricingSection" class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-1">💰 Διάρκειες & Τιμές</p>
             <p class="text-[11px] text-slate-400 mb-3">Κοινές τιμές για όλα τα γήπεδα, ή διαφορετικές ανά γήπεδο (π.χ. ποδόσφαιρο ≠ squash).</p>
             <select id="durScope" class="w-full mb-2 px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
@@ -504,7 +509,7 @@
         </div>
 
         <!-- Extras -->
-        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+        <div id="extrasSection" class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-1">➕ Έξτρα Χρεώσεις</p>
             <p class="text-[11px] text-slate-400 mb-4">π.χ. ενοικίαση ρακέτας, κουτί μπαλάκια. Εμφανίζονται στον τιμοκατάλογο.</p>
             <div id="setExtras" class="space-y-2 mb-3"></div>
@@ -529,6 +534,10 @@
 /* ══════════════ STATE ══════════════ */
 let club=null, courts=[], durations=[], extras=[], SLOTS=[], trainingSchedule=[], trainingOverrides=[];
 let me=null, isOwner=false, isReg=false, isReset=false;
+// false = σύλλογος «μόνο προπονήσεις» (clubs.bookings_enabled). Δεν κλείνει κανείς γήπεδο για παιχνίδι.
+let bookingsOn=true;
+// Μηνιαίες συνδρομές μελών (clubs.subscriptions_enabled). Ξεκινά κλειστό.
+let subsOn=false, payments=new Set(), myPaidMonths=new Set();
 let activeTab='booking', pickerSlot=null, dayData=[], myBookings=[], _refresh=null, _busy=false;
 
 /* ══════════════ BOOT ══════════════ */
@@ -552,6 +561,8 @@ document.addEventListener('DOMContentLoaded', async () => {
     cbLoading(false);
     if (error || !data) { document.getElementById('notFound').classList.remove('hidden'); return; }
     club = data;
+    bookingsOn = club.bookings_enabled !== false;
+    subsOn     = club.subscriptions_enabled === true;
 
     const [cRes, dRes, eRes] = await Promise.all([
         sb.from('courts').select('*').eq('club_id', club.id).order('sort_order'),
@@ -894,6 +905,12 @@ async function enterApp(){
         document.getElementById('settingsTabBtn').classList.remove('hidden');
         document.getElementById('mytrainingsTabBtn').classList.add('hidden'); // ο admin δεν χρειάζεται «Οι Προπονήσεις μου»
     }
+    applyClubMode();
+    if(subsOn && isOwner){
+        const bar=document.getElementById('subsBar');
+        bar.classList.remove('hidden'); bar.classList.add('flex');
+        document.getElementById('subMonth').value=cbToday().slice(0,7);
+    }
     const today=cbToday();
     document.getElementById('datePicker').value=today;
     // Ο πελάτης δεν πάει πίσω από σήμερα (ο admin ναι — χρειάζεται το αρχείο)
@@ -913,6 +930,25 @@ async function enterApp(){
 }
 
 function startRefresh(){ if(_refresh)clearInterval(_refresh); _refresh=setInterval(()=>{ if(activeTab==='admin')loadAdmin(); else loadDay(true); },30000); }
+
+/* Σύλλογος «μόνο προπονήσεις»: το ημερολόγιο γίνεται πρόγραμμα ανάγνωσης
+   — δείχνει ποιο γκρουπ έχει ποιο γήπεδο — και φεύγουν όσα αφορούν
+   κράτηση γηπέδου για παιχνίδι. Αφορά ΜΟΝΟ τους συλλόγους που έχουν
+   bookings_enabled = false· όλοι οι υπόλοιποι μένουν ως έχουν. */
+function applyClubMode(){
+    if(bookingsOn) return;
+    const bookBtn=document.querySelector('[data-tab="booking"]');
+    if(bookBtn) bookBtn.textContent='📅 Πρόγραμμα';
+    ['mybookings','openmatches'].forEach(t=>{
+        const b=document.querySelector('[data-tab="'+t+'"]');
+        if(b) b.classList.add('hidden');
+    });
+    // Τιμές πουθενά: ούτε κάρτα στην αρχική, ούτε διαχείριση στις Ρυθμίσεις.
+    ['priceBox','pricingSection','extrasSection'].forEach(id=>{
+        const el=document.getElementById(id);
+        if(el) el.classList.add('hidden');
+    });
+}
 
 /* ══════════════ TABS ══════════════ */
 function switchTab(tab){
@@ -1069,16 +1105,21 @@ function renderSlots(){
             const label = cov.mine ? 'Δική μου' : (isOwner ? (cov.name||'Κλεισμένο') : 'Κλεισμένο');
             card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] ${cov.mine?'bg-green-100 text-green-700':'bg-slate-100 text-slate-500'} px-1.5 py-0.5 rounded-full font-medium">${cov.mine?'Δική μου':'Κλεισμένο'}</span></div>
                 <p class="text-xs font-medium text-slate-600 truncate">${label}</p>
-                <p class="text-[11px] text-slate-400">${(cov.mine||isOwner)?`${d.label} · ${d.price}€`:'&nbsp;'}</p>
+                <p class="text-[11px] text-slate-400">${(cov.mine||isOwner)?(bookingsOn?`${d.label} · ${d.price}€`:`${cov.duration_min}′`):'&nbsp;'}</p>
                 ${(cov.mine||isOwner)&&cov.id?`<button onclick="doCancel('${cov.id}')" class="w-full mt-2 py-1.5 bg-red-500 text-white text-xs rounded-lg font-semibold hover:bg-red-600 transition">Ακύρωση</button>`:''}`;
         } else {
-            if(isPick){
+            // Σε σύλλογο μόνο-προπονήσεων το ελεύθερο slot είναι πληροφορία,
+            // όχι προσφορά: κανείς εκτός γραμματείας δεν κλείνει γήπεδο.
+            if(!bookingsOn && !isOwner){
+                card.classList.add('slot-free');
+                card.innerHTML=`<div class="flex items-center justify-between"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">Ελεύθερο</span></div>`;
+            } else if(isPick){
                 card.classList.add('slot-pick');
                 const btns=durationsForCourt(court).map(d=>{
                     const fits=durationFits(court,time,d.minutes);
                     return fits
-                        ? `<button onclick="doBook('${court}','${time}',${d.minutes},${d.price})" class="flex-1 py-2 bg-brand text-white text-xs rounded-lg font-bold hover:bg-brand-dark transition">${d.label}<br><span class="font-normal opacity-80">${d.price}€</span></button>`
-                        : `<button disabled class="flex-1 py-2 bg-slate-100 text-slate-300 text-xs rounded-lg font-bold cursor-not-allowed">${d.label}<br><span class="font-normal">${d.price}€</span></button>`;
+                        ? `<button onclick="doBook('${court}','${time}',${d.minutes},${d.price})" class="flex-1 py-2 bg-brand text-white text-xs rounded-lg font-bold hover:bg-brand-dark transition">${d.label}${bookingsOn?`<br><span class="font-normal opacity-80">${d.price}€</span>`:''}</button>`
+                        : `<button disabled class="flex-1 py-2 bg-slate-100 text-slate-300 text-xs rounded-lg font-bold cursor-not-allowed">${d.label}${bookingsOn?`<br><span class="font-normal">${d.price}€</span>`:''}</button>`;
                 }).join('');
                 const adminFields = isOwner ? `
                     <div class="mb-2 p-2 bg-indigo-50 rounded-lg">
@@ -1147,7 +1188,7 @@ function renderSlots(){
     });
 }
 let pickerNote='';   // ελεύθερο σχόλιο της κράτησης που φτιάχνεται
-function openPicker(court,time){ pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerOpenSpots=0; pickerNote=''; pickerSlot={court,time}; renderSlots(); }
+function openPicker(court,time){ if(!bookingsOn && !isOwner) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerOpenSpots=0; pickerNote=''; pickerSlot={court,time}; renderSlots(); }
 
 /* ══════════════ ΑΝΟΙΧΤΑ ΜΑΤΣ ══════════════ */
 let pickerOpenSpots=0;   // πόσους παίκτες ψάχνει η κράτηση που φτιάχνεται
@@ -1440,7 +1481,7 @@ async function doCancel(id){
 /* Κουμπί «Βρες συμπαίκτη» — μόνο για πελάτες, αν το έχει βάλει ο admin */
 function renderPartnerCta(){
     const el=document.getElementById('partnerCta'); if(!el) return;
-    if(isOwner || !club.partner_link){ el.innerHTML=''; return; }
+    if(isOwner || !bookingsOn || !club.partner_link){ el.innerHTML=''; return; }
     el.innerHTML=`<a href="${club.partner_link}" target="_blank" rel="noopener"
         class="block bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl p-4 shadow-sm anim-up hover:opacity-95 transition">
         <p class="font-bold text-sm">🎾 Ψάχνεις συμπαίκτη;</p>
@@ -1500,24 +1541,82 @@ function myCard(b,isPast){
 }
 
 /* ══════════════ MY TRAININGS ══════════════ */
+/* Ποιοι μήνες είναι ανοιχτοί στο «Οι Προπονήσεις μου». */
+const _openMonths=new Set();
+function toggleMyMonth(k){
+    const body=document.getElementById('mm-'+k); if(!body) return;
+    const open=body.classList.toggle('hidden')===false;
+    if(open) _openMonths.add(k); else _openMonths.delete(k);
+    const chev=document.getElementById('mmc-'+k);
+    if(chev) chev.style.transform=open?'rotate(180deg)':'';
+}
+
+// Το μέλος βλέπει ΜΟΝΟ τους δικούς του μήνες — το εξασφαλίζει η βάση (RLS),
+// όχι το φίλτρο εδώ.
+async function loadMyPayments(){
+    if(!subsOn || isOwner){ myPaidMonths=new Set(); return; }
+    const { data }=await sb.from('member_payments').select('month').eq('club_id',club.id);
+    myPaidMonths=new Set((data||[]).map(r=>r.month));
+}
+
 async function renderMyTrainings(){
     const list=document.getElementById('myTrainingsList');
     list.innerHTML=`<p class="text-slate-400 text-sm py-4 text-center">Φόρτωση…</p>`;
-    const { data, error }=await sb.rpc('get_my_trainings',{ p_club_id:club.id });
-    if(error){ list.innerHTML=`<p class="text-slate-400 text-sm py-4 text-center">Δεν βρέθηκαν προπονήσεις</p>`; return; }
-    const rows=data||[];
-    if(!rows.length){ list.innerHTML=`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις προπονήσεις ακόμα</p></div>`; return; }
+    const [res]=await Promise.all([ sb.rpc('get_my_trainings',{ p_club_id:club.id }), loadMyPayments() ]);
+    const rows=(res&&!res.error&&res.data)||[];
     const present=rows.filter(r=>r.present).length;
-    list.innerHTML=`<div class="flex gap-3 mb-4">
-            <div class="flex-1 bg-green-50 border border-green-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-green-600">${present}</p><p class="text-[10px] text-slate-400">Παρών</p></div>
-            <div class="flex-1 bg-slate-50 border rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-slate-400">${rows.length-present}</p><p class="text-[10px] text-slate-400">Απών</p></div>
-            <div class="flex-1 bg-blue-50 border border-blue-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-brand">${rows.length}</p><p class="text-[10px] text-slate-400">Σύνολο</p></div>
-        </div>`+rows.map(r=>`
-        <div class="flex items-center justify-between p-3.5 ${r.present?'bg-green-50 border border-green-100':'bg-slate-50 opacity-70'} rounded-xl mb-2">
-            <div><p class="font-semibold text-sm">${cbFmtDate(r.session_date)}</p>
-            <p class="text-xs text-slate-400">${r.group_name||''}</p></div>
-            <span class="text-[11px] font-bold px-2 py-1 rounded-full ${r.present?'bg-green-100 text-green-700':'bg-slate-200 text-slate-500'}">${r.present?'✓ Παρών':'Απών'}</span>
-        </div>`).join('');
+
+    // Ομαδοποίηση ανά μήνα — ο γονιός θέλει «τον Οκτώβρη ήρθε 6 στις 8».
+    const byMonth={};
+    rows.forEach(r=>{ const k=(r.session_date||'').slice(0,7); (byMonth[k]=byMonth[k]||[]).push(r); });
+    // Μήνας που πληρώθηκε αλλά δεν έχει προπονήσεις πρέπει να φαίνεται κι αυτός.
+    const keys=new Set(Object.keys(byMonth));
+    myPaidMonths.forEach(m=>keys.add(m));
+    if(subsOn) keys.add(cbToday().slice(0,7));
+    const months=[...keys].filter(Boolean).sort().reverse();
+
+    if(!months.length){ list.innerHTML=`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις προπονήσεις ακόμα</p></div>`; return; }
+    if(!_openMonths.size) _openMonths.add(months[0]);   // ο πιο πρόσφατος ανοιχτός
+
+    const totals=`<div class="flex gap-3 mb-4">
+            <div class="flex-1 bg-green-50 border border-green-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-green-600">${present}</p><p class="text-[10px] text-slate-500 font-semibold">ΠΑΡΩΝ</p></div>
+            <div class="flex-1 bg-slate-50 border rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-slate-400">${rows.length-present}</p><p class="text-[10px] text-slate-500 font-semibold">ΑΠΩΝ</p></div>
+            <div class="flex-1 bg-blue-50 border border-blue-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-brand">${rows.length}</p><p class="text-[10px] text-slate-500 font-semibold">ΣΥΝΟΛΟ</p></div>
+        </div>`;
+
+    list.innerHTML = totals + months.map(k=>{
+        const ms=byMonth[k]||[];
+        const mp=ms.filter(r=>r.present).length;
+        const open=_openMonths.has(k);
+        const label=new Date(k+'-01T12:00:00').toLocaleDateString('el-GR',{month:'long',year:'numeric'});
+        const sub=subsOn
+            ? (myPaidMonths.has(k)
+                ? `<span class="text-[11px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">✓ Πληρωμένη</span>`
+                : `<span class="text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Εκκρεμεί</span>`)
+            : '';
+        const sessions=ms.length ? ms.map(r=>`
+            <div class="flex items-center justify-between p-3.5 ${r.present?'bg-green-50 border border-green-100':'bg-slate-50 opacity-70'} rounded-xl mb-2">
+                <div><p class="font-semibold text-sm">${cbFmtDate(r.session_date)}</p>
+                <p class="text-xs text-slate-400">${r.group_name||''}</p></div>
+                <span class="text-[11px] font-bold px-2 py-1 rounded-full ${r.present?'bg-green-100 text-green-700':'bg-slate-200 text-slate-500'}">${r.present?'✓ Παρών':'Απών'}</span>
+            </div>`).join('')
+            : `<p class="text-slate-400 text-xs py-3 text-center">Καμία προπόνηση αυτόν τον μήνα</p>`;
+        return `
+        <div class="border rounded-xl mb-2">
+            <div onclick="toggleMyMonth('${k}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
+                <div class="min-w-0">
+                    <p class="font-bold text-sm" style="text-transform:capitalize">${label}</p>
+                    <p class="text-[11px] text-slate-400">${ms.length} ${ms.length===1?'προπόνηση':'προπονήσεις'}</p>
+                </div>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    ${sub}
+                    <span class="text-[11px] font-bold px-2 py-1 rounded-full ${ms.length&&mp===ms.length?'bg-green-100 text-green-700':'bg-slate-100 text-slate-500'}">${mp}/${ms.length}</span>
+                    <span id="mmc-${k}" class="text-slate-400 text-[10px] transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
+                </div>
+            </div>
+            <div id="mm-${k}" class="${open?'':'hidden'} px-3 pb-1 pt-1 border-t">${sessions}</div>
+        </div>`;
+    }).join('');
 }
 
 /* ══════════════ ADMIN ══════════════ */
@@ -1592,7 +1691,7 @@ function adminCard(b,showDate){
                 <div class="min-w-0">
                     <p class="font-semibold text-sm truncate">${cbEsc(b.user_name||b.user_email||'—')}</p>
                     ${showDate?`<p class="text-[11px] text-indigo-500 font-medium">${cbFmtDate(b.booking_date)}</p>`:''}
-                    <p class="text-[11px] text-slate-400">${b.courts?.name||''} · ${b.start_time}–${end} · ${d.label} · ${price}€</p>
+                    <p class="text-[11px] text-slate-400">${b.courts?.name||''} · ${b.start_time}–${end} · ${d.label}${bookingsOn?` · ${price}€`:''}</p>
                     <p class="text-[11px] text-slate-400">${players.length?`👥 ${players.length+1} παίκτες`:'👤 μόνος'} · <span class="text-brand font-semibold">${open?'λιγότερα':'λεπτομέρειες'}</span></p>
                 </div>
             </div>
@@ -1621,7 +1720,7 @@ async function exportExcel(){
             return {
                 'Ημερομηνία':b.booking_date, 'Ώρα':`${b.start_time}-${e2}`,
                 'Γήπεδο':b.courts?.name||'', 'Διάρκεια':d.label,
-                'Τιμή (€)':b.price!=null?b.price:'', 'Πελάτης':b.user_name||'',
+                ...(bookingsOn?{'Τιμή (€)':b.price!=null?b.price:''}:{}), 'Πελάτης':b.user_name||'',
                 'Τηλέφωνο':b.user_phone||'', 'Email':b.user_email||'',
                 'Συμπαίκτες':(coMap[b.id]||[]).join(', ')
             };
@@ -1895,6 +1994,7 @@ async function renderRoster(){
     const res=await Promise.all([loadPlayersFull(), loadGroups(), loadPlayerActivity(), loadTrainingSchedule(),
         sb.from('bookings').select('id,user_name,user_phone,user_email,booking_date,start_time,court_id').eq('club_id',club.id)]);
     _rosterBookings=res[4].data||[];
+    await loadPayments();
     mergeSelfBookings();
     renderPlayers();
     renderGroups();
@@ -1915,7 +2015,11 @@ function renderTschedule(){
     gSel.innerHTML=groups.length?groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join(''):`<option value="">— φτιάξε γκρουπ πρώτα —</option>`;
     cSel.innerHTML=courts.map(c=>`<option value="${c.id}">${c.name}</option>`).join('');
     dSel.innerHTML=[1,2,3,4,5,6,0].map(wd=>`<option value="${wd}">${_GRDAYS[wd]}</option>`).join('');
-    const durMins=[...new Set(durations.map(d=>d.minutes))].sort((a,b)=>a-b);
+    // Χωρίς τιμοκατάλογο δεν υπάρχουν «διάρκειες» στη βάση, οπότε ο
+    // σύλλογος προπονήσεων παίρνει τις συνηθισμένες διάρκειες προπόνησης.
+    const durMins = bookingsOn
+        ? [...new Set(durations.map(d=>d.minutes))].sort((a,b)=>a-b)
+        : [60,90,120];
     durSel.innerHTML=durMins.map(m=>`<option value="${m}">${m}′</option>`).join('');
     // ώρες: ωράριο club, βήμα 30 λεπτών (:00 και :30)
     const timeOpts=trainingTimeOptions().map(t=>`<option value="${t}">${t}</option>`).join('');
@@ -2397,6 +2501,33 @@ function exportPlayers(){
     cbToast(`Κατέβηκαν ${rows.length} πελάτες`);
 }
 
+/* ══════════════ ΣΥΝΔΡΟΜΕΣ ══════════════ */
+// Υπάρχει γραμμή = πληρωμένος. Το κλειδί είναι «playerId|YYYY-MM».
+async function loadPayments(){
+    if(!subsOn || !isOwner) return;
+    const { data }=await sb.from('member_payments').select('player_id,month').eq('club_id',club.id);
+    payments=new Set((data||[]).map(r=>r.player_id+'|'+r.month));
+}
+
+function subMonthValue(){
+    return document.getElementById('subMonth')?.value || cbToday().slice(0,7);
+}
+
+async function togglePayment(pid){
+    const m=subMonthValue(), key=pid+'|'+m;
+    if(payments.has(key)){
+        const { error }=await sb.from('member_payments').delete().eq('player_id',pid).eq('month',m);
+        if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+        payments.delete(key);
+    }else{
+        const { error }=await sb.from('member_payments')
+            .insert({ club_id:club.id, player_id:pid, month:m, marked_by:me.id });
+        if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+        payments.add(key);
+    }
+    renderPlayers();
+}
+
 function renderPlayers(){
     const el=document.getElementById('playersList');
     const nowKey=new Date().toISOString().slice(0,7);
@@ -2410,6 +2541,12 @@ function renderPlayers(){
         ? `<p class="text-slate-400 text-sm py-1">Κανένα μέλος ακόμα. Οι εγγεγραμμένοι χρήστες μπαίνουν αυτόματα.</p>`
         : (list.length ? list.map(p=>memberRow(p,nowKey)).join('')
                        : `<p class="text-slate-400 text-sm py-2">Κανένα μέλος με αυτά τα κριτήρια.</p>`);
+    if(subsOn && isOwner){
+        const m=subMonthValue();
+        const n=playersFull.filter(p=>payments.has(p.id+'|'+m)).length;
+        const c=document.getElementById('subsCount');
+        if(c) c.textContent=`${n} από ${playersFull.length} πλήρωσαν`;
+    }
     // ο αριθμός στον τίτλο: «12» ή «3 από 12» όταν υπάρχει φίλτρο
     const cEl=document.getElementById('playersCount');
     if(cEl) cEl.textContent = playersFull.length
@@ -2421,6 +2558,13 @@ function memberRow(p,nowKey){
     const a=playerActivity[p.id]||{games:[],trains:[]};
     const gM=a.games.filter(x=>x.date.slice(0,7)===nowKey).length;
     const tM=a.trains.filter(x=>x.date.slice(0,7)===nowKey).length;
+    // Συνδρομή του μήνα που έχει επιλέξει η γραμματεία στη μπάρα από πάνω
+    const subM=subsOn&&isOwner?subMonthValue():null;
+    const paid=subM?payments.has(p.id+'|'+subM):false;
+    const payBtn=subM
+        ? `<button onclick="event.stopPropagation();togglePayment('${p.id}')" title="Συνδρομή ${subM}"
+             class="text-xs px-2 py-1 rounded-lg border font-bold transition ${paid?'bg-green-100 border-green-300 text-green-700':'bg-white border-slate-200 text-slate-300 hover:border-slate-300'}">${paid?'✓ €':'€'}</button>`
+        : '';
     return `
         <div class="bg-slate-50 rounded-xl border overflow-hidden mb-2">
             <div class="flex items-center justify-between gap-2 p-3 cursor-pointer" onclick="togglePlayer('${p.id}')">
@@ -2430,6 +2574,7 @@ function memberRow(p,nowKey){
                     <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: 🎾 ${gM} · 🏃 ${tM}</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
+                    ${payBtn}
                     <span class="text-slate-300 text-xs" id="pchev-${p.id}">▼</span>
                     <button onclick="event.stopPropagation();editPlayer('${p.id}')" class="text-slate-500 text-xs border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-100">✏️</button>
                     <button onclick="event.stopPropagation();delPlayer('${p.id}')" class="text-red-400 text-xs border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">🗑️</button>

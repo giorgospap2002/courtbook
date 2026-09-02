@@ -104,6 +104,26 @@
                 </select>
             </div>
             <div>
+                <label class="text-xs font-semibold text-slate-400 block mb-1.5">Τι κάνει ο σύλλογος;</label>
+                <div class="space-y-2">
+                    <label id="modeFullBox" class="flex items-start gap-2.5 p-3 border-2 border-brand bg-blue-50/40 rounded-xl cursor-pointer transition">
+                        <input type="radio" name="clubMode" value="full" checked onchange="setClubMode('full')" class="mt-0.5 accent-brand">
+                        <span class="text-sm"><b>Κρατήσεις γηπέδων &amp; προπονήσεις</b>
+                        <span class="block text-[11px] text-slate-400 mt-0.5">Τα μέλη κλείνουν μόνα τους γήπεδο, με τιμοκατάλογο. Υπάρχουν και γκρουπ προπόνησης.</span></span>
+                    </label>
+                    <label id="modeTrainBox" class="flex items-start gap-2.5 p-3 border-2 border-slate-200 rounded-xl cursor-pointer transition">
+                        <input type="radio" name="clubMode" value="training" onchange="setClubMode('training')" class="mt-0.5 accent-brand">
+                        <span class="text-sm"><b>Μόνο προπονήσεις</b>
+                        <span class="block text-[11px] text-slate-400 mt-0.5">Τα γήπεδα τα πιάνουν τα γκρουπ προπόνησης. Κανείς δεν κλείνει γήπεδο για παιχνίδι, καμία τιμή πουθενά.</span></span>
+                    </label>
+                </div>
+            </div>
+            <label class="flex items-center gap-2.5 p-3 border border-slate-200 rounded-xl cursor-pointer">
+                <input type="checkbox" id="clubSubs" class="w-4 h-4 accent-brand">
+                <span class="text-sm">Κρατάμε <b>μηνιαίες συνδρομές</b> μελών
+                <span class="block text-[11px] text-slate-400">Η γραμματεία τσεκάρει ποιος πλήρωσε κάθε μήνα· το μέλος το βλέπει στο κινητό του.</span></span>
+            </label>
+            <div>
                 <label class="text-xs font-semibold text-slate-400 block mb-1">Λογότυπο (URL — προαιρετικό)</label>
                 <input id="clubLogo" type="url" placeholder="https://..." class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
             </div>
@@ -143,16 +163,18 @@
 
     <!-- ═══ STEP 3: Courts + Pricing ═══ -->
     <div id="step3" class="hidden bg-white rounded-3xl shadow-xl p-7">
-        <h1 class="text-2xl font-extrabold mb-1">Γήπεδα & Τιμές</h1>
-        <p class="text-slate-500 text-sm mb-6">Πρόσθεσε όσα γήπεδα θες</p>
+        <h1 id="step3Title" class="text-2xl font-extrabold mb-1">Γήπεδα & Τιμές</h1>
+        <p id="step3Sub" class="text-slate-500 text-sm mb-6">Πρόσθεσε όσα γήπεδα θες</p>
 
         <label class="text-xs font-semibold text-slate-400 block mb-2">Γήπεδα</label>
         <div id="courtsList" class="space-y-2 mb-3"></div>
         <button onclick="addCourtRow()" class="text-brand text-sm font-semibold mb-6">+ Πρόσθεσε γήπεδο</button>
 
-        <label class="text-xs font-semibold text-slate-400 block mb-2">Διάρκειες & Τιμές</label>
-        <div id="durList" class="space-y-2 mb-3"></div>
-        <button onclick="addDurRow()" class="text-brand text-sm font-semibold mb-6">+ Πρόσθεσε διάρκεια</button>
+        <div id="pricingBlock">
+            <label class="text-xs font-semibold text-slate-400 block mb-2">Διάρκειες & Τιμές</label>
+            <div id="durList" class="space-y-2 mb-3"></div>
+            <button onclick="addDurRow()" class="text-brand text-sm font-semibold mb-6">+ Πρόσθεσε διάρκεια</button>
+        </div>
 
         <div class="flex gap-3">
             <button onclick="goStep(2)" class="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition">← Πίσω</button>
@@ -193,6 +215,25 @@ document.addEventListener('DOMContentLoaded', async () => {
 });
 
 /* ── Step navigation ── */
+/* Τύπος συλλόγου. «training» = μόνο προπονήσεις: χωρίς κρατήσεις
+   γηπέδων και χωρίς τιμοκατάλογο — άρα ούτε βήμα τιμών. */
+let _clubMode = 'full';
+function setClubMode(v) {
+    _clubMode = v;
+    const full = v === 'full';
+    document.getElementById('modeFullBox').className =
+        'flex items-start gap-2.5 p-3 border-2 rounded-xl cursor-pointer transition ' +
+        (full ? 'border-brand bg-blue-50/40' : 'border-slate-200');
+    document.getElementById('modeTrainBox').className =
+        'flex items-start gap-2.5 p-3 border-2 rounded-xl cursor-pointer transition ' +
+        (full ? 'border-slate-200' : 'border-brand bg-blue-50/40');
+    document.getElementById('pricingBlock').classList.toggle('hidden', !full);
+    document.getElementById('step3Title').textContent = full ? 'Γήπεδα & Τιμές' : 'Γήπεδα';
+    document.getElementById('step3Sub').textContent = full
+        ? 'Πρόσθεσε όσα γήπεδα θες'
+        : 'Πρόσθεσε τα γήπεδα όπου γίνονται οι προπονήσεις';
+}
+
 function goStep(n) {
     // προσυμπλήρωσε το email του club με του owner (αν κενό)
     if (n === 2 && _account) {
@@ -300,7 +341,7 @@ async function finish() {
         label:   r.querySelector('.dur-label').value.trim(),
         price:   parseFloat(r.querySelector('.dur-price').value)
     })).filter(d => d.minutes && d.label && !isNaN(d.price));
-    if (!durs.length) return cbToast('Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή', 'err');
+    if (_clubMode === 'full' && !durs.length) return cbToast('Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή', 'err');
 
     let slug = cbSlugify(name);
     document.getElementById('finishBtn').disabled = true;
@@ -320,12 +361,16 @@ async function finish() {
             open_hour:  parseInt(document.getElementById('clubOpen').value)  || 9,
             close_hour: parseInt(document.getElementById('clubClose').value) || 23,
             slot_minutes: 30,
-            owner_id:   _account.id
+            owner_id:   _account.id,
+            // Μπαίνουν μόνο όταν διαφέρουν από τα προεπιλεγμένα, ώστε η σελίδα
+            // να δουλεύει και πριν τρέξουν τα δύο migrations.
+            ...(_clubMode === 'full' ? {} : { bookings_enabled: false }),
+            ...(document.getElementById('clubSubs').checked ? { subscriptions_enabled: true } : {})
         }).select().single();
         if (cErr) throw cErr;
 
         await sb.from('courts').insert(courts.map((nm,i) => ({ club_id: club.id, name: nm, sort_order: i })));
-        await sb.from('durations').insert(durs.map(d => ({ club_id: club.id, ...d })));
+        if (durs.length) await sb.from('durations').insert(durs.map(d => ({ club_id: club.id, ...d })));
 
         cbToast('🎉 Το club δημιουργήθηκε!');
         setTimeout(() => location.href = `app.html?club=${slug}`, 900);
