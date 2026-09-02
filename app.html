@@ -223,7 +223,8 @@
             <button data-tab="openmatches" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Ανοιχτά Ματς <span id="openMatchBadge" class="hidden ml-1 bg-brand text-white rounded-full px-1.5 text-[10px]"></span></button>
             <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
             <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
-            <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Μητρώο</button>
+            <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Πελάτες</button>
+            <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏋️ Προπονήσεις</button>
             <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
         </div>
     </header>
@@ -356,11 +357,18 @@
             </div>
         </div>
 
+    </div>
+
+    <!-- ΠΡΟΠΟΝΗΣΕΙΣ (γκρουπ · αναπληρώσεις · εβδομαδιαίο πρόγραμμα) -->
+    <div id="tab-training" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <!-- Γκρουπ -->
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-1">
                 <p class="font-bold">Γκρουπ Προπόνησης</p>
-                <button id="addGroupBtn" class="text-brand text-sm font-semibold">+ Νέο Γκρουπ</button>
+                <div class="flex items-center gap-3">
+                    <button onclick="allGroups(!_allOpen)" id="allGroupsBtn" class="text-slate-500 text-xs font-semibold">Άνοιγμα όλων</button>
+                    <button id="addGroupBtn" class="text-brand text-sm font-semibold">+ Νέο Γκρουπ</button>
+                </div>
             </div>
             <p class="text-[11px] text-slate-400 mb-4">Βάλε μέλη σε κάθε γκρουπ και πέρνα παρουσιολόγιο ανά προπόνηση.</p>
             <div id="groupsList" class="space-y-3"></div>
@@ -882,6 +890,7 @@ async function enterApp(){
         document.getElementById('adminBadge').classList.remove('hidden');
         document.getElementById('adminTabBtn').classList.remove('hidden');
         document.getElementById('rosterTabBtn').classList.remove('hidden');
+        document.getElementById('trainingTabBtn').classList.remove('hidden');
         document.getElementById('settingsTabBtn').classList.remove('hidden');
         document.getElementById('mytrainingsTabBtn').classList.add('hidden'); // ο admin δεν χρειάζεται «Οι Προπονήσεις μου»
     }
@@ -922,7 +931,7 @@ function switchTab(tab){
     if(tab==='openmatches'){ renderOpenMatches(); loadOpenMatches().then(renderOpenMatches); }
     if(tab==='mytrainings') renderMyTrainings();
     if(tab==='admin') loadAdmin();
-    if(tab==='roster') renderRoster();
+    if(tab==='roster'||tab==='training') renderRoster();
     if(tab==='settings') renderSettings();
 }
 
@@ -1853,7 +1862,9 @@ function buildQuickDates(){
     const sel=document.getElementById('datePicker').value||cbToday();
     const start=new Date(sel+'T12:00:00');
     if(isNaN(start)) return;
-    for(let i=0;i<7;i++){
+    // Ο ιδιοκτήτης βλέπει και 2 μέρες πίσω, για να ελέγχει τι έγινε.
+    const back=isOwner?2:0;
+    for(let i=-back;i<7;i++){
         const d=new Date(start); d.setDate(start.getDate()+i);
         const dStr=`${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
         const on=dStr===sel;
@@ -2541,22 +2552,54 @@ async function delGroup(id){
     cbToast('Διαγράφηκε'); await renderRoster();
 }
 
+/* Ποια γκρουπ είναι ανοιχτά. Κρατιέται εδώ ώστε να επιβιώνει
+   των επανασχεδιάσεων (προσθήκη μέλους, αλλαγή προπονητή κ.λπ.). */
+const openGroups=new Set();
+let _allOpen=false;
+
+function toggleGroup(id){
+    const body=document.getElementById('gbody-'+id); if(!body) return;
+    const open=body.classList.toggle('hidden')===false;
+    if(open) openGroups.add(id); else openGroups.delete(id);
+    const chev=document.getElementById('gchev-'+id);
+    if(chev) chev.style.transform=open?'rotate(180deg)':'';
+}
+
+function allGroups(open){
+    groups.forEach(g=>{
+        const body=document.getElementById('gbody-'+g.id); if(!body) return;
+        body.classList.toggle('hidden',!open);
+        const chev=document.getElementById('gchev-'+g.id);
+        if(chev) chev.style.transform=open?'rotate(180deg)':'';
+        if(open) openGroups.add(g.id); else openGroups.delete(g.id);
+    });
+    _allOpen=open;
+    const btn=document.getElementById('allGroupsBtn');
+    if(btn) btn.textContent=open?'Κλείσιμο όλων':'Άνοιγμα όλων';
+}
+
 function renderGroups(){
     const el=document.getElementById('groupsList');
     if(!groups.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-2">Δεν υπάρχουν γκρουπ ακόμα</p>`; return; }
     el.innerHTML=groups.map(g=>{
+        const open=openGroups.has(g.id);
         const chips=g.memberIds.map(pid=>{
             const p=playersFull.find(x=>x.id===pid); if(!p) return '';
             return `<span class="inline-flex items-center gap-1 bg-white border rounded-full px-2 py-0.5 text-xs">${p.name}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
         }).join('');
         const opts=playersFull.filter(p=>!g.memberIds.includes(p.id)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
         return `
-        <div class="border rounded-xl p-3">
-            <div class="flex items-start justify-between mb-2">
-                <div>
-                    <p class="font-bold text-sm">${g.name} <span class="text-[10px] text-slate-400">(${g.memberIds.length} μέλη)</span></p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'} <button onclick="setCoach('${g.id}')" class="text-brand font-semibold ml-1">Αλλαγή</button></p>
+        <div class="border rounded-xl">
+            <div onclick="toggleGroup('${g.id}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
+                <div class="min-w-0">
+                    <p class="font-bold text-sm truncate">${g.name} <span class="text-[10px] text-slate-400 font-normal">(${g.memberIds.length} μέλη)</span></p>
+                    <p class="text-[11px] text-slate-500 mt-0.5 truncate">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'}</p>
                 </div>
+                <span id="gchev-${g.id}" class="text-slate-400 text-[10px] flex-shrink-0 transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
+            </div>
+            <div id="gbody-${g.id}" class="${open?'':'hidden'} px-3 pb-3 pt-3 border-t">
+            <div class="flex items-center justify-between mb-2">
+                <p class="text-[11px] text-slate-500">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'} <button onclick="setCoach('${g.id}')" class="text-brand font-semibold ml-1">Αλλαγή</button></p>
                 <button onclick="delGroup('${g.id}')" class="text-red-500 text-[11px] font-semibold border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">Διαγραφή</button>
             </div>
             <div class="flex flex-wrap gap-1.5 mb-2">${chips||'<span class="text-[11px] text-slate-400">Χωρίς μέλη</span>'}</div>
@@ -2579,6 +2622,7 @@ function renderGroups(){
                     <button onclick="showGroupMonth('${g.id}')" class="bg-purple-600 text-white px-3 rounded-lg text-xs font-bold">Δες</button>
                 </div>
                 <div id="gmres-${g.id}" class="overflow-x-auto"></div>
+            </div>
             </div>
         </div>`;
     }).join('');
