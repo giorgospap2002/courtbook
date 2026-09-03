@@ -762,6 +762,22 @@ function setMode(mode){
 
 function wireAuth(){
     document.getElementById('authBtn').onclick = () => isReset ? handleReset() : handleAuth();
+
+    // Enter = πάτημα του κουμπιού. Χωρίς <form> το πλήκτρο δεν έκανε
+    // τίποτα, και έπρεπε να κλικάρεις με το ποντίκι.
+    ['inpName','inpEmail','inpPass','inpPhone','inpLevel'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        el.onkeydown = e => {
+            if(e.key!=='Enter') return;
+            e.preventDefault();
+            const btn=document.getElementById('authBtn');
+            if(btn && !btn.disabled) btn.click();
+        };
+    });
+    ['jcName','jcPhone','jcLevel'].forEach(id=>{
+        const el=document.getElementById(id); if(!el) return;
+        el.onkeydown = e => { if(e.key==='Enter'){ e.preventDefault(); doJoinClub(); } };
+    });
     document.getElementById('toggleAuth').onclick = () => setMode(isReg?'login':'register');
     document.getElementById('forgotLink').onclick = () => setMode('reset');
     document.getElementById('logoutBtn').onclick = async () => { if(_refresh)clearInterval(_refresh); await cbSignOut(); location.reload(); };
