@@ -1716,7 +1716,6 @@ async function renderMyTrainings(){
     const totals=`<div class="flex gap-3 mb-4">
             <div class="flex-1 bg-green-50 border border-green-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-green-600">${present}</p><p class="text-[10px] text-slate-500 font-semibold">ΠΑΡΩΝ</p></div>
             <div class="flex-1 bg-slate-50 border rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-slate-400">${rows.length-present}</p><p class="text-[10px] text-slate-500 font-semibold">ΑΠΩΝ</p></div>
-            <div class="flex-1 bg-blue-50 border border-blue-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-brand">${rows.length}</p><p class="text-[10px] text-slate-500 font-semibold">ΣΥΝΟΛΟ</p></div>
         </div>`;
 
     list.innerHTML = makeupsBanner(makeups) + totals + months.map(k=>{
