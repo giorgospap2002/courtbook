@@ -1666,11 +1666,39 @@ async function loadMyPayments(){
     myPaidMonths=new Set((data||[]).map(r=>r.month));
 }
 
+/* Ακυρωμένες προπονήσεις του αθλητή: πότε χάθηκε, και πότε
+   αναπληρώνεται — ή ότι εκκρεμεί ακόμα. */
+function makeupsBanner(rows){
+    if(!rows.length) return '';
+    const pend=rows.filter(r=>!r.makeup_date);
+    const set =rows.filter(r=>r.makeup_date);
+    const items=rows.map(r=>`
+        <div class="flex items-center justify-between gap-2 py-1.5 text-[12px] border-b last:border-0 border-amber-200/60">
+            <span class="text-slate-600 truncate">${cbEsc(r.group_name||'Προπόνηση')} · <span class="text-slate-400">ακυρώθηκε ${cbFmtDate(r.cancel_date)}</span></span>
+            <span class="flex-shrink-0 font-bold ${r.makeup_date?'text-green-700':'text-amber-700'}">
+                ${r.makeup_date?('→ '+cbFmtDate(r.makeup_date)+(r.makeup_time?' '+r.makeup_time:'')):'εκκρεμεί'}
+            </span>
+        </div>`).join('');
+    const title = pend.length
+        ? `Έχεις ${pend.length} ${pend.length===1?'αναπλήρωση σε εκκρεμότητα':'αναπληρώσεις σε εκκρεμότητα'}`
+        : `${set.length===1?'Προγραμματίστηκε η αναπλήρωσή σου':'Προγραμματίστηκαν οι αναπληρώσεις σου'}`;
+    return `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4">
+            <p class="font-bold text-sm text-amber-800 mb-1">🔁 ${title}</p>
+            <p class="text-[11px] text-amber-700 mb-2">Προπονήσεις που ακυρώθηκαν και αναπληρώνονται.</p>
+            ${items}
+        </div>`;
+}
+
 async function renderMyTrainings(){
     const list=document.getElementById('myTrainingsList');
     list.innerHTML=`<p class="text-slate-400 text-sm py-4 text-center">Φόρτωση…</p>`;
-    const [res]=await Promise.all([ sb.rpc('get_my_trainings',{ p_club_id:club.id }), loadMyPayments() ]);
+    const [res,,mk]=await Promise.all([
+        sb.rpc('get_my_trainings',{ p_club_id:club.id }),
+        loadMyPayments(),
+        sb.rpc('my_makeups',{ p_club_id:club.id })
+    ]);
     const rows=(res&&!res.error&&res.data)||[];
+    const makeups=(mk&&!mk.error&&mk.data)||[];
     const present=rows.filter(r=>r.present).length;
 
     // Ομαδοποίηση ανά μήνα — ο γονιός θέλει «τον Οκτώβρη ήρθε 6 στις 8».
@@ -1682,7 +1710,7 @@ async function renderMyTrainings(){
     if(subsOn) keys.add(cbToday().slice(0,7));
     const months=[...keys].filter(Boolean).sort().reverse();
 
-    if(!months.length){ list.innerHTML=`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις προπονήσεις ακόμα</p></div>`; return; }
+    if(!months.length){ list.innerHTML=makeupsBanner(makeups)+`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις προπονήσεις ακόμα</p></div>`; return; }
     if(!_openMonths.size) _openMonths.add(months[0]);   // ο πιο πρόσφατος ανοιχτός
 
     const totals=`<div class="flex gap-3 mb-4">
@@ -1691,7 +1719,7 @@ async function renderMyTrainings(){
             <div class="flex-1 bg-blue-50 border border-blue-100 rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-brand">${rows.length}</p><p class="text-[10px] text-slate-500 font-semibold">ΣΥΝΟΛΟ</p></div>
         </div>`;
 
-    list.innerHTML = totals + months.map(k=>{
+    list.innerHTML = makeupsBanner(makeups) + totals + months.map(k=>{
         const ms=byMonth[k]||[];
         const mp=ms.filter(r=>r.present).length;
         const open=_openMonths.has(k);
