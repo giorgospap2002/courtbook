@@ -100,6 +100,15 @@
         <p id="forgotLink" class="mt-2 text-center text-xs text-slate-300 cursor-pointer select-none">Ξέχασες τον κωδικό σου;</p>
         </div><!-- /authFormBox -->
 
+        <!-- Έκανε εγγραφή αλλά περιμένει έγκριση από τη γραμματεία -->
+        <div id="pendingBox" class="hidden text-center">
+            <div class="text-4xl mb-3">⏳</div>
+            <h2 class="text-xl font-bold mb-1">Η εγγραφή σου εστάλη</h2>
+            <p class="text-sm text-slate-500 mb-6">Η γραμματεία του <b id="pdClub" class="text-slate-700"></b> θα την εγκρίνει. Θα μπορείς να μπεις μόλις γίνει.</p>
+            <button onclick="location.reload()" class="w-full py-3 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition">Δοκίμασε ξανά</button>
+            <p class="mt-3 text-center text-xs text-slate-400 cursor-pointer select-none" onclick="cbSignOut().then(()=>location.reload())">Έξοδος</p>
+        </div>
+
         <!-- Έχει λογαριασμό αλλά ΔΕΝ είναι μέλος αυτού του club -->
         <div id="joinClubBox" class="hidden">
             <h2 class="text-xl font-bold mb-1">Εγγραφή στο club</h2>
@@ -337,6 +346,13 @@
 
     <!-- ROSTER (Μητρώο: Παίκτες + Γκρουπ + Παρουσιολόγιο) -->
     <div id="tab-roster" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <!-- Εκκρεμείς εγγραφές (μόνο σε συλλόγους που απαιτούν έγκριση) -->
+        <div id="pendingCard" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">⏳ Εκκρεμείς εγγραφές <span id="pendingCount" class="text-amber-600 font-normal text-sm"></span></p>
+            <p class="text-[11px] text-amber-700 mb-4">Δεν βλέπουν τίποτα μέχρι να τους εγκρίνεις.</p>
+            <div id="pendingList" class="space-y-2"></div>
+        </div>
+
         <!-- Παίκτες -->
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-1">
@@ -623,7 +639,9 @@ document.addEventListener('DOMContentLoaded', async () => {
     else if (me) {
         // μέλος αυτού του club; αλλιώς ζητάμε ρητή εγγραφή
         const st = await checkMembership();
-        if (st === 'guest') showJoinClub(); else enterApp();
+        if (st === 'guest') showJoinClub();
+        else if (st === 'pending') showPending();
+        else enterApp();
     }
     else showAuth();
 });
@@ -794,6 +812,7 @@ async function handleAuth(){
             me = await cbCurrentUser();
             const st = await checkMembership();
             if(st==='guest'){ cbToast('Συνδέθηκες — μια τελευταία λεπτομέρεια'); showJoinClub(); }
+            else if(st==='pending'){ showPending(); }
             else { cbToast('Συνδέθηκες!'); enterApp(); }
         }
     }catch(e){
@@ -898,6 +917,17 @@ async function checkMembership(){
     return data;
 }
 
+function showPending(){
+    document.getElementById('authScreen').classList.remove('hidden');
+    document.getElementById('appScreen').classList.add('hidden');
+    ['authFormBox','newPassBox','joinClubBox'].forEach(id=>{
+        const el=document.getElementById(id); if(el) el.classList.add('hidden');
+    });
+    document.getElementById('pendingBox').classList.remove('hidden');
+    document.getElementById('pdClub').textContent = club.name || 'club';
+    applyBranding();
+}
+
 async function showJoinClub(){
     document.getElementById('authScreen').classList.remove('hidden');
     document.getElementById('appScreen').classList.add('hidden');
@@ -928,6 +958,8 @@ async function doJoinClub(){
         cbToast('Καλώς ήρθες στο ' + (club.name||'club') + '!');
         document.getElementById('joinClubBox').classList.add('hidden');
         document.getElementById('authFormBox').classList.remove('hidden');
+        // Σε σύλλογο με έγκριση, η εγγραφή μπαίνει σε αναμονή.
+        if(await checkMembership()==='pending') return showPending();
         enterApp();
     }catch(e){ cbToast('Σφάλμα εγγραφής','err'); }
     finally{ cbLoading(false); }
@@ -2167,6 +2199,7 @@ async function renderRoster(){
     await loadPayments();
     await loadCoaches();
     mergeSelfBookings();
+    renderPending();
     renderPlayers();
     renderCoaches();
     renderGroups();
@@ -2845,12 +2878,50 @@ async function togglePayment(pid){
     renderPlayers();
 }
 
+/* ── Εκκρεμείς εγγραφές ── */
+function renderPending(){
+    const card=document.getElementById('pendingCard');
+    if(!card) return;
+    const pend=playersFull.filter(p=>p.approved===false);
+    card.classList.toggle('hidden', !isOwner || !pend.length);
+    if(!pend.length) return;
+    document.getElementById('pendingCount').textContent=`(${pend.length})`;
+    document.getElementById('pendingList').innerHTML=pend.map(p=>`
+        <div class="flex items-center justify-between gap-2 p-3 bg-white border border-amber-200 rounded-xl">
+            <div class="min-w-0">
+                <p class="text-sm font-semibold truncate">${cbEsc(p.name)}</p>
+                <p class="text-[11px] text-slate-400 truncate">${cbEsc(p.phone||'—')}${p.email?' · '+cbEsc(p.email):''}</p>
+            </div>
+            <div class="flex gap-1.5 flex-shrink-0">
+                <button onclick="approvePlayer('${p.id}')" class="bg-green-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-green-700">Έγκριση</button>
+                <button onclick="rejectPlayer('${p.id}')" class="text-red-500 text-[11px] font-semibold border border-red-200 px-2 py-1.5 rounded-lg hover:bg-red-50">Απόρριψη</button>
+            </div>
+        </div>`).join('');
+}
+
+async function approvePlayer(id){
+    const { error }=await sb.from('players').update({ approved:true }).eq('id',id);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('✓ Εγκρίθηκε');
+    await loadPlayersFull(); renderPending(); renderPlayers();
+}
+
+async function rejectPlayer(id){
+    const p=playersFull.find(x=>x.id===id);
+    if(!confirm(`Να απορριφθεί η εγγραφή${p?' του/της '+p.name:''};`)) return;
+    const { error }=await sb.from('players').delete().eq('id',id);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Απορρίφθηκε');
+    await loadPlayersFull(); renderPending(); renderPlayers();
+}
+
 function renderPlayers(){
     const el=document.getElementById('playersList');
     const nowKey=new Date().toISOString().slice(0,7);
     const q=(document.getElementById('rosterSearch')?.value||'').trim().toLowerCase();
     const lv=document.getElementById('rosterLevel')?.value||'';
-    let list=playersFull;
+    // Οι εκκρεμείς έχουν δική τους κάρτα από πάνω.
+    let list=playersFull.filter(p=>p.approved!==false);
     if(q) list=list.filter(p=>(p.name||'').toLowerCase().includes(q));
     if(lv==='none') list=list.filter(p=>p.level==null);
     else if(lv!=='') list=list.filter(p=>String(p.level)===lv);
@@ -2866,8 +2937,9 @@ function renderPlayers(){
     }
     // ο αριθμός στον τίτλο: «12» ή «3 από 12» όταν υπάρχει φίλτρο
     const cEl=document.getElementById('playersCount');
-    if(cEl) cEl.textContent = playersFull.length
-        ? (list.length===playersFull.length ? `(${playersFull.length})` : `(${list.length} από ${playersFull.length})`)
+    const total=playersFull.filter(p=>p.approved!==false).length;
+    if(cEl) cEl.textContent = total
+        ? (list.length===total ? `(${total})` : `(${list.length} από ${total})`)
         : '';
 }
 
