@@ -224,7 +224,7 @@
             <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
             <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
             <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Πελάτες</button>
-            <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏋️ Προπονήσεις</button>
+            <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Προπονήσεις</button>
             <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
         </div>
     </header>
@@ -956,9 +956,6 @@ function applyClubMode(){
     if(t1) t1.textContent='Επερχόμενες Προπονήσεις';
     const t2=document.getElementById('statTotalLbl');
     if(t2) t2.textContent='Στο πρόγραμμα';
-    // Ο σύλλογος αντισφαίρισης δεν σηκώνει βάρη.
-    const tb=document.getElementById('trainingTabBtn');
-    if(tb) tb.textContent='🎾 Προπονήσεις';
 }
 
 /* Ωράριο σε λεπτά. Τα open_min/close_min είναι 0 ή 30, ώστε ένα club
@@ -1691,7 +1688,7 @@ function trainingCard(it,showDate){
     const court=courts.find(c=>c.id===it.court_id);
     return `
         <div class="flex items-center gap-3 p-3.5 bg-purple-50 border border-purple-100 rounded-xl mb-2">
-            <div class="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">🏋️</div>
+            <div class="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">🎾</div>
             <div class="min-w-0">
                 <p class="font-semibold text-sm truncate">${cbEsc(it.title)}</p>
                 ${showDate?`<p class="text-[11px] text-indigo-500 font-medium">${cbFmtDate(it.date)}</p>`:''}
@@ -1726,7 +1723,7 @@ function renderAdminTrainings(){
     document.getElementById('statTotal').textContent=trainingSchedule.filter(t=>t.active!==false).length;
 
     const up=trainingItemsRange(today,7);
-    document.getElementById('upcomingCount').textContent=up.length?`${up.length} προπονήσεις`:'';
+    document.getElementById('upcomingCount').textContent=up.length?`${up.length} ${up.length===1?'προπόνηση':'προπονήσεις'}`:'';
     document.getElementById('adminUpcoming').innerHTML=up.length
         ? up.map(it=>trainingCard(it,true)).join('')
         : `<p class="text-center text-slate-400 text-sm py-6">Καμία προπόνηση τις επόμενες 7 μέρες</p>`;
