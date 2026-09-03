@@ -224,6 +224,8 @@
             <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
             <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
             <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Πελάτες</button>
+            <button id="myScheduleTabBtn" data-tab="myschedule" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🗓️ Το πρόγραμμά μου</button>
+            <button id="attendanceTabBtn" data-tab="attendance" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">✅ Παρουσίες</button>
             <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Προπονήσεις</button>
             <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
         </div>
@@ -301,6 +303,10 @@
                     <button id="refreshBtn" class="text-[10px] text-slate-400 border border-slate-200 px-2.5 py-1 rounded-lg hover:bg-slate-50 font-medium">↻ Ανανέωση</button>
                 </div>
             </div>
+            <div id="upFilters" class="hidden gap-2 mb-3">
+                <select id="upCourt" onchange="renderAdminTrainings()" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
+                <select id="upCoach" onchange="renderAdminTrainings()" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
+            </div>
             <div id="adminUpcoming"></div>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
@@ -376,7 +382,23 @@
                 </div>
             </div>
             <p class="text-[11px] text-slate-400 mb-4">Βάλε μέλη σε κάθε γκρουπ και πέρνα παρουσιολόγιο ανά προπόνηση.</p>
+            <div id="grpFilters" class="flex gap-2 mb-3">
+                <select id="grpCoach" onchange="renderGroups()" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
+                <select id="grpCourt" onchange="renderGroups()" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
+            </div>
             <div id="groupsList" class="space-y-3"></div>
+        </div>
+
+        <!-- Προπονητές με λογαριασμό (μόνο σε συλλόγους προπονήσεων) -->
+        <div id="coachesCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">Προπονητές</p>
+            <p class="text-[11px] text-slate-400 mb-4">Δώσε πρόσβαση σε προπονητή: γράψε το <b>email με το οποίο έκανε εγγραφή</b>. Θα βλέπει το πρόγραμμα και θα περνάει παρουσίες μόνο στα γκρουπ που του αναθέτεις.</p>
+            <div id="coachesList" class="space-y-2 mb-3"></div>
+            <div class="grid grid-cols-12 gap-2">
+                <input id="ncName" placeholder="Όνομα" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                <input id="ncEmail" type="email" placeholder="email εγγραφής" class="col-span-5 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                <button onclick="addCoach()" class="col-span-3 bg-brand text-white rounded-lg text-sm font-bold py-2">Προσθήκη</button>
+            </div>
         </div>
 
         <!-- Εκκρεμείς αναπληρώσεις (εμφανίζεται μόνο αν υπάρχουν) -->
@@ -432,6 +454,24 @@
                     <div id="overridesList" class="space-y-1"></div>
                 </div>
             </div>
+        </div>
+    </div>
+
+    <!-- ΠΡΟΠΟΝΗΤΗΣ: το εβδομαδιαίο πρόγραμμά του -->
+    <div id="tab-myschedule" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">Το πρόγραμμά μου</p>
+            <p class="text-[11px] text-slate-400 mb-4">Οι προπονήσεις των γκρουπ σου, ανά μέρα.</p>
+            <div id="myScheduleList"></div>
+        </div>
+    </div>
+
+    <!-- ΠΡΟΠΟΝΗΤΗΣ: παρουσιολόγια -->
+    <div id="tab-attendance" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <p class="font-bold mb-1">Παρουσίες</p>
+            <p class="text-[11px] text-slate-400 mb-4">Διάλεξε ημερομηνία και πέρνα παρουσιολόγιο στα γκρουπ σου.</p>
+            <div id="coachGroups" class="space-y-3"></div>
         </div>
     </div>
 
@@ -538,6 +578,8 @@ let me=null, isOwner=false, isReg=false, isReset=false;
 let bookingsOn=true;
 // Μηνιαίες συνδρομές μελών (clubs.subscriptions_enabled). Ξεκινά κλειστό.
 let subsOn=false, payments=new Set(), myPaidMonths=new Set();
+// Ρόλος προπονητή — μόνο σε συλλόγους «μόνο προπονήσεις».
+let isCoach=false, myCoach=null, coaches=[];
 let activeTab='booking', pickerSlot=null, dayData=[], myBookings=[], _refresh=null, _busy=false;
 
 /* ══════════════ BOOT ══════════════ */
@@ -907,6 +949,14 @@ async function enterApp(){
         document.getElementById('settingsTabBtn').classList.remove('hidden');
         document.getElementById('mytrainingsTabBtn').classList.add('hidden'); // ο admin δεν χρειάζεται «Οι Προπονήσεις μου»
     }
+    await detectCoach();
+    if(isCoach){
+        // Ο προπονητής δεν είναι αθλητής: δεν του χρειάζονται οι δικές του παρουσίες.
+        document.getElementById('mytrainingsTabBtn').classList.add('hidden');
+        document.getElementById('myScheduleTabBtn').classList.remove('hidden');
+        document.getElementById('attendanceTabBtn').classList.remove('hidden');
+        await loadRoster(); await loadGroups();
+    }
     applyClubMode();
     if(subsOn && isOwner){
         const bar=document.getElementById('subsBar');
@@ -956,6 +1006,9 @@ function applyClubMode(){
     if(t1) t1.textContent='Επερχόμενες Προπονήσεις';
     const t2=document.getElementById('statTotalLbl');
     if(t2) t2.textContent='Στο πρόγραμμα';
+    // Τα φίλτρα γηπέδου/προπονητή αφορούν προπονήσεις, όχι κρατήσεις.
+    const uf=document.getElementById('upFilters');
+    if(uf){ uf.classList.remove('hidden'); uf.classList.add('flex'); }
 }
 
 /* Ωράριο σε λεπτά. Τα open_min/close_min είναι 0 ή 30, ώστε ένα club
@@ -982,6 +1035,8 @@ function switchTab(tab){
     if(tab==='mytrainings') renderMyTrainings();
     if(tab==='admin') loadAdmin();
     if(tab==='roster'||tab==='training') renderRoster();
+    if(tab==='myschedule') renderMySchedule();
+    if(tab==='attendance') renderCoachAttendance();
     if(tab==='settings') renderSettings();
 }
 
@@ -1722,10 +1777,24 @@ function renderAdminTrainings(){
     document.getElementById('statWeek').textContent=weekN;
     document.getElementById('statTotal').textContent=trainingSchedule.filter(t=>t.active!==false).length;
 
-    const up=trainingItemsRange(today,7);
+    const all=trainingItemsRange(today,7);
+    fillFilter('upCourt', courts.map(c=>({v:c.id,t:c.name})), 'Όλα τα γήπεδα');
+    fillFilter('upCoach', [...new Set(all.map(i=>i.coach).filter(Boolean))].sort()
+                          .map(c=>({v:c,t:c})), 'Όλοι οι προπονητές');
+    const fCourt=document.getElementById('upCourt')?.value||'';
+    const fCoach=document.getElementById('upCoach')?.value||'';
+    const up=all.filter(i=>(!fCourt||i.court_id===fCourt) && (!fCoach||i.coach===fCoach));
+
     document.getElementById('upcomingCount').textContent=up.length?`${up.length} ${up.length===1?'προπόνηση':'προπονήσεις'}`:'';
-    document.getElementById('adminUpcoming').innerHTML=up.length
-        ? up.map(it=>trainingCard(it,true)).join('')
+
+    // Ομαδοποίηση ανά μέρα, με την πρώτη ανοιχτή.
+    const byDay={};
+    up.forEach(i=>{ (byDay[i.date]=byDay[i.date]||[]).push(i); });
+    const days=Object.keys(byDay).sort();
+    if(days.length && ![..._openDays].some(k=>k.startsWith('up:'))) _openDays.add('up:'+days[0]);
+    document.getElementById('adminUpcoming').innerHTML=days.length
+        ? days.map(d=>dayBlock('up', d, cbFmtDate(d), byDay[d].length,
+                               byDay[d].map(it=>trainingCard(it,false)).join(''))).join('')
         : `<p class="text-center text-slate-400 text-sm py-6">Καμία προπόνηση τις επόμενες 7 μέρες</p>`;
     renderAdminDay();
 }
@@ -2096,8 +2165,10 @@ async function renderRoster(){
         sb.from('bookings').select('id,user_name,user_phone,user_email,booking_date,start_time,court_id').eq('club_id',club.id)]);
     _rosterBookings=res[4].data||[];
     await loadPayments();
+    await loadCoaches();
     mergeSelfBookings();
     renderPlayers();
+    renderCoaches();
     renderGroups();
     renderTschedule();
 }
@@ -2139,7 +2210,7 @@ function renderTschedule(){
     if(!trainingSchedule.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-1">Καμία προπόνηση στο πρόγραμμα ακόμα</p>`; }
     else {
         const sorted=[...trainingSchedule].sort((a,b)=> (a.weekday||0)-(b.weekday||0) || a.start_time.localeCompare(b.start_time));
-        el.innerHTML=sorted.map(t=>{
+        const card=t=>{
             const cName=(courts.find(c=>c.id===t.court_id)||{}).name||'';
             const end=cbM2T(cbT2M(t.start_time)+t.duration_min);
             const coach=tschedCoach(t);
@@ -2157,6 +2228,16 @@ function renderTschedule(){
                 </div>
                 ${t.id===moveOpenId?movePanel(t):''}
             </div>`;
+        };
+        // Ανά ημέρα εβδομάδας, μαζεμένα: με 50 προπονήσεις η λίστα ήταν ατελείωτη.
+        const wds=[1,2,3,4,5,6,0].filter(wd=>sorted.some(t=>t.weekday===wd));
+        const todayWd=new Date(cbToday()+'T12:00:00').getDay();
+        if(wds.length && ![..._openDays].some(k=>k.startsWith('ts:')))
+            _openDays.add('ts:'+(wds.includes(todayWd)?todayWd:wds[0]));
+        el.innerHTML=wds.map(wd=>{
+            const rows=sorted.filter(t=>t.weekday===wd);
+            return dayBlock('ts', wd, _GRDAYS[wd], rows.length,
+                            `<div class="space-y-2">${rows.map(card).join('')}</div>`);
         }).join('');
     }
     // λίστα εξαιρέσεων (μελλοντικές)
@@ -2602,6 +2683,141 @@ function exportPlayers(){
     cbToast(`Κατέβηκαν ${rows.length} πελάτες`);
 }
 
+/* Γεμίζει ένα dropdown φίλτρου κρατώντας την επιλογή του χρήστη. */
+function fillFilter(id, opts, allLabel){
+    const el=document.getElementById(id); if(!el) return;
+    const cur=el.value;
+    el.innerHTML=`<option value="">${allLabel}</option>`
+        + opts.map(o=>`<option value="${cbEsc(o.v)}">${cbEsc(o.t)}</option>`).join('');
+    if(opts.some(o=>String(o.v)===cur)) el.value=cur;
+}
+
+/* Ποιες μέρες είναι ανοιχτές στις λίστες προπονήσεων. Με 50 προπονήσεις
+   τη μέρα η σελίδα γινόταν ατελείωτη, οπότε μαζεύονται ανά μέρα. */
+const _openDays=new Set();
+function toggleDay(kind,k){
+    const key=kind+':'+k;
+    const body=document.getElementById('d-'+key); if(!body) return;
+    const open=body.classList.toggle('hidden')===false;
+    if(open) _openDays.add(key); else _openDays.delete(key);
+    const chev=document.getElementById('dc-'+key);
+    if(chev) chev.style.transform=open?'rotate(180deg)':'';
+}
+
+function dayBlock(kind,k,title,count,inner){
+    const key=kind+':'+k, open=_openDays.has(key);
+    return `
+        <div class="border rounded-xl mb-2">
+            <div onclick="toggleDay('${kind}','${k}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
+                <p class="font-bold text-sm">${title}</p>
+                <div class="flex items-center gap-2 flex-shrink-0">
+                    <span class="text-[11px] font-bold px-2 py-1 rounded-full bg-slate-100 text-slate-500">${count}</span>
+                    <span id="dc-${key}" class="text-slate-400 text-[10px] transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
+                </div>
+            </div>
+            <div id="d-${key}" class="${open?'':'hidden'} px-3 pb-3 pt-3 border-t">${inner}</div>
+        </div>`;
+}
+
+/* ══════════════ ΠΡΟΠΟΝΗΤΕΣ ══════════════ */
+async function loadCoaches(){
+    if(bookingsOn) { coaches=[]; return; }
+    const { data }=await sb.from('coaches').select('*').eq('club_id',club.id).order('name');
+    coaches=data||[];
+}
+
+// Ο ρόλος βγαίνει από το email: η γραμματεία γράφει το email με το
+// οποίο έκανε εγγραφή ο προπονητής, και η βάση δένει τα δικαιώματα εκεί.
+async function detectCoach(){
+    isCoach=false; myCoach=null;
+    if(bookingsOn || isOwner || !me?.email) return;
+    const { data }=await sb.from('coaches').select('*')
+        .eq('club_id',club.id).ilike('email',me.email).maybeSingle();
+    if(data){ isCoach=true; myCoach=data; }
+}
+
+function renderCoaches(){
+    const card=document.getElementById('coachesCard');
+    if(!card) return;
+    card.classList.toggle('hidden', bookingsOn || !isOwner);
+    if(bookingsOn || !isOwner) return;
+    const el=document.getElementById('coachesList');
+    el.innerHTML = coaches.length ? coaches.map(c=>{
+        const n=groups.filter(g=>g.coach_id===c.id).length;
+        return `<div class="flex items-center justify-between gap-2 p-2.5 bg-slate-50 border rounded-xl">
+            <div class="min-w-0">
+                <p class="text-sm font-semibold truncate">${cbEsc(c.name)}</p>
+                <p class="text-[11px] text-slate-400 truncate">${cbEsc(c.email||'—')} · ${n} ${n===1?'γκρουπ':'γκρουπ'}</p>
+            </div>
+            <button onclick="delCoach('${c.id}')" class="text-red-400 text-[11px] font-semibold border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50 flex-shrink-0">Διαγραφή</button>
+        </div>`;
+    }).join('') : `<p class="text-slate-400 text-sm py-1">Κανένας προπονητής με λογαριασμό ακόμα</p>`;
+}
+
+async function addCoach(){
+    const name=document.getElementById('ncName').value.trim();
+    const email=document.getElementById('ncEmail').value.trim().toLowerCase();
+    if(!name) return cbToast('Βάλε όνομα','err');
+    if(!email) return cbToast('Βάλε το email εγγραφής του','err');
+    const { error }=await sb.from('coaches').insert({ club_id:club.id, name, email });
+    if(error) return cbToast(error.code==='23505'?'Υπάρχει ήδη με αυτό το email':'Σφάλμα','err');
+    document.getElementById('ncName').value=''; document.getElementById('ncEmail').value='';
+    cbToast('✓ Προστέθηκε');
+    await loadCoaches(); renderCoaches(); renderGroups();
+}
+
+async function delCoach(id){
+    if(!confirm('Να αφαιρεθεί ο προπονητής; Θα χάσει την πρόσβαση.')) return;
+    const { error }=await sb.from('coaches').delete().eq('id',id);
+    if(error) return cbToast('Σφάλμα','err');
+    cbToast('Διαγράφηκε');
+    await loadCoaches(); await loadGroups(); renderCoaches(); renderGroups();
+}
+
+/* ── Το εβδομαδιαίο πρόγραμμα του προπονητή ── */
+function myCoachGroups(){
+    return myCoach ? groups.filter(g=>g.coach_id===myCoach.id) : [];
+}
+
+function renderMySchedule(){
+    const el=document.getElementById('myScheduleList');
+    const ids=myCoachGroups().map(g=>g.id);
+    const mine=trainingSchedule.filter(t=>t.active!==false && ids.includes(t.group_id))
+                               .sort((a,b)=>(a.weekday||0)-(b.weekday||0) || a.start_time.localeCompare(b.start_time));
+    if(!mine.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-3 text-center">Δεν σου έχει ανατεθεί καμία προπόνηση ακόμα</p>`; return; }
+    const wds=[1,2,3,4,5,6,0].filter(wd=>mine.some(t=>t.weekday===wd));
+    const todayWd=new Date(cbToday()+'T12:00:00').getDay();
+    if(![..._openDays].some(k=>k.startsWith('ms:')))
+        _openDays.add('ms:'+(wds.includes(todayWd)?todayWd:wds[0]));
+    el.innerHTML=wds.map(wd=>{
+        const rows=mine.filter(t=>t.weekday===wd).map(t=>{
+            const cName=(courts.find(c=>c.id===t.court_id)||{}).name||'';
+            const end=cbM2T(cbT2M(t.start_time)+t.duration_min);
+            return `<div class="p-3 bg-purple-50 rounded-xl border border-purple-100 mb-2">
+                <p class="text-sm font-semibold truncate">${cbEsc(t.training_groups?.name||'Προπόνηση')}</p>
+                <p class="text-[11px] text-slate-500">${t.start_time}–${end} · ${cbEsc(cName)}</p>
+            </div>`;
+        }).join('');
+        return dayBlock('ms', wd, _GRDAYS[wd], mine.filter(t=>t.weekday===wd).length, rows);
+    }).join('');
+}
+
+/* ── Παρουσιολόγια του προπονητή ── */
+function renderCoachAttendance(){
+    const el=document.getElementById('coachGroups');
+    const mine=myCoachGroups();
+    if(!mine.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-3 text-center">Δεν σου έχει ανατεθεί κανένα γκρουπ ακόμα</p>`; return; }
+    el.innerHTML=mine.map(g=>`
+        <div class="border rounded-xl p-3">
+            <p class="font-bold text-sm">${cbEsc(g.name)} <span class="text-[10px] text-slate-400 font-normal">(${g.memberIds.length} μέλη)</span></p>
+            <div class="flex gap-2 my-2">
+                <input type="date" id="ad-${g.id}" value="${cbToday()}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                <button onclick="openAttendance('${g.id}')" class="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold">Άνοιγμα</button>
+            </div>
+            <div id="att-${g.id}"></div>
+        </div>`).join('');
+}
+
 /* ══════════════ ΣΥΝΔΡΟΜΕΣ ══════════════ */
 // Υπάρχει γραμμή = πληρωμένος. Το κλειδί είναι «playerId|YYYY-MM».
 async function loadPayments(){
@@ -2785,6 +3001,21 @@ async function addGroup(){
 
 async function setCoach(gid){
     const g=groups.find(x=>x.id===gid);
+    // Όπου υπάρχουν λογαριασμοί προπονητών, η ανάθεση γίνεται σε λογαριασμό:
+    // έτσι ο προπονητής παίρνει και δικαίωμα να περνά παρουσίες στο γκρουπ.
+    if(!bookingsOn && coaches.length){
+        const menu=coaches.map((c,i)=>`${i+1}. ${c.name}`).join('\n');
+        const ans=prompt('Ποιος προπονητής;\n\n'+menu+'\n0. Κανένας', '');
+        if(ans===null) return;
+        const n=parseInt(ans);
+        if(isNaN(n) || n<0 || n>coaches.length) return cbToast('Άκυρη επιλογή','err');
+        const c=n===0?null:coaches[n-1];
+        const { error }=await sb.from('training_groups')
+            .update({ coach_id:c?c.id:null, coach:c?c.name:null }).eq('id',gid);
+        if(error) return cbToast('Σφάλμα','err');
+        cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups(); renderCoaches();
+        return;
+    }
     const coach=prompt('Όνομα προπονητή:', g?.coach||'');
     if(coach===null) return;
     const { error }=await sb.from('training_groups').update({ coach:coach.trim()||null }).eq('id',gid);
@@ -2824,10 +3055,36 @@ function allGroups(open){
     if(btn) btn.textContent=open?'Κλείσιμο όλων':'Άνοιγμα όλων';
 }
 
+// Ο προπονητής ενός γκρουπ: του ίδιου του γκρουπ, ή όποιου ορίστηκε
+// σε κάποια από τις προπονήσεις του στο εβδομαδιαίο πρόγραμμα.
+function groupCoaches(g){
+    const set=new Set();
+    if(g.coach) set.add(g.coach);
+    trainingSchedule.filter(t=>t.group_id===g.id && t.coach).forEach(t=>set.add(t.coach));
+    return [...set];
+}
+
 function renderGroups(){
     const el=document.getElementById('groupsList');
-    if(!groups.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-2">Δεν υπάρχουν γκρουπ ακόμα</p>`; return; }
-    el.innerHTML=groups.map(g=>{
+    if(!groups.length){
+        el.innerHTML=`<p class="text-slate-400 text-sm py-2">Δεν υπάρχουν γκρουπ ακόμα</p>`;
+        document.getElementById('grpFilters').classList.add('hidden');
+        return;
+    }
+    document.getElementById('grpFilters').classList.remove('hidden');
+
+    const allCoaches=[...new Set(groups.flatMap(groupCoaches))].sort();
+    fillFilter('grpCoach', allCoaches.map(c=>({v:c,t:c})), 'Όλοι οι προπονητές');
+    fillFilter('grpCourt', courts.map(c=>({v:c.id,t:c.name})), 'Όλα τα γήπεδα');
+    const fCoach=document.getElementById('grpCoach')?.value||'';
+    const fCourt=document.getElementById('grpCourt')?.value||'';
+
+    let list=groups;
+    if(fCoach) list=list.filter(g=>groupCoaches(g).includes(fCoach));
+    if(fCourt) list=list.filter(g=>trainingSchedule.some(t=>t.group_id===g.id && t.court_id===fCourt));
+    if(!list.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-2">Κανένα γκρουπ με αυτά τα κριτήρια</p>`; return; }
+
+    el.innerHTML=list.map(g=>{
         const open=openGroups.has(g.id);
         const chips=g.memberIds.map(pid=>{
             const p=playersFull.find(x=>x.id===pid); if(!p) return '';
@@ -2946,7 +3203,7 @@ async function saveAttendance(gid,date){
     const { error }=await sb.from('attendance').upsert(rows,{ onConflict:'session_id,player_id' });
     if(error) return cbToast('Σφάλμα','err');
     cbToast('✓ Παρουσιολόγιο αποθηκεύτηκε');
-    await loadPlayerActivity(); renderPlayers();
+    if(isOwner){ await loadPlayerActivity(); renderPlayers(); }
 }
 </script>
 </body>
