@@ -1003,7 +1003,7 @@ async function enterApp(){
     if(isOwner) document.getElementById('exportMonth').value=today.slice(0,7);
     buildQuickDates();
     renderPartnerCta();
-    switchTab('booking');
+    switchTab((!bookingsOn && !isOwner && !isCoach) ? 'mytrainings' : 'booking');
     await loadRoster();
     await loadTrainingSchedule();
     await loadMine();
@@ -1023,6 +1023,9 @@ function applyClubMode(){
     if(bookingsOn) return;
     const bookBtn=document.querySelector('[data-tab="booking"]');
     if(bookBtn) bookBtn.textContent='📅 Πρόγραμμα';
+    // Ο αθλητής δεν χρειάζεται το ημερολόγιο των γηπέδων — μόνο τις δικές
+    // του προπονήσεις. Το πρόγραμμα το βλέπουν γραμματεία και προπονητές.
+    if(!isOwner && !isCoach && bookBtn) bookBtn.classList.add('hidden');
     ['mybookings','openmatches'].forEach(t=>{
         const b=document.querySelector('[data-tab="'+t+'"]');
         if(b) b.classList.add('hidden');
