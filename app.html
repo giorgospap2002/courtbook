@@ -3163,6 +3163,16 @@ async function setCoach(gid){
     cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups(); renderCoaches();
 }
 
+async function renameGroup(id){
+    const g=groups.find(x=>x.id===id);
+    const name=prompt('Νέο όνομα γκρουπ:', g?.name||'');
+    if(name===null) return;
+    if(!name.trim()) return cbToast('Βάλε όνομα','err');
+    const { error }=await sb.from('training_groups').update({ name:name.trim() }).eq('id',id);
+    if(error) return cbToast(error.message||'Σφάλμα','err');
+    cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups();
+}
+
 async function delGroup(id){
     if(!confirm('Διαγραφή γκρουπ; Θα σβηστούν μέλη & παρουσιολόγια του.')) return;
     await sb.from('training_groups').delete().eq('id',id);
@@ -3235,7 +3245,7 @@ function renderGroups(){
         <div class="border rounded-xl">
             <div onclick="toggleGroup('${g.id}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
                 <div class="min-w-0">
-                    <p class="font-bold text-sm truncate">${g.name} <span class="text-[10px] text-slate-400 font-normal">(${g.memberIds.length} μέλη)</span></p>
+                    <p class="font-bold text-sm truncate">${g.name} <span class="text-[10px] text-slate-400 font-normal">(${g.memberIds.length} μέλη)</span> <button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px]">✏️</button></p>
                     <p class="text-[11px] text-slate-500 mt-0.5 truncate">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'}</p>
                 </div>
                 <span id="gchev-${g.id}" class="text-slate-400 text-[10px] flex-shrink-0 transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
