@@ -2916,12 +2916,12 @@ async function togglePayment(pid){
     const m=subMonthValue(), key=pid+'|'+m;
     if(payments.has(key)){
         const { error }=await sb.from('member_payments').delete().eq('player_id',pid).eq('month',m);
-        if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+        if(error) return cbToast(error.message||'Δεν αποθηκεύτηκε','err');
         payments.delete(key);
     }else{
         const { error }=await sb.from('member_payments')
             .insert({ club_id:club.id, player_id:pid, month:m, marked_by:me.id });
-        if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+        if(error) return cbToast(error.message||'Δεν αποθηκεύτηκε','err');
         payments.add(key);
     }
     renderPlayers();
@@ -3009,7 +3009,7 @@ function memberRow(p,nowKey){
                 <div class="min-w-0">
                     <p class="text-sm font-semibold truncate">${p.name}${bookingsOn&&p.level!=null?` <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Επ. ${p.level}</span>`:''}</p>
                     <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: 🎾 ${gM} · 🏃 ${tM}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`🎾 ${gM} · `:''}🏃 ${tM}</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     ${payBtn}
@@ -3097,7 +3097,7 @@ function playerDetailHtml(id){
     const mName=k=>{ const [y,m]=k.split('-'); return _GRMONTH[+m-1]+' '+y; };
     // Σύλλογος μόνο-προπονήσεων: δεν παίζονται αγώνες, οπότε η μπάρα
     // δείχνει μόνο τον αριθμό προπονήσεων, όχι το πάντα-μηδενικό 🎾.
-    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">${bookingsOn?`🎾 ${months[k].g} · `:''}🏃 ${months[k].t}</span></div>`).join('')||'<p class="text-[11px] text-slate-400">Καμία δραστηριότητα</p>';
+    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">${bookingsOn?`🎾 ${months[k].g} · `:''}🏃 ${months[k].t}</span></div>`).join('')||`<p class="text-[11px] text-slate-400">${bookingsOn?'Καμία δραστηριότητα':'Καμία προπόνηση ακόμα'}</p>`;
     const courtName=cid=>(courts.find(c=>c.id===cid)||{}).name||'';
     const groupName=gid=>(groups.find(g=>g.id===gid)||{}).name||'';
     const gDates=a.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).map(g=>`<div class="text-[11px] text-slate-500 py-0.5">🎾 ${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
@@ -3114,37 +3114,44 @@ function playerDetailHtml(id){
 }
 
 /* ── Γκρουπ ── */
+/* Ρωτάει ποιος προπονητής, με τον ίδιο τρόπο και στη δημιουργία και
+   στην αλλαγή γκρουπ. Όπου υπάρχουν λογαριασμοί προπονητών, επιλέγεις
+   από λίστα ΩΣΤΕ να δοθεί και δικαίωμα πρόσβασης — όχι μόνο όνομα.
+   Επιστρέφει {coach_id, coach} ή null αν ο χρήστης ακύρωσε. */
+function pickCoach(defaultName){
+    if(!bookingsOn && coaches.length){
+        const menu=coaches.map((c,i)=>`${i+1}. ${c.name}`).join('\n');
+        const ans=prompt('Ποιος προπονητής;\n\n'+menu+'\n0. Κανένας', '');
+        if(ans===null) return null;
+        const n=parseInt(ans);
+        if(isNaN(n) || n<0 || n>coaches.length){ cbToast('Άκυρη επιλογή','err'); return null; }
+        return n===0 ? { coach_id:null, coach:null } : { coach_id:coaches[n-1].id, coach:coaches[n-1].name };
+    }
+    const name=prompt('Όνομα προπονητή (προαιρετικό):', defaultName||'');
+    if(name===null) return null;
+    return { coach_id:null, coach:name.trim()||null };
+}
+
 async function addGroup(){
     const name=prompt('Όνομα γκρουπ (π.χ. Γκρουπ 1):');
     if(!name||!name.trim()) return;
-    const coach=prompt('Όνομα προπονητή (προαιρετικό):')||'';
-    const { error }=await sb.from('training_groups').insert({ club_id:club.id, name:name.trim(), coach:coach.trim()||null, sort_order:groups.length });
-    if(error) return cbToast('Σφάλμα','err');
+    const picked=pickCoach('');
+    if(picked===null) return;
+    const { error }=await sb.from('training_groups').insert({
+        club_id:club.id, name:name.trim(), coach:picked.coach, coach_id:picked.coach_id, sort_order:groups.length
+    });
+    if(error) return cbToast(error.message||'Σφάλμα','err');
     cbToast('Δημιουργήθηκε'); await renderRoster();
 }
 
 async function setCoach(gid){
     const g=groups.find(x=>x.id===gid);
-    // Όπου υπάρχουν λογαριασμοί προπονητών, η ανάθεση γίνεται σε λογαριασμό:
-    // έτσι ο προπονητής παίρνει και δικαίωμα να περνά παρουσίες στο γκρουπ.
-    if(!bookingsOn && coaches.length){
-        const menu=coaches.map((c,i)=>`${i+1}. ${c.name}`).join('\n');
-        const ans=prompt('Ποιος προπονητής;\n\n'+menu+'\n0. Κανένας', '');
-        if(ans===null) return;
-        const n=parseInt(ans);
-        if(isNaN(n) || n<0 || n>coaches.length) return cbToast('Άκυρη επιλογή','err');
-        const c=n===0?null:coaches[n-1];
-        const { error }=await sb.from('training_groups')
-            .update({ coach_id:c?c.id:null, coach:c?c.name:null }).eq('id',gid);
-        if(error) return cbToast('Σφάλμα','err');
-        cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups(); renderCoaches();
-        return;
-    }
-    const coach=prompt('Όνομα προπονητή:', g?.coach||'');
-    if(coach===null) return;
-    const { error }=await sb.from('training_groups').update({ coach:coach.trim()||null }).eq('id',gid);
-    if(error) return cbToast('Σφάλμα','err');
-    cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups();
+    const picked=pickCoach(g?.coach||'');
+    if(picked===null) return;
+    const { error }=await sb.from('training_groups')
+        .update({ coach_id:picked.coach_id, coach:picked.coach }).eq('id',gid);
+    if(error) return cbToast(error.message||'Σφάλμα','err');
+    cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups(); renderCoaches();
 }
 
 async function delGroup(id){
