@@ -3092,18 +3092,21 @@ function playerDetailHtml(id){
     a.games.forEach(g=>{ const k=g.date.slice(0,7); (months[k]=months[k]||{g:0,t:0}).g++; });
     a.trains.forEach(t=>{ const k=t.date.slice(0,7); (months[k]=months[k]||{g:0,t:0}).t++; });
     const mName=k=>{ const [y,m]=k.split('-'); return _GRMONTH[+m-1]+' '+y; };
-    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">🎾 ${months[k].g} · 🏃 ${months[k].t}</span></div>`).join('')||'<p class="text-[11px] text-slate-400">Καμία δραστηριότητα</p>';
+    // Σύλλογος μόνο-προπονήσεων: δεν παίζονται αγώνες, οπότε η μπάρα
+    // δείχνει μόνο τον αριθμό προπονήσεων, όχι το πάντα-μηδενικό 🎾.
+    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">${bookingsOn?`🎾 ${months[k].g} · `:''}🏃 ${months[k].t}</span></div>`).join('')||'<p class="text-[11px] text-slate-400">Καμία δραστηριότητα</p>';
     const courtName=cid=>(courts.find(c=>c.id===cid)||{}).name||'';
     const groupName=gid=>(groups.find(g=>g.id===gid)||{}).name||'';
     const gDates=a.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).map(g=>`<div class="text-[11px] text-slate-500 py-0.5">🎾 ${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
     const tDates=a.trains.slice().sort((x,y)=>y.date.localeCompare(x.date)).map(t=>`<div class="text-[11px] text-slate-500 py-0.5">🏃 ${cbFmtDate(t.date)}${groupName(t.group)?' · '+groupName(t.group):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
+    const trainBox=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Προπονήσεις (${a.trains.length})</p>${tDates}</div>`;
+    const gamesBox=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παιχνίδια (${a.games.length})</p>${gDates}</div>`;
     return `
         <div class="bg-white rounded-lg p-2 mb-2">
             <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Ανά μήνα</p>${mRows}
         </div>
-        <div class="grid grid-cols-2 gap-2">
-            <div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παιχνίδια (${a.games.length})</p>${gDates}</div>
-            <div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Προπονήσεις (${a.trains.length})</p>${tDates}</div>
+        <div class="${bookingsOn?'grid grid-cols-2 gap-2':''}">
+            ${bookingsOn?gamesBox:''}${trainBox}
         </div>`;
 }
 
