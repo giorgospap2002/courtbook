@@ -1006,7 +1006,10 @@ async function enterApp(){
         document.getElementById('mytrainingsTabBtn').classList.add('hidden');
         document.getElementById('myScheduleTabBtn').classList.remove('hidden');
         document.getElementById('attendanceTabBtn').classList.remove('hidden');
-        await loadRoster(); await loadGroups();
+        // «loadRoster()» φορτώνει άλλη μεταβλητή (roster, για αναζήτηση
+        // πελάτη) — ο προπονητής χρειάζεται τα ίδια δεδομένα με τη
+        // γραμματεία (playersFull), απλώς βλέπει λιγότερα λόγω RLS.
+        await loadPlayersFull(); await loadGroups();
     }
     applyClubMode();
     if(subsOn && isOwner){
