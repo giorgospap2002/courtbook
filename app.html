@@ -821,6 +821,9 @@ async function handleAuth(){
             try{ await cbSignIn(email,pass); }catch(e){}
             me = await cbCurrentUser();
             if(!me){ cbToast('Έλεγξε το email σου για επιβεβαίωση','ok'); setMode('login'); return; }
+            // Σε σύλλογο με έγκριση, το εγγραφε το handle_new_user() ήδη σε
+            // αναμονή — μην τον μπάσεις μέσα πριν το εγκρίνει η γραμματεία.
+            if(await checkMembership()==='pending') return showPending();
             cbToast('Καλώς ήρθες!'); enterApp();
         } else {
             cbLoading(true);
