@@ -2746,11 +2746,14 @@ function showAllPlayers(){
 
 function exportPlayers(){
     if(typeof XLSX==='undefined') return cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err');
-    if(!playersFull.length) return cbToast('Δεν υπάρχουν πελάτες','err');
+    // Ίδιο φίλτρο με τη λίστα: όχι εκκρεμείς, όχι λογαριασμοί προπονητών.
+    const coachEmails=new Set(coaches.map(c=>(c.email||'').toLowerCase()).filter(Boolean));
+    const members=playersFull.filter(p=>p.approved!==false && !(p.email && coachEmails.has(p.email.toLowerCase())));
+    if(!members.length) return cbToast('Δεν υπάρχουν πελάτες','err');
     // σε ποια γκρουπ ανήκει ο καθένας
     const gOf={};
     groups.forEach(g=>(g.memberIds||[]).forEach(pid=>(gOf[pid]=gOf[pid]||[]).push(g.name)));
-    const rows=[...playersFull].sort((a,b)=>(a.name||'').localeCompare(b.name||'','el')).map(p=>({
+    const rows=[...members].sort((a,b)=>(a.name||'').localeCompare(b.name||'','el')).map(p=>({
         'Όνομα':p.name||'',
         'Τηλέφωνο':p.phone||'',
         'Email':p.email||'',
@@ -2969,24 +2972,30 @@ function renderPlayers(){
     const nowKey=new Date().toISOString().slice(0,7);
     const q=(document.getElementById('rosterSearch')?.value||'').trim().toLowerCase();
     const lv=document.getElementById('rosterLevel')?.value||'';
+    // Ο προπονητής κάνει κανονική εγγραφή, οπότε μπαίνει και στο players.
+    // Έχει δική του κάρτα στους «Προπονητές» — δεν χρειάζεται να φαίνεται
+    // ΚΑΙ εδώ σαν απλό μέλος.
+    const coachEmails=new Set(coaches.map(c=>(c.email||'').toLowerCase()).filter(Boolean));
+    const isCoachRow=p=>p.email && coachEmails.has(p.email.toLowerCase());
     // Οι εκκρεμείς έχουν δική τους κάρτα από πάνω.
-    let list=playersFull.filter(p=>p.approved!==false);
+    const members=playersFull.filter(p=>p.approved!==false && !isCoachRow(p));
+    let list=members;
     if(q) list=list.filter(p=>(p.name||'').toLowerCase().includes(q));
     if(lv==='none') list=list.filter(p=>p.level==null);
     else if(lv!=='') list=list.filter(p=>String(p.level)===lv);
-    el.innerHTML = !playersFull.length
+    el.innerHTML = !members.length
         ? `<p class="text-slate-400 text-sm py-1">Κανένα μέλος ακόμα. Οι εγγεγραμμένοι χρήστες μπαίνουν αυτόματα.</p>`
         : (list.length ? list.map(p=>memberRow(p,nowKey)).join('')
                        : `<p class="text-slate-400 text-sm py-2">Κανένα μέλος με αυτά τα κριτήρια.</p>`);
     if(subsOn && isOwner){
         const m=subMonthValue();
-        const n=playersFull.filter(p=>payments.has(p.id+'|'+m)).length;
+        const n=members.filter(p=>payments.has(p.id+'|'+m)).length;
         const c=document.getElementById('subsCount');
-        if(c) c.textContent=`${n} από ${playersFull.length} πλήρωσαν`;
+        if(c) c.textContent=`${n} από ${members.length} πλήρωσαν`;
     }
     // ο αριθμός στον τίτλο: «12» ή «3 από 12» όταν υπάρχει φίλτρο
     const cEl=document.getElementById('playersCount');
-    const total=playersFull.filter(p=>p.approved!==false).length;
+    const total=members.length;
     if(cEl) cEl.textContent = total
         ? (list.length===total ? `(${total})` : `(${list.length} από ${total})`)
         : '';
