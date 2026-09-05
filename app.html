@@ -295,7 +295,7 @@
     <div id="tab-admin" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <div class="bg-white rounded-2xl p-4 shadow-sm anim-up flex items-center gap-2 flex-wrap">
             <p class="font-bold text-sm">📥 Εξαγωγή Excel</p>
-            <span class="text-[11px] text-slate-400">κρατήσεις + προπονήσεις του μήνα</span>
+            <span id="exportHint" class="text-[11px] text-slate-400">κρατήσεις + προπονήσεις του μήνα</span>
             <input type="month" id="exportMonth" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs ml-auto">
             <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">Κατέβασε</button>
         </div>
@@ -1064,6 +1064,8 @@ function applyClubMode(){
     if(t1) t1.textContent='Επερχόμενες Προπονήσεις';
     const t2=document.getElementById('statTotalLbl');
     if(t2) t2.textContent='Στο πρόγραμμα';
+    const eh=document.getElementById('exportHint');
+    if(eh) eh.textContent='προπονήσεις του μήνα';
     // Τα φίλτρα γηπέδου/προπονητή αφορούν προπονήσεις, όχι κρατήσεις.
     const uf=document.getElementById('upFilters');
     if(uf){ uf.classList.remove('hidden'); uf.classList.add('flex'); }
@@ -1943,12 +1945,23 @@ async function exportExcel(){
     const [y,m]=ym.split('-').map(Number);
     const start=`${ym}-01`;
     const end=`${ym}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+    const monthLabel=new Date(ym+'-01T12:00:00').toLocaleDateString('el-GR',{month:'long',year:'numeric'});
     cbLoading(true);
     try{
-        // ── Κρατήσεις του μήνα ──
-        const { data:bk }=await sb.from('bookings').select('*, courts(name)').eq('club_id',club.id)
-            .gte('booking_date',start).lte('booking_date',end).order('booking_date').order('start_time');
-        const { data:bp }=await sb.from('booking_players').select('booking_id, players(name)');
+        // Μέλη: χωρίς εκκρεμείς εγγραφές και χωρίς λογαριασμούς προπονητών.
+        const coachEmails=new Set(coaches.map(c=>(c.email||'').toLowerCase()).filter(Boolean));
+        const members=playersFull.filter(p=>p.approved!==false && !(p.email && coachEmails.has(p.email.toLowerCase())));
+        const groupsOf=pid=>groups.filter(g=>(g.memberIds||[]).includes(pid)).map(g=>g.name);
+        const coachOf=g=>g.coach||'';
+
+        // ── Κρατήσεις του μήνα (σε σύλλογο προπονήσεων δεν υπάρχουν) ──
+        const { data:bk }=bookingsOn
+            ? await sb.from('bookings').select('*, courts(name)').eq('club_id',club.id)
+                .gte('booking_date',start).lte('booking_date',end).order('booking_date').order('start_time')
+            : { data:[] };
+        const { data:bp }=bookingsOn
+            ? await sb.from('booking_players').select('booking_id, players(name)')
+            : { data:[] };
         const coMap={};
         (bp||[]).forEach(r=>{ if(r.players) (coMap[r.booking_id]=coMap[r.booking_id]||[]).push(r.players.name); });
         const bookRows=(bk||[]).map(b=>{
@@ -1962,25 +1975,92 @@ async function exportExcel(){
                 'Συμπαίκτες':(coMap[b.id]||[]).join(', ')
             };
         });
-        // ── Προπονήσεις / Παρουσίες του μήνα ──
+
+        // ── Παρουσίες του μήνα ──
         const { data:sess }=await sb.from('training_sessions')
-            .select('id, session_date, training_groups(name, club_id)')
+            .select('id, session_date, group_id, training_groups(name, club_id, coach)')
             .gte('session_date',start).lte('session_date',end).order('session_date');
         const mySess=(sess||[]).filter(s=>s.training_groups && s.training_groups.club_id===club.id);
         const byId={}; mySess.forEach(s=>byId[s.id]=s);
-        let attRows=[];
+        let att=[];
         if(mySess.length){
-            const { data:att }=await sb.from('attendance').select('session_id, present, players(name)').in('session_id',mySess.map(s=>s.id));
-            attRows=(att||[]).map(a=>{ const s=byId[a.session_id]||{}; return {
-                'Ημερομηνία':s.session_date||'', 'Γκρουπ':s.training_groups?.name||'',
-                'Παίκτης':a.players?.name||'', 'Παρουσία':a.present?'Παρών':'Απών'
-            };}).sort((x,y)=>(x['Ημερομηνία']+x['Γκρουπ']).localeCompare(y['Ημερομηνία']+y['Γκρουπ']));
+            const r=await sb.from('attendance').select('session_id, present, player_id, players(name,phone)')
+                .in('session_id',mySess.map(s=>s.id));
+            att=r.data||[];
         }
+        const attRows=att.map(a=>{ const s=byId[a.session_id]||{}; return {
+            'Ημερομηνία':s.session_date||'',
+            'Γκρουπ':s.training_groups?.name||'',
+            'Προπονητής':s.training_groups?.coach||'',
+            'Αθλητής':a.players?.name||'',
+            'Τηλέφωνο':a.players?.phone||'',
+            'Παρουσία':a.present?'Παρών':'Απών'
+        };}).sort((x,y)=>(x['Ημερομηνία']+x['Γκρουπ']+x['Αθλητής']).localeCompare(y['Ημερομηνία']+y['Γκρουπ']+y['Αθλητής'],'el'));
+
+        // ── Σύνοψη ανά αθλητή ──
+        const perPlayer={};
+        att.forEach(a=>{
+            const t=perPlayer[a.player_id]=perPlayer[a.player_id]||{p:0,x:0};
+            if(a.present) t.p++; else t.x++;
+        });
+        const summaryRows=members.map(p=>{
+            const t=perPlayer[p.id]||{p:0,x:0};
+            const tot=t.p+t.x;
+            const paid=subsOn?payments.has(p.id+'|'+ym):null;
+            const det=subsOn?paymentDetails.get(p.id+'|'+ym):null;
+            return {
+                'Αθλητής':p.name||'', 'Τηλέφωνο':p.phone||'', 'Email':p.email||'',
+                'Γκρουπ':groupsOf(p.id).join(', '),
+                'Προπονήσεις':tot, 'Παρών':t.p, 'Απών':t.x,
+                'Παρουσία %':tot?Math.round(t.p*100/tot):'',
+                ...(subsOn?{
+                    'Συνδρομή':paid?'Πληρωμένη':'Εκκρεμεί',
+                    'Ημ. πληρωμής':det?.paid_date||'',
+                    'Απόδειξη / Σχόλιο':det?.note||''
+                }:{})
+            };
+        }).sort((a,b)=>(a['Αθλητής']||'').localeCompare(b['Αθλητής']||'','el'));
+
+        // ── Συνδρομές του μήνα ──
+        const subRows=!subsOn?[]:members.map(p=>{
+            const det=paymentDetails.get(p.id+'|'+ym);
+            return {
+                'Αθλητής':p.name||'', 'Τηλέφωνο':p.phone||'', 'Email':p.email||'',
+                'Κατάσταση':payments.has(p.id+'|'+ym)?'Πληρωμένη':'Εκκρεμεί',
+                'Ημ. πληρωμής':det?.paid_date||'',
+                'Απόδειξη / Σχόλιο':det?.note||''
+            };
+        }).sort((a,b)=>{
+            if(a['Κατάσταση']!==b['Κατάσταση']) return a['Κατάσταση']==='Εκκρεμεί'?-1:1; // πρώτα οι οφειλές
+            return (a['Αθλητής']||'').localeCompare(b['Αθλητής']||'','el');
+        });
+
+        // ── Σύνοψη ανά γκρουπ ──
+        const groupRows=groups.map(g=>{
+            const sIds=mySess.filter(s=>s.group_id===g.id).map(s=>s.id);
+            const rows=att.filter(a=>sIds.includes(a.session_id));
+            const pres=rows.filter(a=>a.present).length;
+            return {
+                'Γκρουπ':g.name||'', 'Προπονητής':coachOf(g),
+                'Μέλη':(g.memberIds||[]).length,
+                'Προπονήσεις μήνα':sIds.length,
+                'Σύνολο παρουσιών':pres, 'Σύνολο απουσιών':rows.length-pres,
+                'Παρουσία %':rows.length?Math.round(pres*100/rows.length):''
+            };
+        }).sort((a,b)=>(a['Γκρουπ']||'').localeCompare(b['Γκρουπ']||'','el'));
+
         const wb=XLSX.utils.book_new();
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(bookRows.length?bookRows:[{'Ημερομηνία':'— καμία κράτηση —'}]), 'Κρατήσεις');
-        XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(attRows.length?attRows:[{'Ημερομηνία':'— καμία προπόνηση —'}]), 'Προπονήσεις');
+        const add=(rows,name,empty)=>XLSX.utils.book_append_sheet(wb,
+            XLSX.utils.json_to_sheet(rows.length?rows:[empty]), name);
+
+        add(summaryRows,'Σύνοψη ανά αθλητή',{'Αθλητής':'— κανένα μέλος —'});
+        if(subsOn) add(subRows,'Συνδρομές',{'Αθλητής':'— κανένα μέλος —'});
+        add(attRows,'Παρουσίες',{'Ημερομηνία':'— καμία προπόνηση —'});
+        add(groupRows,'Ανά γκρουπ',{'Γκρουπ':'— κανένα γκρουπ —'});
+        if(bookingsOn) add(bookRows,'Κρατήσεις',{'Ημερομηνία':'— καμία κράτηση —'});
+
         XLSX.writeFile(wb, `${club.slug||'club'}-${ym}.xlsx`);
-        cbToast('✓ Κατέβηκε το Excel');
+        cbToast(`✓ Κατέβηκε το Excel — ${monthLabel}`);
     }catch(e){ cbToast('Σφάλμα εξαγωγής','err'); }
     finally{ cbLoading(false); }
 }
