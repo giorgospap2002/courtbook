@@ -1258,8 +1258,8 @@ function renderSlots(){
                         <input id="bfSearch" oninput="bfSearchInput(this.value)" onfocus="bfSearchInput(this.value)" autocomplete="off" placeholder="🔍 Ψάξε εγγεγραμμένο πελάτη…" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
                         <div id="bfSuggest" class="mt-1 max-h-28 overflow-y-auto"></div>
                         <p class="text-[10px] text-slate-400 my-1 text-center">— ή νέος πελάτης (χωρίς ιστορικό) —</p>
-                        <input id="bfNewName" placeholder="Όνομα" class="w-full mb-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
-                        <input id="bfNewPhone" type="tel" placeholder="Τηλέφωνο" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                        <input id="bfNewName" oninput="bfNewInput(this.value)" value="${pickerNewName||''}" placeholder="Όνομα" class="w-full mb-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                        <input id="bfNewPhone" type="tel" oninput="pickerNewPhone=this.value" value="${pickerNewPhone||''}" placeholder="Τηλέφωνο" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
                     </div>` : '';
                 const coPlayerField = `
                     <div class="mb-2">
@@ -1318,7 +1318,7 @@ function renderSlots(){
     });
 }
 let pickerNote='';   // ελεύθερο σχόλιο της κράτησης που φτιάχνεται
-function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerOpenSpots=0; pickerNote=''; pickerSlot={court,time}; renderSlots(); }
+function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerNote=''; pickerSlot={court,time}; renderSlots(); }
 
 /* ══════════════ ΑΝΟΙΧΤΑ ΜΑΤΣ ══════════════ */
 let pickerOpenSpots=0;   // πόσους παίκτες ψάχνει η κράτηση που φτιάχνεται
@@ -1452,6 +1452,16 @@ async function handleJoinParam(){
 
 /* ── Τηλεφωνική κράτηση: «για ποιον» (εγγεγραμμένος ή ελεύθερο όνομα) ── */
 let pickerBookFor=null;
+// Κρατιούνται εδώ ώστε να επιβιώνουν της αυτόματης ανανέωσης κάθε 30΄΄,
+// που ξαναχτίζει την κάρτα και αλλιώς θα έσβηνε ό,τι έχει πληκτρολογηθεί.
+let pickerNewName='', pickerNewPhone='';
+
+// Γράφοντας νέο πελάτη, ακυρώνεται ο εγγεγραμμένος που τυχόν είχε επιλεγεί —
+// αλλιώς η κράτηση έβγαινε σιωπηλά στο όνομα του παλιού.
+function bfNewInput(v){
+    pickerNewName=v;
+    if(v.trim() && pickerBookFor) bfClear();
+}
 function bfChipHtml(){
     return pickerBookFor?`<span class="inline-flex items-center gap-1 bg-indigo-100 text-indigo-700 rounded-full px-2 py-0.5 text-[11px]">✓ ${pickerBookFor.name} (εγγεγραμμένος)<button onclick="bfClear()" class="text-indigo-400 font-bold">✕</button></span>`:'';
 }
@@ -1524,8 +1534,8 @@ async function doBook(court,time,durMin,price){
             uName=pickerBookFor.name; uPhone=''; uEmail=''; bookForId=pickerBookFor.id;
         } else {
             // νέος πελάτης: όνομα + τηλέφωνο στην κράτηση (χωρίς μητρώο/ιστορικό)
-            const nm=document.getElementById('bfNewName')?.value.trim();
-            const ph=document.getElementById('bfNewPhone')?.value.trim();
+            const nm=(document.getElementById('bfNewName')?.value ?? pickerNewName ?? '').trim();
+            const ph=(document.getElementById('bfNewPhone')?.value ?? pickerNewPhone ?? '').trim();
             if(nm){ uName=nm; uPhone=ph||''; uEmail=''; }
         }
     }
@@ -1534,7 +1544,7 @@ async function doBook(court,time,durMin,price){
     const guests=pickerGuests.slice();
     const openSpots=pickerOpenSpots;
     const note=(document.getElementById('bkNote')?.value ?? pickerNote ?? '').trim();
-    pickerSlot=null; pickerOpenSpots=0; pickerNote=''; cbLoading(true);
+    pickerSlot=null; pickerOpenSpots=0; pickerNote=''; pickerNewName=''; pickerNewPhone=''; cbLoading(true);
     try{
         const { data:ins, error }=await sb.from('bookings').insert({
             club_id:club.id, court_id:court, user_id:me.id,
