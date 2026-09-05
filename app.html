@@ -302,7 +302,7 @@
         <div class="grid grid-cols-3 gap-3 anim-up">
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-brand" id="statToday">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σήμερα</p></div>
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-indigo-500" id="statWeek">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Επόμενες 7μ.</p></div>
-            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p id="statTotalLbl" class="text-[10px] text-slate-400 mt-0.5 font-medium">Σύνολο</p></div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p id="statTotalLbl" class="text-[10px] text-slate-400 mt-0.5 font-medium">Αυτόν τον μήνα</p></div>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-4">
@@ -1844,11 +1844,18 @@ function renderAdmin(){
     if(!bookingsOn) return renderAdminTrainings();
     const today=cbToday();
     const wEnd=new Date(); wEnd.setDate(wEnd.getDate()+7); const wStr=cbDateStr(wEnd);
-    let t=0,w=0;
-    _allBookings.forEach(b=>{ if(b.booking_date===today)t++; if(b.booking_date>=today&&b.booking_date<=wStr)w++; });
+    // Ο τρίτος μετρητής δείχνει ΤΟΝ ΜΗΝΑ, όχι ό,τι έγινε ποτέ — ένα
+    // σύνολο από την αρχή του χρόνου δεν λέει τίποτα χρήσιμο.
+    const ymNow=today.slice(0,7);
+    let t=0,w=0,mo=0;
+    _allBookings.forEach(b=>{
+        if(b.booking_date===today)t++;
+        if(b.booking_date>=today&&b.booking_date<=wStr)w++;
+        if((b.booking_date||'').slice(0,7)===ymNow)mo++;
+    });
     document.getElementById('statToday').textContent=t;
     document.getElementById('statWeek').textContent=w;
-    document.getElementById('statTotal').textContent=_allBookings.length;
+    document.getElementById('statTotal').textContent=mo;
 
     const up=_allBookings.filter(b=>b.booking_date>=today).sort((a,b)=>(a.booking_date+a.start_time).localeCompare(b.booking_date+b.start_time));
     document.getElementById('upcomingCount').textContent=up.length?`${up.length} κρατήσεις`:'';
@@ -3170,7 +3177,7 @@ function memberRow(p,nowKey){
         <div class="bg-slate-50 rounded-xl border overflow-hidden mb-2">
             <div class="flex items-center justify-between gap-2 p-3 cursor-pointer" onclick="togglePlayer('${p.id}')">
                 <div class="min-w-0">
-                    <p class="text-sm font-semibold truncate">${p.name}${bookingsOn&&p.level!=null?` <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full">Επ. ${p.level}</span>`:''}</p>
+                    <p class="text-sm font-semibold flex items-center gap-1.5 min-w-0"><span class="truncate">${p.name}</span>${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}</p>
                     <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
                     <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`🎾 ${gM} · `:''}🏃 ${tM}</p>
                 </div>
@@ -3411,7 +3418,7 @@ function renderGroups(){
         <div class="border rounded-xl">
             <div onclick="toggleGroup('${g.id}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
                 <div class="min-w-0">
-                    <p class="font-bold text-sm truncate">${g.name} <span class="text-[10px] text-slate-400 font-normal">(${g.memberIds.length} μέλη)</span> <button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px]">✏️</button></p>
+                    <p class="font-bold text-sm flex items-center gap-1.5 min-w-0"><span class="truncate">${g.name}</span><span class="text-[10px] text-slate-400 font-normal flex-shrink-0">(${g.memberIds.length} μέλη)</span><button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px] flex-shrink-0">✏️</button></p>
                     <p class="text-[11px] text-slate-500 mt-0.5 truncate">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'}</p>
                 </div>
                 <span id="gchev-${g.id}" class="text-slate-400 text-[10px] flex-shrink-0 transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
