@@ -594,6 +594,7 @@ let me=null, isOwner=false, isReg=false, isReset=false;
 let bookingsOn=true;
 // Μηνιαίες συνδρομές μελών (clubs.subscriptions_enabled). Ξεκινά κλειστό.
 let subsOn=false, payments=new Set(), myPaidMonths=new Set();
+let paymentDetails=new Map();   // "playerId|YYYY-MM" → {paid_date, note}
 // Ρόλος προπονητή — μόνο σε συλλόγους «μόνο προπονήσεις».
 let isCoach=false, myCoach=null, coaches=[];
 let activeTab='booking', pickerSlot=null, dayData=[], myBookings=[], _refresh=null, _busy=false;
@@ -2599,6 +2600,19 @@ async function delOverride(id){
     await loadTrainingSchedule(); renderTschedule(); loadDay(true);
 }
 
+// Πιάνει δύο γκρουπ στο ίδιο γήπεδο, ίδια μέρα, με επικαλυπτόμενες ώρες.
+// Με λίγα γήπεδα το βλέπεις με το μάτι· με 8 γήπεδα και δεκάδες γκρουπ,
+// ένα διπλό κλείσιμο περνάει εύκολα απαρατήρητο.
+function tschedConflict(court_id, weekday, start_time, duration_min, ignoreId){
+    const s=cbT2M(start_time), e=s+duration_min;
+    return trainingSchedule.find(t=>{
+        if(t.id===ignoreId || t.active===false) return false;
+        if(t.court_id!==court_id || t.weekday!==weekday) return false;
+        const ts=cbT2M(t.start_time), te=ts+t.duration_min;
+        return s<te && e>ts;
+    });
+}
+
 async function addTsched(){
     const group_id=document.getElementById('tsGroup').value;
     const court_id=document.getElementById('tsCourt').value;
@@ -2608,6 +2622,12 @@ async function addTsched(){
     const coach=document.getElementById('tsCoach').value.trim();
     if(!group_id) return cbToast('Φτιάξε πρώτα γκρουπ','err');
     if(!court_id||!start_time||isNaN(weekday)||!duration_min) return cbToast('Συμπλήρωσε όλα τα πεδία','err');
+    const clash=tschedConflict(court_id, weekday, start_time, duration_min);
+    if(clash){
+        const cName=(courts.find(c=>c.id===court_id)||{}).name||'το γήπεδο';
+        const gName=clash.training_groups?.name||'άλλο γκρουπ';
+        if(!confirm(`⚠️ ${cName} την ${_GRDAYS[weekday]} ${clash.start_time} έχει ήδη «${gName}». Να μπει κι αυτό ΠΑΝΩ στο ίδιο ραντεβού;`)) return;
+    }
     const { error }=await sb.from('training_schedule').insert({ club_id:club.id, group_id, court_id, weekday, start_time, duration_min, coach:coach||null });
     if(error) return cbToast('Σφάλμα','err');
     document.getElementById('tsTime').value=''; document.getElementById('tsCoach').value='';
@@ -2910,8 +2930,13 @@ function renderCoachAttendance(){
 // Υπάρχει γραμμή = πληρωμένος. Το κλειδί είναι «playerId|YYYY-MM».
 async function loadPayments(){
     if(!subsOn || !isOwner) return;
-    const { data }=await sb.from('member_payments').select('player_id,month').eq('club_id',club.id);
-    payments=new Set((data||[]).map(r=>r.player_id+'|'+r.month));
+    const { data }=await sb.from('member_payments').select('player_id,month,paid_date,note').eq('club_id',club.id);
+    payments=new Set(); paymentDetails=new Map();
+    (data||[]).forEach(r=>{
+        const key=r.player_id+'|'+r.month;
+        payments.add(key);
+        paymentDetails.set(key, { paid_date:r.paid_date, note:r.note });
+    });
 }
 
 function subMonthValue(){
@@ -2923,14 +2948,60 @@ async function togglePayment(pid){
     if(payments.has(key)){
         const { error }=await sb.from('member_payments').delete().eq('player_id',pid).eq('month',m);
         if(error) return cbToast(error.message||'Δεν αποθηκεύτηκε','err');
-        payments.delete(key);
+        payments.delete(key); paymentDetails.delete(key);
     }else{
         const { error }=await sb.from('member_payments')
-            .insert({ club_id:club.id, player_id:pid, month:m, marked_by:me.id });
+            .insert({ club_id:club.id, player_id:pid, month:m, paid_date:cbToday(), marked_by:me.id });
         if(error) return cbToast(error.message||'Δεν αποθηκεύτηκε','err');
-        payments.add(key);
+        payments.add(key); paymentDetails.set(key, { paid_date:cbToday(), note:null });
     }
     renderPlayers();
+}
+
+/* Καρτέλα με ημερομηνία πληρωμής + σχόλιο (π.χ. αριθμός απόδειξης). */
+function editPayment(id){
+    const det=document.getElementById('pdet-'+id), chev=document.getElementById('pchev-'+id);
+    det.classList.remove('hidden'); if(chev)chev.textContent='▲';
+    const m=subMonthValue(), key=id+'|'+m;
+    const cur=paymentDetails.get(key)||{};
+    const monthLabel=new Date(m+'-01T12:00:00').toLocaleDateString('el-GR',{month:'long',year:'numeric'});
+    det.innerHTML=`
+        <div class="bg-white rounded-lg p-3 space-y-2 border border-green-100">
+            <p class="text-[10px] font-bold text-slate-500 uppercase">💶 Συνδρομή — <span style="text-transform:capitalize">${monthLabel}</span></p>
+            <div>
+                <label class="text-[10px] text-slate-400 block mb-1">Ημερομηνία πληρωμής</label>
+                <input id="pay-date-${id}" type="date" value="${cur.paid_date||cbToday()}" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+            </div>
+            <div>
+                <label class="text-[10px] text-slate-400 block mb-1">Σχόλιο (π.χ. αριθμός απόδειξης)</label>
+                <input id="pay-note-${id}" value="${cbEsc(cur.note)}" placeholder="π.χ. Απόδειξη #2026-114" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
+            </div>
+            <div class="flex gap-2 pt-1">
+                <button onclick="savePaymentDetails('${id}')" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold">💾 Αποθήκευση</button>
+                ${payments.has(key)?`<button onclick="unmarkPayment('${id}')" class="px-3 py-2 border border-red-200 text-red-500 rounded-lg text-sm">Ακύρωση</button>`:''}
+                <button onclick="renderPlayers()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">Κλείσιμο</button>
+            </div>
+        </div>`;
+}
+
+async function savePaymentDetails(id){
+    const m=subMonthValue();
+    const paid_date=document.getElementById('pay-date-'+id).value;
+    if(!paid_date) return cbToast('Βάλε ημερομηνία','err');
+    const note=document.getElementById('pay-note-'+id).value.trim()||null;
+    const { error }=await sb.from('member_payments')
+        .upsert({ club_id:club.id, player_id:id, month:m, paid_date, note, marked_by:me.id }, { onConflict:'player_id,month' });
+    if(error) return cbToast(error.message||'Σφάλμα','err');
+    cbToast('✓ Αποθηκεύτηκε η συνδρομή');
+    await loadPayments(); renderPlayers();
+}
+
+async function unmarkPayment(id){
+    const m=subMonthValue();
+    const { error }=await sb.from('member_payments').delete().eq('player_id',id).eq('month',m);
+    if(error) return cbToast(error.message||'Σφάλμα','err');
+    cbToast('Ακυρώθηκε');
+    await loadPayments(); renderPlayers();
 }
 
 /* ── Εκκρεμείς εγγραφές ── */
@@ -3024,7 +3095,7 @@ function memberRow(p,nowKey){
                     <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`🎾 ${gM} · `:''}🏃 ${tM}</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    ${payBtn}
+                    ${payBtn}${subM?`<button onclick="event.stopPropagation();editPayment('${p.id}')" title="Ημερομηνία & σχόλιο" class="text-slate-400 hover:text-brand text-xs border border-slate-200 px-1.5 py-1 rounded-lg">📝</button>`:''}
                     <span class="text-slate-300 text-xs" id="pchev-${p.id}">▼</span>
                     <button onclick="event.stopPropagation();editPlayer('${p.id}')" class="text-slate-500 text-xs border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-100">✏️</button>
                     <button onclick="event.stopPropagation();delPlayer('${p.id}')" class="text-red-400 text-xs border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">🗑️</button>
@@ -3116,7 +3187,19 @@ function playerDetailHtml(id){
     const tDates=a.trains.slice().sort((x,y)=>y.date.localeCompare(x.date)).map(t=>`<div class="text-[11px] text-slate-500 py-0.5">🏃 ${cbFmtDate(t.date)}${groupName(t.group)?' · '+groupName(t.group):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
     const trainBox=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Προπονήσεις (${a.trains.length})</p>${tDates}</div>`;
     const gamesBox=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παιχνίδια (${a.games.length})</p>${gDates}</div>`;
+    let subBox='';
+    if(subsOn && isOwner){
+        const sm=subMonthValue(), skey=id+'|'+sm, sd=paymentDetails.get(skey);
+        const smLabel=new Date(sm+'-01T12:00:00').toLocaleDateString('el-GR',{month:'long',year:'numeric'});
+        subBox=`<div class="bg-white rounded-lg p-2 mb-2">
+            <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Συνδρομή <span style="text-transform:capitalize">${smLabel}</span></p>
+            ${sd
+                ? `<p class="text-[11px] text-green-700">✓ Πληρώθηκε ${cbFmtDate(sd.paid_date)}${sd.note?' · '+cbEsc(sd.note):''}</p>`
+                : `<p class="text-[11px] text-slate-400">Δεν έχει πληρωθεί</p>`}
+        </div>`;
+    }
     return `
+        ${subBox}
         <div class="bg-white rounded-lg p-2 mb-2">
             <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Ανά μήνα</p>${mRows}
         </div>
