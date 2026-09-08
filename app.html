@@ -137,6 +137,11 @@
             <button onclick="showPrivacy()" class="text-brand font-semibold underline">Πολιτική Απορρήτου</button>
         </p>
     </div>
+
+    <p class="mt-5 text-center text-[11px] text-white/40">
+        powered by
+        <a href="https://court-book.gr" target="_blank" rel="noopener" class="font-bold text-white/60 hover:text-white transition">CourtBook</a>
+    </p>
 </div>
 
 <!-- ═══ ΑΛΛΑΓΗ ΚΩΔΙΚΟΥ ═══ -->
@@ -580,6 +585,10 @@
         <p class="text-[11px] text-slate-400">
             Τα στοιχεία σου χρησιμοποιούνται μόνο για τη διαχείριση των κρατήσεων.
             <button onclick="showPrivacy()" class="text-brand font-semibold underline">Πολιτική Απορρήτου</button>
+        </p>
+        <p class="text-[11px] text-slate-300 mt-2">
+            powered by
+            <a href="https://court-book.gr" target="_blank" rel="noopener" class="font-bold text-slate-400 hover:text-brand transition">CourtBook</a>
         </p>
     </footer>
 </div>
@@ -1536,7 +1545,10 @@ async function doBook(court,time,durMin,price){
             // νέος πελάτης: όνομα + τηλέφωνο στην κράτηση (χωρίς μητρώο/ιστορικό)
             const nm=(document.getElementById('bfNewName')?.value ?? pickerNewName ?? '').trim();
             const ph=(document.getElementById('bfNewPhone')?.value ?? pickerNewPhone ?? '').trim();
+            // Χωρίς όνομα, η κράτηση ΔΕΝ πρέπει να χρεώνεται στο προσωπικό
+            // όνομα της γραμματείας — μπαίνει ουδέτερη ετικέτα.
             if(nm){ uName=nm; uPhone=ph||''; uEmail=''; }
+            else  { uName='Κράτηση γραμματείας'; uPhone=ph||''; uEmail=''; }
         }
     }
     // κράτα τους συμπαίκτες ΠΡΙΝ σβηστεί η κάρτα
