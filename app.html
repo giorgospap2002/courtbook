@@ -3025,8 +3025,13 @@ async function loadTournaments(){
    τη βλέπει κάθε μέλος. */
 function entryName(eid){
     const e = tEntries.find(x=>x.id===eid);
-    return e ? (e.player_name || '—') : '—';
+    if(!e) return '—';
+    return e.player2_name ? (e.player_name+' & '+e.player2_name) : (e.player_name || '—');
 }
+/* Στο padel παίζουν πάντα 2v2 — δεν υπάρχει μονό. Στο τένις το διαλέγει
+   ο διοργανωτής ανά κατηγορία. */
+const clubIsPadel = () => (club.sport||'').toLowerCase()==='padel';
+const catIsDoubles = cat => cat.mode ? cat.mode==='doubles' : clubIsPadel();
 
 /* ── Σετ που κέρδισε ο καθένας. Το 3ο σετ είναι tiebreak στα 10. ── */
 function matchSets(m){
@@ -3106,9 +3111,15 @@ async function delTournament(id){
 async function addCategory(tid){
     const name=(prompt('Όνομα κατηγορίας (π.χ. Ανδρών, Παίδες, Διπλά):','')||'').trim();
     if(!name) return;
+    let mode='doubles';
+    if(!clubIsPadel()){
+        const ans=prompt('Μονό ή διπλό;\n\n1. Μονό (1 εναντίον 1)\n2. Διπλό (ζευγάρια)','1');
+        if(ans===null) return;
+        mode = String(ans).trim()==='2' ? 'doubles' : 'singles';
+    }
     const n=tCats.filter(c=>c.tournament_id===tid).length;
     cbLoading(true);
-    const { error }=await sb.from('tournament_categories').insert({ tournament_id:tid, name, sort_order:n });
+    const { error }=await sb.from('tournament_categories').insert({ tournament_id:tid, name, mode, sort_order:n });
     cbLoading(false);
     if(error) return cbToast('Δεν δημιουργήθηκε','err');
     await loadTournaments(); _tOpen.add(tid); renderTournaments();
@@ -3121,25 +3132,56 @@ async function delCategory(cid){
     await loadTournaments(); renderTournaments();
 }
 
-/* Προσθαφαίρεση αθλητή σε κατηγορία. */
+const tourPool = () => (playersFull.length?playersFull:roster).filter(p=>p.approved!==false);
+/* Παίζει ήδη ο αθλητής σε αυτή την κατηγορία; Κοιτάει και τις δύο θέσεις
+   της πλευράς — αλλιώς κάποιος θα μπορούσε να μπει σε δύο ζευγάρια. */
+const inCategory = (cid,pid) => tEntries.some(e=>e.category_id===cid && (e.player_id===pid||e.player2_id===pid));
+const catLocked  = cid => tMatches.some(m=>m.category_id===cid);
+
+/* Μονά: ένας αθλητής ανά πλευρά. */
 async function toggleEntry(cid, pid){
+    if(catLocked(cid)) return cbToast('Έχει ήδη αγώνες — σβήσε πρώτα το πρόγραμμα','err');
     const ex = tEntries.find(e=>e.category_id===cid && e.player_id===pid);
-    if(ex && tMatches.some(m=>m.category_id===cid && (m.p1_id===ex.id||m.p2_id===ex.id))){
-        return cbToast('Έχει ήδη αγώνες — σβήσε πρώτα το πρόγραμμα','err');
-    }
     cbLoading(true);
     if(ex) await sb.from('tournament_entries').delete().eq('id',ex.id);
     else {
-        const p=(playersFull.length?playersFull:roster).find(x=>x.id===pid);
+        const p=tourPool().find(x=>x.id===pid);
         await sb.from('tournament_entries').insert({ category_id:cid, player_id:pid, player_name:p?p.name:'' });
     }
     cbLoading(false);
     await loadTournaments(); renderTournaments();
 }
 
+/* Διπλά: δύο αθλητές ανά πλευρά. */
+async function addPair(cid){
+    if(catLocked(cid)) return cbToast('Έχει ήδη αγώνες — σβήσε πρώτα το πρόγραμμα','err');
+    const a=document.getElementById('pa-'+cid).value, b=document.getElementById('pb-'+cid).value;
+    if(!a||!b) return cbToast('Διάλεξε και τους δύο','err');
+    if(a===b)  return cbToast('Δεν γίνεται ο ίδιος δύο φορές','err');
+    if(inCategory(cid,a)||inCategory(cid,b)) return cbToast('Κάποιος παίζει ήδη σε αυτή την κατηγορία','err');
+    const pool=tourPool(), p1=pool.find(x=>x.id===a), p2=pool.find(x=>x.id===b);
+    cbLoading(true);
+    const { error }=await sb.from('tournament_entries').insert({
+        category_id:cid, player_id:a, player_name:p1?p1.name:'',
+        player2_id:b, player2_name:p2?p2.name:'' });
+    cbLoading(false);
+    if(error) return cbToast('Δεν προστέθηκε','err');
+    await loadTournaments(); renderTournaments();
+}
+async function delEntry(eid){
+    const e=tEntries.find(x=>x.id===eid);
+    if(!e) return;
+    if(catLocked(e.category_id)) return cbToast('Έχει ήδη αγώνες — σβήσε πρώτα το πρόγραμμα','err');
+    cbLoading(true);
+    await sb.from('tournament_entries').delete().eq('id',eid);
+    cbLoading(false);
+    await loadTournaments(); renderTournaments();
+}
+
 async function genSchedule(cid){
     const ids = tEntries.filter(e=>e.category_id===cid).map(e=>e.id);
-    if(ids.length<2) return cbToast('Χρειάζονται τουλάχιστον 2 αθλητές','err');
+    const cat=tCats.find(c=>c.id===cid);
+    if(ids.length<2) return cbToast(cat&&catIsDoubles(cat)?'Χρειάζονται τουλάχιστον 2 ζευγάρια':'Χρειάζονται τουλάχιστον 2 αθλητές','err');
     if(tMatches.some(m=>m.category_id===cid) &&
        !confirm('Υπάρχει ήδη πρόγραμμα. Να αντικατασταθεί; Τα σκορ θα χαθούν.')) return;
     const rows=[];
@@ -3206,20 +3248,42 @@ function categoryBlock(cat, editable){
         return `<div class="border border-slate-200 rounded-xl">
             <button onclick="tToggle('${cat.id}')" class="w-full flex items-center justify-between gap-2 p-3 text-left">
                 <span class="font-semibold text-sm truncate">${cbEsc(cat.name)}</span>
-                <span class="text-[11px] text-slate-400 flex-shrink-0">${ent.length} αθλητές · ${done}/${ms.length} αγώνες</span>
+                <span class="text-[11px] text-slate-400 flex-shrink-0">${ent.length} ${catIsDoubles(cat)?'ζευγάρια':'αθλητές'} · ${done}/${ms.length} αγώνες</span>
             </button></div>`;
     }
-    // συμμετέχοντες
-    const pool = (playersFull.length?playersFull:roster).filter(p=>p.approved!==false);
-    const picker = !editable ? '' : `
-        <div class="mt-2 max-h-52 overflow-y-auto border border-slate-200 rounded-xl divide-y">
+    // συμμετέχοντες — μονά με λίστα, διπλά με ζευγάρια
+    const dbl  = catIsDoubles(cat);
+    const pool = tourPool();
+    const locked = catLocked(cat.id);
+    let picker='';
+    if(editable && !dbl){
+        picker = `<div class="mt-2 max-h-52 overflow-y-auto border border-slate-200 rounded-xl divide-y">
             ${pool.map(p=>{
                 const on = ent.some(e=>e.player_id===p.id);
                 return `<label class="flex items-center gap-2.5 px-3 py-2 cursor-pointer ${on?'bg-blue-50':''}">
-                    <input type="checkbox" ${on?'checked':''} onchange="toggleEntry('${cat.id}','${p.id}')" class="w-4 h-4 accent-brand flex-shrink-0">
+                    <input type="checkbox" ${on?'checked':''} ${locked?'disabled':''} onchange="toggleEntry('${cat.id}','${p.id}')" class="w-4 h-4 accent-brand flex-shrink-0">
                     <span class="text-sm truncate">${cbEsc(p.name)}</span></label>`;
             }).join('') || '<p class="text-slate-400 text-sm p-3">Κανένα μέλος στο μητρώο</p>'}
         </div>`;
+    } else if(editable && dbl){
+        const free = pool.filter(p=>!inCategory(cat.id,p.id));
+        const opts = `<option value="">—</option>`+free.map(p=>`<option value="${p.id}">${cbEsc(p.name)}</option>`).join('');
+        picker = `
+            <div class="mt-2 space-y-1.5">
+                ${ent.map(e=>`<div class="flex items-center gap-2 px-3 py-2 border border-slate-200 rounded-xl">
+                    <span class="flex-1 text-sm truncate">${cbEsc(entryName(e.id))}</span>
+                    ${locked?'':`<button onclick="delEntry('${e.id}')" class="text-red-400 text-xs font-semibold flex-shrink-0">✕</button>`}
+                </div>`).join('') || '<p class="text-slate-400 text-sm py-1">Κανένα ζευγάρι ακόμα.</p>'}
+            </div>
+            ${locked?'':`<div class="flex items-center gap-1.5 mt-2">
+                <select id="pa-${cat.id}" class="flex-1 min-w-0 px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">${opts}</select>
+                <span class="text-slate-400 text-xs flex-shrink-0">&amp;</span>
+                <select id="pb-${cat.id}" class="flex-1 min-w-0 px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">${opts}</select>
+                <button onclick="addPair('${cat.id}')" class="px-3 py-2 bg-brand text-white rounded-lg text-xs font-bold flex-shrink-0">+</button>
+            </div>`}`;
+    } else if(dbl){
+        picker = `<div class="mt-2 space-y-1.5">${ent.map(e=>`<div class="px-3 py-2 border border-slate-200 rounded-xl text-sm truncate">${cbEsc(entryName(e.id))}</div>`).join('')}</div>`;
+    }
     // βαθμολογία
     const st = standings(cat.id);
     const table = !st.length ? '' : `
@@ -3249,9 +3313,9 @@ function categoryBlock(cat, editable){
             <span class="text-[11px] text-slate-400 flex-shrink-0">▲</span>
         </button>
         ${editable?`<div class="flex items-center justify-between gap-2">
-            <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Συμμετέχοντες (${ent.length})</p>
+            <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">${dbl?'Ζευγάρια':'Συμμετέχοντες'} (${ent.length})</p>
             <button onclick="delCategory('${cat.id}')" class="text-red-400 text-[11px] font-semibold">Διαγραφή κατηγορίας</button>
-        </div>`:`<p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Συμμετέχοντες (${ent.length})</p>`}
+        </div>`:`<p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">${dbl?'Ζευγάρια':'Συμμετέχοντες'} (${ent.length})</p>`}
         ${picker}
         ${editable?`<button onclick="genSchedule('${cat.id}')" class="w-full mt-3 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark transition">
             ${ms.length?'↻ Νέο πρόγραμμα αγώνων':'Δημιουργία προγράμματος αγώνων'}</button>`:''}
