@@ -256,6 +256,7 @@
             <button id="myScheduleTabBtn" data-tab="myschedule" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🗓️ Το πρόγραμμά μου</button>
             <button id="attendanceTabBtn" data-tab="attendance" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">✅ Παρουσίες</button>
             <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Προπονήσεις</button>
+            <button id="tournamentsTabBtn" data-tab="tournaments" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏆 Τουρνουά</button>
             <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
         </div>
     </header>
@@ -512,6 +513,18 @@
     </div>
 
     <!-- SETTINGS -->
+    <!-- ══════════ ΤΟΥΡΝΟΥΑ ══════════ -->
+    <div id="tab-tournaments" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between mb-1">
+                <p class="font-bold">Τουρνουά</p>
+                <button id="addTourBtn" onclick="addTournament()" class="text-brand text-sm font-semibold hidden">+ Νέο Τουρνουά</button>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-4" id="tourHint">Κατηγορίες, συμμετοχές, πρόγραμμα αγώνων και βαθμολογία.</p>
+            <div id="tourList" class="space-y-2"></div>
+        </div>
+    </div>
+
     <div id="tab-settings" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <!-- Club info -->
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
@@ -619,6 +632,10 @@ let bookingsOn=true;
 // Μηνιαίες συνδρομές μελών (clubs.subscriptions_enabled). Ξεκινά κλειστό.
 let subsOn=false, payments=new Set(), myPaidMonths=new Set();
 let paymentDetails=new Map();   // "playerId|YYYY-MM" → {paid_date, note}
+// Τουρνουά (clubs.tournaments_enabled). Τα γήπεδα ΔΕΝ δεσμεύονται αυτόματα —
+// η γραμματεία κλείνει γήπεδο χειροκίνητα, όπως κάθε άλλη κράτηση.
+let tournamentsOn=false, tours=[], tCats=[], tEntries=[], tMatches=[];
+let _tOpen=new Set();   // ποια τουρνουά/κατηγορίες είναι ανοιχτά
 // Λογαριασμοί προπονητών + έγκριση νέων μελών (clubs.coaches_enabled).
 // Δική του σημαία: ένας σύλλογος μπορεί να νοικιάζει γήπεδα ΚΑΙ να έχει
 // προπονητές με δικό τους κωδικό. Ξεκινά κλειστό.
@@ -653,6 +670,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     // παλιά συμπεριφορά: προπονητές είχαν οι σύλλογοι μόνο-προπονήσεων.
     coachesOn  = club.coaches_enabled === undefined ? !bookingsOn
                                                    : club.coaches_enabled === true;
+    tournamentsOn = club.tournaments_enabled === true;
 
     const [cRes, dRes, eRes] = await Promise.all([
         sb.from('courts').select('*').eq('club_id', club.id).order('sort_order'),
@@ -1043,6 +1061,12 @@ async function enterApp(){
         // γραμματεία (playersFull), απλώς βλέπει λιγότερα λόγω RLS.
         await loadPlayersFull(); await loadGroups();
     }
+    // Τα τουρνουά τα βλέπουν όλοι — ο ιδιοκτήτης τα διαχειρίζεται,
+    // τα μέλη διαβάζουν πρόγραμμα και βαθμολογία.
+    if(tournamentsOn){
+        document.getElementById('tournamentsTabBtn').classList.remove('hidden');
+        await loadTournaments();
+    }
     applyClubMode();
     if(subsOn && isOwner){
         const bar=document.getElementById('subsBar');
@@ -1132,6 +1156,7 @@ function switchTab(tab){
     if(tab==='roster'||tab==='training') renderRoster();
     if(tab==='myschedule') renderMySchedule();
     if(tab==='attendance') renderCoachAttendance();
+    if(tab==='tournaments') renderTournaments();
     if(tab==='settings') renderSettings();
 }
 
@@ -2968,6 +2993,308 @@ function dayBlock(kind,k,title,count,inner){
             </div>
             <div id="d-${key}" class="${open?'':'hidden'} px-3 pb-3 pt-3 border-t">${inner}</div>
         </div>`;
+}
+
+/* ══════════════ ΤΟΥΡΝΟΥΑ ══════════════
+   Τα γήπεδα ΔΕΝ δεσμεύονται αυτόματα: η γραμματεία κλείνει γήπεδο
+   χειροκίνητα, όπως κάθε άλλη κράτηση. Έτσι ένα τουρνουά δεν μπορεί
+   να χαλάσει το υπάρχον πρόγραμμα κρατήσεων και προπονήσεων. */
+
+async function loadTournaments(){
+    if(!tournamentsOn){ tours=[]; tCats=[]; tEntries=[]; tMatches=[]; return; }
+    const { data:t } = await sb.from('tournaments').select('*')
+        .eq('club_id',club.id).order('start_date',{ascending:false});
+    tours = t||[];
+    if(!tours.length){ tCats=[]; tEntries=[]; tMatches=[]; return; }
+    const ids = tours.map(x=>x.id);
+    const { data:c } = await sb.from('tournament_categories').select('*')
+        .in('tournament_id',ids).order('sort_order');
+    tCats = c||[];
+    const cids = tCats.map(x=>x.id);
+    if(!cids.length){ tEntries=[]; tMatches=[]; return; }
+    const [{ data:e },{ data:m }] = await Promise.all([
+        sb.from('tournament_entries').select('*').in('category_id',cids),
+        sb.from('tournament_matches').select('*').in('category_id',cids).order('round').order('slot')
+    ]);
+    tEntries = e||[]; tMatches = m||[];
+}
+
+/* ── Όνομα αθλητή από συμμετοχή ── */
+/* Το όνομα έρχεται από την ίδια τη συμμετοχή: τον πίνακα players τον
+   διαβάζουν μόνο ιδιοκτήτης και προπονητές, ενώ τη βαθμολογία πρέπει να
+   τη βλέπει κάθε μέλος. */
+function entryName(eid){
+    const e = tEntries.find(x=>x.id===eid);
+    return e ? (e.player_name || '—') : '—';
+}
+
+/* ── Σετ που κέρδισε ο καθένας. Το 3ο σετ είναι tiebreak στα 10. ── */
+function matchSets(m){
+    let a=0,b=0;
+    [[m.s1a,m.s1b],[m.s2a,m.s2b],[m.s3a,m.s3b]].forEach(([x,y])=>{
+        if(x==null||y==null||x===y) return;
+        if(x>y) a++; else b++;
+    });
+    return [a,b];
+}
+function matchDone(m){ const [a,b]=matchSets(m); return a>=2||b>=2; }
+function matchWinner(m){
+    const [a,b]=matchSets(m);
+    if(a>=2) return m.p1_id;
+    if(b>=2) return m.p2_id;
+    return null;
+}
+
+/* ── Βαθμολογία. Τα games μετρούν από τα δύο κανονικά σετ· το
+     tiebreak μετράει ως σετ, όχι ως games. ── */
+function standings(catId){
+    const ent = tEntries.filter(e=>e.category_id===catId);
+    const rows = ent.map(e=>({ id:e.id, name:entryName(e.id), w:0, l:0, sw:0, sl:0, gw:0, gl:0 }));
+    const by = id => rows.find(r=>r.id===id);
+    tMatches.filter(m=>m.category_id===catId && matchDone(m)).forEach(m=>{
+        const r1=by(m.p1_id), r2=by(m.p2_id);
+        if(!r1||!r2) return;
+        const [a,b]=matchSets(m);
+        r1.sw+=a; r1.sl+=b; r2.sw+=b; r2.sl+=a;
+        [[m.s1a,m.s1b],[m.s2a,m.s2b]].forEach(([x,y])=>{
+            if(x==null||y==null) return;
+            r1.gw+=x; r1.gl+=y; r2.gw+=y; r2.gl+=x;
+        });
+        if(a>b){ r1.w++; r2.l++; } else { r2.w++; r1.l++; }
+    });
+    return rows.sort((p,q)=> q.w-p.w || (q.sw-q.sl)-(p.sw-p.sl) || (q.gw-q.gl)-(p.gw-p.gl)
+                            || p.name.localeCompare(q.name,'el'));
+}
+
+/* ── Round robin με τη μέθοδο του κύκλου: ο πρώτος μένει σταθερός
+     και οι υπόλοιποι περιστρέφονται. Μονός αριθμός → ένας ρεπό. ── */
+function rrRounds(ids){
+    const a=[...ids];
+    if(a.length%2) a.push(null);
+    const n=a.length, out=[];
+    for(let r=0;r<n-1;r++){
+        const pairs=[];
+        for(let i=0;i<n/2;i++){
+            const p1=a[i], p2=a[n-1-i];
+            if(p1&&p2) pairs.push(r%2 ? [p2,p1] : [p1,p2]);   // εναλλάσσεται ποιος είναι «γηπεδούχος»
+        }
+        out.push(pairs);
+        a.splice(1,0,a.pop());
+    }
+    return out;
+}
+
+/* ══════════════ ΕΝΕΡΓΕΙΕΣ ══════════════ */
+async function addTournament(){
+    const name=(prompt('Όνομα τουρνουά:','')||'').trim();
+    if(!name) return;
+    cbLoading(true);
+    const { error }=await sb.from('tournaments').insert({ club_id:club.id, name, start_date:cbToday() });
+    cbLoading(false);
+    if(error) return cbToast('Δεν δημιουργήθηκε','err');
+    await loadTournaments(); renderTournaments(); cbToast('Έτοιμο');
+}
+async function delTournament(id){
+    const t=tours.find(x=>x.id===id);
+    if(!confirm('Να διαγραφεί το «'+(t?t.name:'')+'» με όλες τις κατηγορίες και τους αγώνες του;')) return;
+    cbLoading(true);
+    const { error }=await sb.from('tournaments').delete().eq('id',id);
+    cbLoading(false);
+    if(error) return cbToast('Δεν διαγράφηκε','err');
+    await loadTournaments(); renderTournaments();
+}
+async function addCategory(tid){
+    const name=(prompt('Όνομα κατηγορίας (π.χ. Ανδρών, Παίδες, Διπλά):','')||'').trim();
+    if(!name) return;
+    const n=tCats.filter(c=>c.tournament_id===tid).length;
+    cbLoading(true);
+    const { error }=await sb.from('tournament_categories').insert({ tournament_id:tid, name, sort_order:n });
+    cbLoading(false);
+    if(error) return cbToast('Δεν δημιουργήθηκε','err');
+    await loadTournaments(); _tOpen.add(tid); renderTournaments();
+}
+async function delCategory(cid){
+    if(!confirm('Να διαγραφεί η κατηγορία με τους αγώνες της;')) return;
+    cbLoading(true);
+    await sb.from('tournament_categories').delete().eq('id',cid);
+    cbLoading(false);
+    await loadTournaments(); renderTournaments();
+}
+
+/* Προσθαφαίρεση αθλητή σε κατηγορία. */
+async function toggleEntry(cid, pid){
+    const ex = tEntries.find(e=>e.category_id===cid && e.player_id===pid);
+    if(ex && tMatches.some(m=>m.category_id===cid && (m.p1_id===ex.id||m.p2_id===ex.id))){
+        return cbToast('Έχει ήδη αγώνες — σβήσε πρώτα το πρόγραμμα','err');
+    }
+    cbLoading(true);
+    if(ex) await sb.from('tournament_entries').delete().eq('id',ex.id);
+    else {
+        const p=(playersFull.length?playersFull:roster).find(x=>x.id===pid);
+        await sb.from('tournament_entries').insert({ category_id:cid, player_id:pid, player_name:p?p.name:'' });
+    }
+    cbLoading(false);
+    await loadTournaments(); renderTournaments();
+}
+
+async function genSchedule(cid){
+    const ids = tEntries.filter(e=>e.category_id===cid).map(e=>e.id);
+    if(ids.length<2) return cbToast('Χρειάζονται τουλάχιστον 2 αθλητές','err');
+    if(tMatches.some(m=>m.category_id===cid) &&
+       !confirm('Υπάρχει ήδη πρόγραμμα. Να αντικατασταθεί; Τα σκορ θα χαθούν.')) return;
+    const rows=[];
+    rrRounds(ids).forEach((pairs,ri)=> pairs.forEach(([p1,p2],si)=>
+        rows.push({ category_id:cid, round:ri+1, slot:si, p1_id:p1, p2_id:p2 })));
+    cbLoading(true);
+    await sb.from('tournament_matches').delete().eq('category_id',cid);
+    const { error }=await sb.from('tournament_matches').insert(rows);
+    cbLoading(false);
+    if(error) return cbToast('Δεν δημιουργήθηκε το πρόγραμμα','err');
+    await loadTournaments(); renderTournaments();
+    cbToast(rows.length+' αγώνες');
+}
+
+/* Αποθήκευση σκορ. Ο νικητής βγαίνει μόνος του από τα σετ. */
+async function saveScore(mid){
+    const g = k => { const el=document.getElementById('sc-'+mid+'-'+k); const v=el?el.value.trim():'';
+                     return v===''? null : parseInt(v); };
+    const p = { s1a:g('1a'), s1b:g('1b'), s2a:g('2a'), s2b:g('2b'), s3a:g('3a'), s3b:g('3b') };
+    const m = tMatches.find(x=>x.id===mid);
+    p.winner_id = matchWinner({ ...m, ...p });
+    if(!p.played_on && p.winner_id) p.played_on = m.played_on || cbToday();
+    cbLoading(true);
+    const { error }=await sb.from('tournament_matches').update(p).eq('id',mid);
+    cbLoading(false);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    Object.assign(m,p);
+    renderTournaments();
+}
+
+/* ══════════════ ΕΜΦΑΝΙΣΗ ══════════════ */
+function tToggle(key){ _tOpen.has(key) ? _tOpen.delete(key) : _tOpen.add(key); renderTournaments(); }
+
+function scoreCell(mid,k,val,editable){
+    if(!editable) return `<span class="w-7 text-center text-sm font-bold">${val!=null?val:'–'}</span>`;
+    return `<input id="sc-${mid}-${k}" type="number" min="0" max="99" value="${val!=null?val:''}"
+        onchange="saveScore('${mid}')"
+        class="w-9 h-9 text-center text-sm font-bold border border-slate-200 rounded-lg bg-white">`;
+}
+
+function matchCard(m, editable){
+    const w = matchWinner(m);
+    const nm = id => cbEsc(entryName(id));
+    const row = (id,label,a,b,c) => `
+        <div class="flex items-center gap-2 ${w===id?'font-bold':''}">
+            <span class="flex-1 truncate text-sm">${w===id?'🏆 ':''}${label}</span>
+            ${scoreCell(m.id,a[0],a[1],editable)}
+            ${scoreCell(m.id,b[0],b[1],editable)}
+            ${scoreCell(m.id,c[0],c[1],editable)}
+        </div>`;
+    return `<div class="border border-slate-200 rounded-xl p-3 space-y-1.5">
+        ${row(m.p1_id, nm(m.p1_id), ['1a',m.s1a], ['2a',m.s2a], ['3a',m.s3a])}
+        ${row(m.p2_id, nm(m.p2_id), ['1b',m.s1b], ['2b',m.s2b], ['3b',m.s3b])}
+        <p class="text-[10px] text-slate-400 pt-0.5">${editable?'Σετ · Σετ · Tiebreak στα 10':(m.played_on?cbFmtDate(m.played_on):'Εκκρεμεί')}</p>
+    </div>`;
+}
+
+function categoryBlock(cat, editable){
+    const open = _tOpen.has(cat.id);
+    const ent = tEntries.filter(e=>e.category_id===cat.id);
+    const ms  = tMatches.filter(m=>m.category_id===cat.id);
+    const done = ms.filter(matchDone).length;
+    if(!open){
+        return `<div class="border border-slate-200 rounded-xl">
+            <button onclick="tToggle('${cat.id}')" class="w-full flex items-center justify-between gap-2 p-3 text-left">
+                <span class="font-semibold text-sm truncate">${cbEsc(cat.name)}</span>
+                <span class="text-[11px] text-slate-400 flex-shrink-0">${ent.length} αθλητές · ${done}/${ms.length} αγώνες</span>
+            </button></div>`;
+    }
+    // συμμετέχοντες
+    const pool = (playersFull.length?playersFull:roster).filter(p=>p.approved!==false);
+    const picker = !editable ? '' : `
+        <div class="mt-2 max-h-52 overflow-y-auto border border-slate-200 rounded-xl divide-y">
+            ${pool.map(p=>{
+                const on = ent.some(e=>e.player_id===p.id);
+                return `<label class="flex items-center gap-2.5 px-3 py-2 cursor-pointer ${on?'bg-blue-50':''}">
+                    <input type="checkbox" ${on?'checked':''} onchange="toggleEntry('${cat.id}','${p.id}')" class="w-4 h-4 accent-brand flex-shrink-0">
+                    <span class="text-sm truncate">${cbEsc(p.name)}</span></label>`;
+            }).join('') || '<p class="text-slate-400 text-sm p-3">Κανένα μέλος στο μητρώο</p>'}
+        </div>`;
+    // βαθμολογία
+    const st = standings(cat.id);
+    const table = !st.length ? '' : `
+        <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mt-4 mb-1.5">Βαθμολογία</p>
+        <div class="border border-slate-200 rounded-xl overflow-hidden">
+            <div class="flex items-center gap-2 px-3 py-1.5 bg-slate-50 text-[10px] font-bold text-slate-400 uppercase">
+                <span class="w-5 flex-shrink-0">#</span><span class="flex-1">Αθλητής</span>
+                <span class="w-8 text-center">Ν</span><span class="w-8 text-center">Η</span><span class="w-12 text-center">Σετ</span>
+            </div>
+            ${st.map((r,i)=>`<div class="flex items-center gap-2 px-3 py-2 border-t text-sm">
+                <span class="w-5 flex-shrink-0 text-slate-400 font-bold">${i+1}</span>
+                <span class="flex-1 truncate">${cbEsc(r.name)}</span>
+                <span class="w-8 text-center font-bold">${r.w}</span>
+                <span class="w-8 text-center text-slate-400">${r.l}</span>
+                <span class="w-12 text-center text-slate-500 text-xs">${r.sw}-${r.sl}</span>
+            </div>`).join('')}
+        </div>`;
+    // αγώνες ανά γύρο
+    const rounds = [...new Set(ms.map(m=>m.round))].sort((a,b)=>a-b);
+    const matches = !ms.length ? '' : rounds.map(rd=>`
+        <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mt-4 mb-1.5">Γύρος ${rd}</p>
+        <div class="space-y-2">${ms.filter(m=>m.round===rd).map(m=>matchCard(m,editable)).join('')}</div>`).join('');
+
+    return `<div class="border-2 border-brand rounded-xl p-3">
+        <button onclick="tToggle('${cat.id}')" class="w-full flex items-center justify-between gap-2 text-left mb-2">
+            <span class="font-bold truncate">${cbEsc(cat.name)}</span>
+            <span class="text-[11px] text-slate-400 flex-shrink-0">▲</span>
+        </button>
+        ${editable?`<div class="flex items-center justify-between gap-2">
+            <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Συμμετέχοντες (${ent.length})</p>
+            <button onclick="delCategory('${cat.id}')" class="text-red-400 text-[11px] font-semibold">Διαγραφή κατηγορίας</button>
+        </div>`:`<p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">Συμμετέχοντες (${ent.length})</p>`}
+        ${picker}
+        ${editable?`<button onclick="genSchedule('${cat.id}')" class="w-full mt-3 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark transition">
+            ${ms.length?'↻ Νέο πρόγραμμα αγώνων':'Δημιουργία προγράμματος αγώνων'}</button>`:''}
+        ${table}
+        ${matches}
+    </div>`;
+}
+
+function renderTournaments(){
+    const wrap=document.getElementById('tourList');
+    if(!wrap) return;
+    const editable = isOwner;
+    const btn=document.getElementById('addTourBtn');
+    if(btn) btn.classList.toggle('hidden', !editable);
+    const hint=document.getElementById('tourHint');
+    if(hint) hint.textContent = editable
+        ? 'Κατηγορίες, συμμετοχές, πρόγραμμα αγώνων και βαθμολογία. Τα γήπεδα κλείνονται χειροκίνητα.'
+        : 'Οι αγώνες και η βαθμολογία των τουρνουά του συλλόγου.';
+    if(!tours.length){
+        wrap.innerHTML=`<p class="text-slate-400 text-sm py-2">${editable?'Κανένα τουρνουά ακόμα.':'Δεν υπάρχει τουρνουά αυτή τη στιγμή.'}</p>`;
+        return;
+    }
+    wrap.innerHTML = tours.map(t=>{
+        const cats=tCats.filter(c=>c.tournament_id===t.id);
+        const open=_tOpen.has(t.id);
+        const when=[t.start_date&&cbFmtDate(t.start_date), t.end_date&&cbFmtDate(t.end_date)].filter(Boolean).join(' – ');
+        return `<div class="border border-slate-200 rounded-2xl p-3">
+            <button onclick="tToggle('${t.id}')" class="w-full flex items-center justify-between gap-2 text-left">
+                <span class="min-w-0">
+                    <span class="font-bold block truncate">🏆 ${cbEsc(t.name)}</span>
+                    <span class="text-[11px] text-slate-400">${when||''}${when?' · ':''}${cats.length} κατηγορίες</span>
+                </span>
+                <span class="text-slate-400 flex-shrink-0">${open?'▲':'▼'}</span>
+            </button>
+            ${open?`<div class="mt-3 space-y-2">
+                ${cats.map(c=>categoryBlock(c,editable)).join('') || '<p class="text-slate-400 text-sm">Καμία κατηγορία ακόμα.</p>'}
+                ${editable?`<div class="flex gap-2 pt-1">
+                    <button onclick="addCategory('${t.id}')" class="flex-1 py-2 border border-brand text-brand rounded-xl text-sm font-bold">+ Κατηγορία</button>
+                    <button onclick="delTournament('${t.id}')" class="px-3 py-2 text-red-400 text-xs font-semibold">Διαγραφή</button>
+                </div>`:''}
+            </div>`:''}
+        </div>`;
+    }).join('');
 }
 
 /* ══════════════ ΠΡΟΠΟΝΗΤΕΣ ══════════════ */
