@@ -33,399 +33,480 @@
         body { font-family:'Inter',sans-serif; }
         .grad { background:linear-gradient(135deg,#1e3a8a,#2563eb); }
         input:focus,select:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-        .step-dot.active { background:#2563eb; color:#fff; }
-        .step-dot.done   { background:#22c55e; color:#fff; }
+        .q { animation: rise .28s cubic-bezier(.16,1,.3,1); }
+        @keyframes rise { from { opacity:0; transform:translateY(14px); } to { opacity:1; transform:none; } }
+        .choice { transition: border-color .15s, background-color .15s; }
+        .choice.on { border-color:#2563eb; background:#eff6ff; }
     </style>
 </head>
-<body class="bg-slate-100 min-h-screen">
+<body class="bg-slate-50 text-ink">
 
-<!-- config warning -->
-<div id="cfgWarn" class="hidden bg-amber-100 border-b border-amber-300 text-amber-800 text-sm text-center py-2 px-4" data-i18n="s40">
+<div id="cfgWarn" class="hidden bg-amber-100 border-b border-amber-300 text-amber-800 text-sm text-center py-2 px-4" data-i18n="warn">
     ⚠️ Δεν έχει ρυθμιστεί το Supabase. Συμπλήρωσε το <b>config.js</b> πρώτα (δες το README).
 </div>
 
-<div class="max-w-lg mx-auto px-4 py-8">
-    <div class="flex items-center justify-between mb-6">
-        <a href="index.html" class="inline-flex items-center gap-1.5 text-sm text-slate-500 hover:text-brand font-medium" data-i18n="s0">← Πίσω</a>
-        <div id="langSw" class="flex items-center gap-0.5 text-[11px] tracking-wide" aria-label="Language">
-            <button type="button" data-lang="el" class="px-1.5 py-1 rounded-md transition bg-brand-light text-brand font-bold">EL</button>
-            <button type="button" data-lang="en" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">EN</button>
-            <button type="button" data-lang="de" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">DE</button>
+<div class="min-h-screen flex flex-col">
+
+    <!-- ── κεφαλίδα ── -->
+    <header class="px-5 pt-5">
+        <div class="max-w-xl mx-auto flex items-center justify-between">
+            <a href="index.html" class="inline-flex items-center gap-1.5 text-sm text-slate-400 hover:text-brand font-medium" data-i18n="home">← Αρχική</a>
+            <div id="langSw" class="flex items-center gap-0.5 text-[11px] tracking-wide" aria-label="Language">
+                <button type="button" data-lang="el" class="px-1.5 py-1 rounded-md transition bg-brand-light text-brand font-bold">EL</button>
+                <button type="button" data-lang="en" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">EN</button>
+                <button type="button" data-lang="de" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">DE</button>
+            </div>
+        </div>
+    </header>
+
+    <!-- ── μπάρα προόδου ── -->
+    <div id="progWrap" class="px-5 mt-5">
+        <div class="max-w-xl mx-auto">
+            <div class="h-1 bg-slate-200 rounded-full overflow-hidden">
+                <div id="progBar" class="h-full bg-brand rounded-full transition-all duration-300" style="width:0%"></div>
+            </div>
         </div>
     </div>
 
-    <!-- Stepper -->
-    <div class="flex items-center justify-center gap-2 mb-8">
-        <div id="dot1" class="step-dot active w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold">1</div>
-        <div class="w-10 h-0.5 bg-slate-200"></div>
-        <div id="dot2" class="step-dot w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold">2</div>
-        <div class="w-10 h-0.5 bg-slate-200"></div>
-        <div id="dot3" class="step-dot w-8 h-8 rounded-full bg-slate-200 text-slate-500 flex items-center justify-center text-sm font-bold">3</div>
-    </div>
+    <!-- ══════════ ΟΙ ΕΡΩΤΗΣΕΙΣ ══════════ -->
+    <main class="flex-1 flex items-start sm:items-center px-5 py-10">
+        <div class="max-w-xl mx-auto w-full">
 
-    <!-- ═══ STEP 1: Account ═══ -->
-    <div id="step1" class="bg-white rounded-3xl shadow-xl p-7">
-        <h1 class="text-2xl font-extrabold mb-1" data-i18n="s1">Ο λογαριασμός σου</h1>
-        <p class="text-slate-500 text-sm mb-6" data-i18n="s2">Ως ιδιοκτήτης του club</p>
-        <div id="loggedInBox" class="hidden bg-green-50 border border-green-200 rounded-xl p-4 mb-4 text-sm">
-            ✓ Συνδεδεμένος ως <b id="loggedInEmail"></b>.
-            <button onclick="goStep(2)" class="text-brand font-semibold underline ml-1" data-i18n="s3">Συνέχεια →</button>
-            <button onclick="doLogout()" class="text-slate-400 underline ml-2" data-i18n="s4">Αποσύνδεση</button>
-        </div>
-        <div id="accountForm" class="space-y-3">
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s5">Ονοματεπώνυμο</label>
-                <input id="ownerName" type="text" placeholder="Γιώργος Παπαδόπουλος" data-i18n-ph="ph0" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s6">Email</label>
-                <input id="ownerEmail" type="email" placeholder="email@example.com" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s7">Τηλέφωνο</label>
-                <input id="ownerPhone" type="tel" placeholder="6912345678" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s8">Κωδικός</label>
-                <input id="ownerPass" type="password" placeholder="••••••••" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <button onclick="createAccount()" class="w-full grad text-white py-3 rounded-xl font-bold text-sm hover:opacity-95 transition mt-2" data-i18n="s9">Συνέχεια →</button>
-            <p class="text-center text-xs text-slate-400 mt-2" data-i18n="s10">Έχεις ήδη λογαριασμό;
-                <span onclick="showLogin()" class="text-brand font-semibold cursor-pointer">Σύνδεση</span></p>
-        </div>
-        <!-- inline login -->
-        <div id="loginForm" class="hidden space-y-3">
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s11">Email</label>
-                <input id="loginEmail" type="email" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s12">Κωδικός</label>
-                <input id="loginPass" type="password" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <button onclick="doLogin()" class="w-full grad text-white py-3 rounded-xl font-bold text-sm hover:opacity-95 transition" data-i18n="s13">Σύνδεση</button>
-            <p class="text-center text-xs text-slate-400" data-i18n="s14">Νέος;
-                <span onclick="showRegister()" class="text-brand font-semibold cursor-pointer">Εγγραφή</span></p>
-        </div>
-    </div>
+            <div id="loggedInBox" class="hidden bg-green-50 border border-green-200 rounded-2xl p-4 mb-6 text-sm"></div>
 
-    <!-- ═══ STEP 2: Club details ═══ -->
-    <div id="step2" class="hidden bg-white rounded-3xl shadow-xl p-7">
-        <h1 class="text-2xl font-extrabold mb-1" data-i18n="s15">Το club σου</h1>
-        <p class="text-slate-500 text-sm mb-6" data-i18n="s16">Βασικές πληροφορίες</p>
-        <div class="space-y-3">
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s17">Όνομα Club</label>
-                <input id="clubName" type="text" placeholder="π.χ. Αθλητικός Όμιλος Αντισφαίρισης" data-i18n-ph="ph1" oninput="updateSlug()" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+            <!-- ── λογαριασμός ── -->
+            <div class="q hidden" data-q="ownerName">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec1">Ο λογαριασμός σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q1t">Πώς σε λένε;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q1s">Εσύ θα είσαι ο διαχειριστής του club.</p>
+                <input id="ownerName" type="text" autocomplete="name" placeholder="Γιώργος Παπαδόπουλος" data-i18n-ph="ph1" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
             </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s18">Άθλημα</label>
-                <select id="clubSport" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white">
-                    <option value="padel">Padel</option>
-                    <option value="tennis">Tennis</option>
-                </select>
+
+            <div class="q hidden" data-q="ownerEmail">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec1b">Ο λογαριασμός σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q2t">Το email σου</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q2s">Με αυτό θα μπαίνεις στο σύστημα.</p>
+                <input id="ownerEmail" type="email" autocomplete="email" placeholder="email@example.com" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+                <p class="text-center text-xs text-slate-400 mt-5" data-i18n="haveacc">Έχεις ήδη λογαριασμό;
+                    <span onclick="showLogin()" class="text-brand font-semibold cursor-pointer">Σύνδεση</span></p>
             </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1.5" data-i18n="s19">Τι κάνει ο σύλλογος;</label>
-                <div class="space-y-2">
-                    <label id="modeFullBox" class="flex items-start gap-2.5 p-3 border-2 border-brand bg-blue-50/40 rounded-xl cursor-pointer transition">
-                        <input type="radio" name="clubMode" value="full" checked onchange="setClubMode('full')" class="mt-0.5 accent-brand">
-                        <span class="text-sm" data-i18n="s20"><b>Κρατήσεις γηπέδων &amp; προπονήσεις</b>
-                        <span class="block text-[11px] text-slate-400 mt-0.5">Τα μέλη κλείνουν μόνα τους γήπεδο, με τιμοκατάλογο. Υπάρχουν και γκρουπ προπόνησης.</span></span>
+
+            <div class="q hidden" data-q="ownerPhone">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec1c">Ο λογαριασμός σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q3t">Το τηλέφωνό σου</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q3s">Για να σε βρίσκουμε αν χρειαστεί κάτι.</p>
+                <input id="ownerPhone" type="tel" autocomplete="tel" placeholder="6912345678" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+            </div>
+
+            <div class="q hidden" data-q="ownerPass">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec1d">Ο λογαριασμός σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q4t">Διάλεξε κωδικό</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q4s">Τουλάχιστον 6 χαρακτήρες.</p>
+                <input id="ownerPass" type="password" autocomplete="new-password" placeholder="••••••••" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+            </div>
+
+            <!-- ── το club ── -->
+            <div class="q hidden" data-q="clubName">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q5t">Πώς λέγεται ο σύλλογος;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q5s">Αυτό θα βλέπουν τα μέλη σου παντού.</p>
+                <input id="clubName" type="text" placeholder="π.χ. Αθλητικός Όμιλος Αντισφαίρισης" data-i18n-ph="ph2" oninput="updateSlug()" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+                <p class="text-xs text-slate-400 mt-4"><span data-i18n="yourlink">Το link σου:</span>
+                    <b class="text-brand">app.html?club=<span id="slugPreview" data-i18n="slug">to-club-sou</span></b></p>
+            </div>
+
+            <div class="q hidden" data-q="clubSport">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2b">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-7" data-i18n="q6t">Τι παίζετε;</h2>
+                <div class="space-y-3">
+                    <label class="choice on flex items-center gap-3 p-4 border-2 border-slate-200 rounded-2xl cursor-pointer bg-white" data-choice="clubSport" data-val="padel">
+                        <input type="radio" name="sportR" value="padel" checked class="accent-brand w-4 h-4">
+                        <span class="font-bold">Padel</span>
                     </label>
-                    <label id="modeTrainBox" class="flex items-start gap-2.5 p-3 border-2 border-slate-200 rounded-xl cursor-pointer transition">
-                        <input type="radio" name="clubMode" value="training" onchange="setClubMode('training')" class="mt-0.5 accent-brand">
-                        <span class="text-sm" data-i18n="s21"><b>Μόνο προπονήσεις</b>
-                        <span class="block text-[11px] text-slate-400 mt-0.5">Τα γήπεδα τα πιάνουν τα γκρουπ προπόνησης. Κανείς δεν κλείνει γήπεδο για παιχνίδι, καμία τιμή πουθενά.</span></span>
+                    <label class="choice flex items-center gap-3 p-4 border-2 border-slate-200 rounded-2xl cursor-pointer bg-white" data-choice="clubSport" data-val="tennis">
+                        <input type="radio" name="sportR" value="tennis" class="accent-brand w-4 h-4">
+                        <span class="font-bold">Tennis</span>
                     </label>
                 </div>
+                <select id="clubSport" class="hidden"><option value="padel">Padel</option><option value="tennis">Tennis</option></select>
             </div>
-            <label class="flex items-center gap-2.5 p-3 border border-slate-200 rounded-xl cursor-pointer">
-                <input type="checkbox" id="clubSubs" class="w-4 h-4 accent-brand">
-                <span class="text-sm" data-i18n="s22">Κρατάμε <b>μηνιαίες συνδρομές</b> μελών
-                <span class="block text-[11px] text-slate-400">Η γραμματεία τσεκάρει ποιος πλήρωσε κάθε μήνα· το μέλος το βλέπει στο κινητό του.</span></span>
-            </label>
-            <label class="flex items-center gap-2.5 p-3 border border-slate-200 rounded-xl cursor-pointer">
-                <input type="checkbox" id="clubCoaches" class="w-4 h-4 accent-brand">
-                <span class="text-sm" data-i18n="s41">Οι προπονητές έχουν <b>δικό τους κωδικό</b>
-                <span class="block text-[11px] text-slate-400">Ο καθένας βλέπει μόνο τα δικά του τμήματα και περνά παρουσίες από το κινητό του.</span></span>
-            </label>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s23">Λογότυπο (URL — προαιρετικό)</label>
-                <input id="clubLogo" type="url" placeholder="https://..." class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s24">Τηλέφωνο</label>
-                    <input id="clubPhone" type="tel" placeholder="2610..." class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s25">Πόλη / Διεύθυνση</label>
-                    <input id="clubAddress" type="text" placeholder="Πάτρα" data-i18n-ph="ph2" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-                </div>
-            </div>
-            <div>
-                <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s26">Email club (για ειδοποιήσεις κρατήσεων)</label>
-                <input id="clubEmail" type="email" placeholder="club@example.com" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-            </div>
-            <div class="grid grid-cols-2 gap-3">
-                <div>
-                    <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s27">Ανοίγει (ώρα)</label>
-                    <select id="clubOpen" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
-                </div>
-                <div>
-                    <label class="text-xs font-semibold text-slate-400 block mb-1" data-i18n="s28">Κλείνει (ώρα)</label>
-                    <select id="clubClose" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
+
+            <div class="q hidden" data-q="clubMode">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2c">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q7t">Τι κάνει ο σύλλογος;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q7s">Μπορείς να το αλλάξεις αργότερα.</p>
+                <div class="space-y-3">
+                    <label class="choice on block p-4 border-2 border-slate-200 rounded-2xl cursor-pointer bg-white" data-choice="clubMode" data-val="full">
+                        <span class="flex items-start gap-3">
+                            <input type="radio" name="clubMode" value="full" checked class="mt-1 accent-brand w-4 h-4 flex-shrink-0">
+                            <span data-i18n="q7a"><b class="block mb-0.5">Κρατήσεις γηπέδων &amp; προπονήσεις</b>
+                            <span class="block text-[13px] text-slate-500 leading-relaxed">Τα μέλη κλείνουν μόνα τους γήπεδο, με τιμοκατάλογο. Υπάρχουν και γκρουπ προπόνησης.</span></span>
+                        </span>
+                    </label>
+                    <label class="choice block p-4 border-2 border-slate-200 rounded-2xl cursor-pointer bg-white" data-choice="clubMode" data-val="training">
+                        <span class="flex items-start gap-3">
+                            <input type="radio" name="clubMode" value="training" class="mt-1 accent-brand w-4 h-4 flex-shrink-0">
+                            <span data-i18n="q7b"><b class="block mb-0.5">Μόνο προπονήσεις</b>
+                            <span class="block text-[13px] text-slate-500 leading-relaxed">Τα γήπεδα τα πιάνουν τα γκρουπ προπόνησης. Κανείς δεν κλείνει γήπεδο για παιχνίδι, καμία τιμή πουθενά.</span></span>
+                        </span>
+                    </label>
                 </div>
             </div>
-            <div class="bg-slate-50 rounded-xl p-3 text-xs text-slate-500">
-                Το link σου: <b class="text-brand">app.html?club=<span id="slugPreview" data-i18n="s29">to-club-sou</span></b>
+
+            <div class="q hidden" data-q="clubSubs">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2d">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q8t">Κρατάτε μηνιαίες συνδρομές;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q8s">Η γραμματεία τσεκάρει ποιος πλήρωσε κάθε μήνα· το μέλος το βλέπει στο κινητό του.</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" class="choice p-4 border-2 border-slate-200 rounded-2xl font-bold bg-white" data-choice="clubSubs" data-val="1" data-i18n="yes">Ναι</button>
+                    <button type="button" class="choice on p-4 border-2 border-slate-200 rounded-2xl font-bold bg-white" data-choice="clubSubs" data-val="0" data-i18n="no">Όχι</button>
+                </div>
+                <input type="checkbox" id="clubSubs" class="hidden">
             </div>
-            <div class="flex gap-3 mt-2">
-                <button onclick="goStep(1)" class="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-i18n="s30">← Πίσω</button>
-                <button onclick="goStep(3)" class="flex-[2] grad text-white py-3 rounded-xl font-bold text-sm hover:opacity-95 transition" data-i18n="s31">Συνέχεια →</button>
+
+            <div class="q hidden" data-q="clubCoaches">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2e">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q9t">Θέλεις κωδικούς για τους προπονητές;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q9s">Ο καθένας βλέπει μόνο τα δικά του τμήματα και περνά παρουσίες από το κινητό του.</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <button type="button" class="choice p-4 border-2 border-slate-200 rounded-2xl font-bold bg-white" data-choice="clubCoaches" data-val="1" data-i18n="yes2">Ναι</button>
+                    <button type="button" class="choice on p-4 border-2 border-slate-200 rounded-2xl font-bold bg-white" data-choice="clubCoaches" data-val="0" data-i18n="no2">Όχι</button>
+                </div>
+                <input type="checkbox" id="clubCoaches" class="hidden">
             </div>
+
+            <div class="q hidden" data-q="clubPhone">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2f">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q10t">Τηλέφωνο του club</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q10s">Για να σας βρίσκουν τα μέλη.</p>
+                <input id="clubPhone" type="tel" placeholder="2610..." class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+            </div>
+
+            <div class="q hidden" data-q="clubAddress">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2g">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q11t">Πού βρίσκεστε;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q11s">Πόλη ή διεύθυνση.</p>
+                <input id="clubAddress" type="text" placeholder="Πάτρα" data-i18n-ph="ph3" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+            </div>
+
+            <div class="q hidden" data-q="clubEmail">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2h">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q12t">Πού να στέλνουμε τις ειδοποιήσεις;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q12s">Εδώ φτάνει κάθε νέα κράτηση και κάθε νέα εγγραφή μέλους.</p>
+                <input id="clubEmail" type="email" placeholder="club@example.com" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+            </div>
+
+            <div class="q hidden" data-q="clubHours">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2i">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q13t">Τι ώρα ανοίγετε και κλείνετε;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q13s">Μέσα σε αυτό το ωράριο θα γίνονται όλα.</p>
+                <div class="grid grid-cols-2 gap-3">
+                    <div>
+                        <label class="text-xs font-semibold text-slate-400 block mb-1.5" data-i18n="opens">Ανοίγει</label>
+                        <select id="clubOpen" class="w-full px-3 py-3.5 border border-slate-200 rounded-2xl text-base bg-white"></select>
+                    </div>
+                    <div>
+                        <label class="text-xs font-semibold text-slate-400 block mb-1.5" data-i18n="closes">Κλείνει</label>
+                        <select id="clubClose" class="w-full px-3 py-3.5 border border-slate-200 rounded-2xl text-base bg-white"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="q hidden" data-q="clubLogo">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec2j">Το club σου</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q14t">Έχεις λογότυπο;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q14s">Βάλε τη διεύθυνση της εικόνας. Μπορείς και αργότερα από τις Ρυθμίσεις.</p>
+                <input id="clubLogo" type="url" placeholder="https://..." class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base bg-white">
+            </div>
+
+            <!-- ── γήπεδα ── -->
+            <div class="q hidden" data-q="courts">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec3">Τα γήπεδα</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q15t">Ποια είναι τα γήπεδά σας;</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q15s">Γράψε το όνομα του καθενός, όπως το λένε τα μέλη σου.</p>
+                <div id="courtsList" class="space-y-2 mb-3"></div>
+                <button type="button" onclick="addCourtRow()" class="text-brand text-sm font-semibold" data-i18n="addcourt">+ Πρόσθεσε γήπεδο</button>
+            </div>
+
+            <div class="q hidden" data-q="durations">
+                <p class="text-[11px] font-bold tracking-widest text-brand uppercase mb-2" data-i18n="sec3b">Τα γήπεδα</p>
+                <h2 class="text-2xl sm:text-3xl font-extrabold tracking-tight mb-2" data-i18n="q16t">Διάρκειες και τιμές</h2>
+                <p class="text-slate-500 text-sm mb-7" data-i18n="q16s">Πόσα λεπτά, πώς το λέτε, και πόσο κοστίζει.</p>
+                <div id="durList" class="space-y-2 mb-3"></div>
+                <button type="button" onclick="addDurRow()" class="text-brand text-sm font-semibold" data-i18n="adddur">+ Πρόσθεσε διάρκεια</button>
+            </div>
+
+            <!-- ── σύνδεση (ξεχωριστά, με τα δύο πεδία μαζί για τους διαχειριστές κωδικών) ── -->
+            <div id="loginCard" class="hidden bg-white border border-slate-200 rounded-3xl p-7 shadow-sm">
+                <h2 class="text-2xl font-extrabold tracking-tight mb-6" data-i18n="logint">Σύνδεση</h2>
+                <label class="text-xs font-semibold text-slate-400 block mb-1.5" data-i18n="lemail">Email</label>
+                <input id="loginEmail" type="email" autocomplete="username" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base mb-4">
+                <label class="text-xs font-semibold text-slate-400 block mb-1.5" data-i18n="lpass">Κωδικός</label>
+                <input id="loginPass" type="password" autocomplete="current-password" class="w-full px-4 py-3.5 border border-slate-200 rounded-2xl text-base mb-5">
+                <button type="button" onclick="doLogin()" class="w-full grad text-white py-3.5 rounded-2xl font-bold hover:opacity-95 transition" data-i18n="loginbtn">Σύνδεση</button>
+                <p class="text-center text-xs text-slate-400 mt-4" data-i18n="isnew">Νέος;
+                    <span onclick="showRegister()" class="text-brand font-semibold cursor-pointer">Εγγραφή</span></p>
+            </div>
+
         </div>
-    </div>
+    </main>
 
-    <!-- ═══ STEP 3: Courts + Pricing ═══ -->
-    <div id="step3" class="hidden bg-white rounded-3xl shadow-xl p-7">
-        <h1 id="step3Title" class="text-2xl font-extrabold mb-1" data-i18n="s32">Γήπεδα & Τιμές</h1>
-        <p id="step3Sub" class="text-slate-500 text-sm mb-6" data-i18n="s33">Πρόσθεσε όσα γήπεδα θες</p>
-
-        <label class="text-xs font-semibold text-slate-400 block mb-2" data-i18n="s34">Γήπεδα</label>
-        <div id="courtsList" class="space-y-2 mb-3"></div>
-        <button onclick="addCourtRow()" class="text-brand text-sm font-semibold mb-6" data-i18n="s35">+ Πρόσθεσε γήπεδο</button>
-
-        <div id="pricingBlock">
-            <label class="text-xs font-semibold text-slate-400 block mb-2" data-i18n="s36">Διάρκειες & Τιμές</label>
-            <div id="durList" class="space-y-2 mb-3"></div>
-            <button onclick="addDurRow()" class="text-brand text-sm font-semibold mb-6" data-i18n="s37">+ Πρόσθεσε διάρκεια</button>
+    <!-- ── πλοήγηση ── -->
+    <footer id="navBar" class="sticky bottom-0 bg-slate-50/90 backdrop-blur border-t border-slate-200 px-5 py-4">
+        <div class="max-w-xl mx-auto flex items-center gap-3">
+            <button type="button" id="backBtn" onclick="qPrev()" class="px-5 py-3.5 rounded-2xl font-bold text-sm bg-white border border-slate-200 text-slate-600 hover:bg-slate-100 transition" data-i18n="back">←</button>
+            <button type="button" id="skipBtn" onclick="qNext(true)" class="hidden px-4 py-3.5 rounded-2xl font-semibold text-sm text-slate-400 hover:text-slate-600 transition" data-i18n="skip">Παράλειψη</button>
+            <button type="button" id="nextBtn" onclick="qNext()" class="flex-1 grad text-white py-3.5 rounded-2xl font-bold hover:opacity-95 transition" data-i18n="cont">Συνέχεια →</button>
         </div>
+        <p id="counter" class="max-w-xl mx-auto text-center text-[11px] text-slate-400 mt-2.5"></p>
+    </footer>
 
-        <div class="flex gap-3">
-            <button onclick="goStep(2)" class="flex-1 py-3 rounded-xl font-bold text-sm bg-slate-100 text-slate-600 hover:bg-slate-200 transition" data-i18n="s38">← Πίσω</button>
-            <button id="finishBtn" onclick="finish()" class="flex-[2] grad text-white py-3 rounded-xl font-bold text-sm hover:opacity-95 transition" data-i18n="s39">✓ Δημιουργία Club</button>
-        </div>
-    </div>
 </div>
-
+<script src="config.js"></script>
+<script src="cb.js"></script>
 <script>
 /* ══════════ Πολυγλωσσία (EL προεπιλογή · EN · DE) ══════════
    Η γλώσσα έρχεται από το ?lang= ή από την επιλογή που έκανε ο
    επισκέπτης στην αρχική — ίδιο localStorage, ίδιο domain. */
-const CB_T = {"en": {"s0": "← Back", "s1": "Your account", "s2": "As the club owner", "s3": "Continue →", "s4": "Log out", "s5": "Full name", "s6": "Email", "s7": "Phone", "s8": "Password", "s9": "Continue →", "s10": "Already have an account? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Log in</span>", "s11": "Email", "s12": "Password", "s13": "Log in", "s14": "New here? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Sign up</span>", "s15": "Your club", "s16": "Basic details", "s17": "Club name", "s18": "Sport", "s19": "What does the club do?", "s20": "<b>Court bookings &amp; training</b><span class=\"block text-[11px] text-slate-400 mt-0.5\">Members book courts themselves, with a price list. Training groups run as well.</span>", "s21": "<b>Training only</b><span class=\"block text-[11px] text-slate-400 mt-0.5\">The courts are taken by training groups. Nobody books a court to play, no prices anywhere.</span>", "s22": "We track <b>monthly membership fees</b><span class=\"block text-[11px] text-slate-400\">The office ticks off who paid each month; the member sees it on their phone.</span>", "s23": "Logo (URL — optional)", "s24": "Phone", "s25": "City / Address", "s26": "Club email (for booking notifications)", "s27": "Opens (time)", "s28": "Closes (time)", "s29": "your-club", "s30": "← Back", "s31": "Continue →", "s32": "Courts & Prices", "s33": "Add as many courts as you like", "s34": "Courts", "s35": "+ Add court", "s36": "Durations & Prices", "s37": "+ Add duration", "s38": "← Back", "s39": "✓ Create club", "s40": "⚠️ Supabase is not configured. Fill in <b>config.js</b> first (see the README).", "ph0": "John Smith", "ph1": "e.g. Riverside Tennis Club", "ph2": "Manchester", "_title": "Create your club — CourtBook", "s41": "Coaches get <b>their own login</b><span class=\"block text-[11px] text-slate-400\">Each one sees only their own groups and takes attendance from their phone.</span>"}, "de": {"s0": "← Zurück", "s1": "Dein Konto", "s2": "Als Clubinhaber", "s3": "Weiter →", "s4": "Abmelden", "s5": "Vor- und Nachname", "s6": "E-Mail", "s7": "Telefon", "s8": "Passwort", "s9": "Weiter →", "s10": "Schon ein Konto? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Anmelden</span>", "s11": "E-Mail", "s12": "Passwort", "s13": "Anmelden", "s14": "Neu hier? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Registrieren</span>", "s15": "Dein Club", "s16": "Grunddaten", "s17": "Clubname", "s18": "Sportart", "s19": "Was macht der Club?", "s20": "<b>Platzbuchungen &amp; Training</b><span class=\"block text-[11px] text-slate-400 mt-0.5\">Mitglieder buchen selbst Plätze, mit Preisliste. Trainingsgruppen gibt es ebenfalls.</span>", "s21": "<b>Nur Training</b><span class=\"block text-[11px] text-slate-400 mt-0.5\">Die Plätze belegen die Trainingsgruppen. Niemand bucht einen Platz zum Spielen, nirgends Preise.</span>", "s22": "Wir führen <b>monatliche Mitgliedsbeiträge</b><span class=\"block text-[11px] text-slate-400\">Das Sekretariat hakt ab, wer jeden Monat bezahlt hat; das Mitglied sieht es auf dem Handy.</span>", "s23": "Logo (URL — optional)", "s24": "Telefon", "s25": "Stadt / Adresse", "s26": "Club-E-Mail (für Buchungsbenachrichtigungen)", "s27": "Öffnet (Uhrzeit)", "s28": "Schließt (Uhrzeit)", "s29": "dein-club", "s30": "← Zurück", "s31": "Weiter →", "s32": "Plätze & Preise", "s33": "Füge so viele Plätze hinzu, wie du willst", "s34": "Plätze", "s35": "+ Platz hinzufügen", "s36": "Dauern & Preise", "s37": "+ Dauer hinzufügen", "s38": "← Zurück", "s39": "✓ Club erstellen", "s40": "⚠️ Supabase ist nicht konfiguriert. Fülle zuerst <b>config.js</b> aus (siehe README).", "ph0": "Max Mustermann", "ph1": "z.B. TC Musterstadt", "ph2": "München", "_title": "Erstelle deinen Club — CourtBook", "s41": "Trainer bekommen <b>einen eigenen Zugang</b><span class=\"block text-[11px] text-slate-400\">Jeder sieht nur seine eigenen Gruppen und trägt die Anwesenheit vom Handy aus ein.</span>"}};
-const CB_S = {"en": {"Γήπεδο 1": "Court 1", "Γήπεδο 2": "Court 2", "1 ώρα": "1 hour", "1½ ώρα": "1½ hours", "2 ώρες": "2 hours", " (επόμ. μέρα)": " (next day)", "Συνδεδεμένος ως": "Signed in as", "Πήγαινε στο": "Go to", "+ Φτιάξε νέο club": "+ Create another club", "Αποσύνδεση": "Log out", "Όνομα γηπέδου": "Court name", "λεπτά": "minutes", "ετικέτα": "label", "Γήπεδα & Τιμές": "Courts & Prices", "Γήπεδα": "Courts", "Πρόσθεσε όσα γήπεδα θες": "Add as many courts as you like", "Πρόσθεσε τα γήπεδα όπου γίνονται οι προπονήσεις": "Add the courts where training takes place", "to-club-sou": "your-club", "Ρύθμισε πρώτα το config.js": "Set up config.js first", "Βάλε ονοματεπώνυμο": "Enter your full name", "Μη έγκυρο email": "Invalid email", "Μη έγκυρο τηλέφωνο": "Invalid phone number", "Κωδικός ≥ 6 χαρακτήρες": "Password must be at least 6 characters", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Check your email to confirm, then log in", "Λογαριασμός έτοιμος!": "Account ready!", "Σφάλμα εγγραφής": "Sign-up failed", "Καλώς ήρθες!": "Welcome back!", "Συνδέθηκες!": "Signed in!", "Λάθος email ή κωδικός": "Wrong email or password", "Κάνε πρώτα λογαριασμό": "Create an account first", "Βάλε όνομα club": "Enter a club name", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Add at least 1 court", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Add at least 1 duration/price", "Το club κλείνει πριν ανοίξει": "The club closes before it opens", "🎉 Το club δημιουργήθηκε!": "🎉 Club created!", "Σφάλμα δημιουργίας": "Could not create the club"}, "de": {"Γήπεδο 1": "Platz 1", "Γήπεδο 2": "Platz 2", "1 ώρα": "1 Stunde", "1½ ώρα": "1½ Stunden", "2 ώρες": "2 Stunden", " (επόμ. μέρα)": " (nächster Tag)", "Συνδεδεμένος ως": "Angemeldet als", "Πήγαινε στο": "Gehe zu", "+ Φτιάξε νέο club": "+ Weiteren Club erstellen", "Αποσύνδεση": "Abmelden", "Όνομα γηπέδου": "Platzname", "λεπτά": "Minuten", "ετικέτα": "Bezeichnung", "Γήπεδα & Τιμές": "Plätze & Preise", "Γήπεδα": "Plätze", "Πρόσθεσε όσα γήπεδα θες": "Füge so viele Plätze hinzu, wie du willst", "Πρόσθεσε τα γήπεδα όπου γίνονται οι προπονήσεις": "Füge die Plätze hinzu, auf denen trainiert wird", "to-club-sou": "dein-club", "Ρύθμισε πρώτα το config.js": "Richte zuerst config.js ein", "Βάλε ονοματεπώνυμο": "Gib deinen vollständigen Namen ein", "Μη έγκυρο email": "Ungültige E-Mail", "Μη έγκυρο τηλέφωνο": "Ungültige Telefonnummer", "Κωδικός ≥ 6 χαρακτήρες": "Passwort mindestens 6 Zeichen", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Bestätige deine E-Mail, dann melde dich an", "Λογαριασμός έτοιμος!": "Konto bereit!", "Σφάλμα εγγραφής": "Registrierung fehlgeschlagen", "Καλώς ήρθες!": "Willkommen zurück!", "Συνδέθηκες!": "Angemeldet!", "Λάθος email ή κωδικός": "Falsche E-Mail oder falsches Passwort", "Κάνε πρώτα λογαριασμό": "Erstelle zuerst ein Konto", "Βάλε όνομα club": "Gib einen Clubnamen ein", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Füge mindestens 1 Platz hinzu", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Füge mindestens 1 Dauer/Preis hinzu", "Το club κλείνει πριν ανοίξει": "Der Club schließt, bevor er öffnet", "🎉 Το club δημιουργήθηκε!": "🎉 Club erstellt!", "Σφάλμα δημιουργίας": "Erstellen fehlgeschlagen"}};
+const CB_T = {"en": {"warn": "⚠️ Supabase is not configured. Fill in <b>config.js</b> first (see the README).", "home": "← Home", "sec1": "Your account", "sec1b": "Your account", "sec1c": "Your account", "sec1d": "Your account", "q1t": "What's your name?", "q1s": "You will be the club's administrator.", "q2t": "Your email", "q2s": "This is what you'll log in with.", "haveacc": "Already have an account? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Log in</span>", "q3t": "Your phone number", "q3s": "So we can reach you if something comes up.", "q4t": "Choose a password", "q4s": "At least 6 characters.", "sec2": "Your club", "sec2b": "Your club", "sec2c": "Your club", "sec2d": "Your club", "sec2e": "Your club", "sec2f": "Your club", "sec2g": "Your club", "sec2h": "Your club", "sec2i": "Your club", "sec2j": "Your club", "q5t": "What is the club called?", "q5s": "This is what your members will see everywhere.", "yourlink": "Your link:", "slug": "your-club", "q6t": "What do you play?", "q7t": "What does the club do?", "q7s": "You can change this later.", "q7a": "<b class=\"block mb-0.5\">Court bookings &amp; training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Members book courts themselves, with a price list. Training groups run as well.</span>", "q7b": "<b class=\"block mb-0.5\">Training only</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">The courts are taken by training groups. Nobody books a court to play, no prices anywhere.</span>", "q8t": "Do you collect monthly fees?", "q8s": "The office ticks off who paid each month; the member sees it on their phone.", "yes": "Yes", "no": "No", "yes2": "Yes", "no2": "No", "q9t": "Do your coaches need their own login?", "q9s": "Each one sees only their own groups and takes attendance from their phone.", "q10t": "The club's phone number", "q10s": "So members can reach you.", "q11t": "Where are you?", "q11s": "City or address.", "q12t": "Where should notifications go?", "q12s": "Every new booking and every new member sign-up lands here.", "q13t": "When do you open and close?", "q13s": "Everything will happen inside these hours.", "opens": "Opens", "closes": "Closes", "q14t": "Do you have a logo?", "q14s": "Paste the image address. You can also do this later from Settings.", "sec3": "Your courts", "sec3b": "Your courts", "q15t": "What are your courts?", "q15s": "Write the name of each one, as your members call it.", "addcourt": "+ Add court", "q16t": "Durations and prices", "q16s": "How many minutes, what you call it, and what it costs.", "adddur": "+ Add duration", "logint": "Log in", "lemail": "Email", "lpass": "Password", "loginbtn": "Log in", "isnew": "New here? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Sign up</span>", "back": "←", "skip": "Skip", "cont": "Continue →", "_title": "Create your club — CourtBook", "ph1": "John Smith", "ph2": "e.g. Riverside Tennis Club", "ph3": "Manchester"}, "de": {"warn": "⚠️ Supabase ist nicht konfiguriert. Fülle zuerst <b>config.js</b> aus (siehe README).", "home": "← Startseite", "sec1": "Dein Konto", "sec1b": "Dein Konto", "sec1c": "Dein Konto", "sec1d": "Dein Konto", "q1t": "Wie heißt du?", "q1s": "Du wirst der Administrator des Clubs sein.", "q2t": "Deine E-Mail", "q2s": "Damit meldest du dich an.", "haveacc": "Schon ein Konto? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Anmelden</span>", "q3t": "Deine Telefonnummer", "q3s": "Damit wir dich erreichen können, falls etwas ist.", "q4t": "Wähle ein Passwort", "q4s": "Mindestens 6 Zeichen.", "sec2": "Dein Club", "sec2b": "Dein Club", "sec2c": "Dein Club", "sec2d": "Dein Club", "sec2e": "Dein Club", "sec2f": "Dein Club", "sec2g": "Dein Club", "sec2h": "Dein Club", "sec2i": "Dein Club", "sec2j": "Dein Club", "q5t": "Wie heißt der Club?", "q5s": "Das sehen deine Mitglieder überall.", "yourlink": "Dein Link:", "slug": "dein-club", "q6t": "Was spielt ihr?", "q7t": "Was macht der Club?", "q7s": "Du kannst das später ändern.", "q7a": "<b class=\"block mb-0.5\">Platzbuchungen &amp; Training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Mitglieder buchen selbst Plätze, mit Preisliste. Trainingsgruppen gibt es ebenfalls.</span>", "q7b": "<b class=\"block mb-0.5\">Nur Training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Die Plätze belegen die Trainingsgruppen. Niemand bucht einen Platz zum Spielen, nirgends Preise.</span>", "q8t": "Erhebt ihr monatliche Beiträge?", "q8s": "Das Sekretariat hakt ab, wer jeden Monat bezahlt hat; das Mitglied sieht es auf dem Handy.", "yes": "Ja", "no": "Nein", "yes2": "Ja", "no2": "Nein", "q9t": "Brauchen deine Trainer einen eigenen Zugang?", "q9s": "Jeder sieht nur seine eigenen Gruppen und trägt die Anwesenheit vom Handy aus ein.", "q10t": "Die Telefonnummer des Clubs", "q10s": "Damit Mitglieder euch erreichen.", "q11t": "Wo seid ihr?", "q11s": "Stadt oder Adresse.", "q12t": "Wohin sollen die Benachrichtigungen?", "q12s": "Hier landet jede neue Buchung und jede neue Mitgliedsanmeldung.", "q13t": "Wann öffnet und schließt ihr?", "q13s": "Innerhalb dieser Zeiten findet alles statt.", "opens": "Öffnet", "closes": "Schließt", "q14t": "Habt ihr ein Logo?", "q14s": "Füge die Bildadresse ein. Das geht auch später in den Einstellungen.", "sec3": "Deine Plätze", "sec3b": "Deine Plätze", "q15t": "Welche Plätze habt ihr?", "q15s": "Schreibe den Namen jedes Platzes, so wie ihn deine Mitglieder nennen.", "addcourt": "+ Platz hinzufügen", "q16t": "Dauern und Preise", "q16s": "Wie viele Minuten, wie ihr es nennt, und was es kostet.", "adddur": "+ Dauer hinzufügen", "logint": "Anmelden", "lemail": "E-Mail", "lpass": "Passwort", "loginbtn": "Anmelden", "isnew": "Neu hier? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Registrieren</span>", "back": "←", "skip": "Überspringen", "cont": "Weiter →", "_title": "Erstelle deinen Club — CourtBook", "ph1": "Max Mustermann", "ph2": "z.B. TC Musterstadt", "ph3": "München"}};
+const CB_S = {"en": {"Γήπεδο 1": "Court 1", "Γήπεδο 2": "Court 2", "1 ώρα": "1 hour", "1½ ώρα": "1½ hours", "2 ώρες": "2 hours", " (επόμ. μέρα)": " (next day)", "Συνδεδεμένος ως": "Signed in as", "Πήγαινε στο": "Go to", "Αποσύνδεση": "Log out", "Όνομα γηπέδου": "Court name", "λεπτά": "minutes", "ετικέτα": "label", "to-club-sou": "your-club", "Συνέχεια →": "Continue →", "✓ Δημιουργία Club": "✓ Create club", "Ρύθμισε πρώτα το config.js": "Set up config.js first", "Βάλε ονοματεπώνυμο": "Enter your full name", "Μη έγκυρο email": "Invalid email", "Μη έγκυρο τηλέφωνο": "Invalid phone number", "Κωδικός ≥ 6 χαρακτήρες": "Password must be at least 6 characters", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Check your email to confirm, then log in", "Λογαριασμός έτοιμος!": "Account ready!", "Σφάλμα εγγραφής": "Sign-up failed", "Καλώς ήρθες!": "Welcome back!", "Συνδέθηκες!": "Signed in!", "Λάθος email ή κωδικός": "Wrong email or password", "Κάνε πρώτα λογαριασμό": "Create an account first", "Βάλε όνομα club": "Enter a club name", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Add at least 1 court", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Add at least 1 duration/price", "Το club κλείνει πριν ανοίξει": "The club closes before it opens", "🎉 Το club δημιουργήθηκε!": "🎉 Club created!", "Σφάλμα δημιουργίας": "Could not create the club"}, "de": {"Γήπεδο 1": "Platz 1", "Γήπεδο 2": "Platz 2", "1 ώρα": "1 Stunde", "1½ ώρα": "1½ Stunden", "2 ώρες": "2 Stunden", " (επόμ. μέρα)": " (nächster Tag)", "Συνδεδεμένος ως": "Angemeldet als", "Πήγαινε στο": "Gehe zu", "Αποσύνδεση": "Abmelden", "Όνομα γηπέδου": "Platzname", "λεπτά": "Minuten", "ετικέτα": "Bezeichnung", "to-club-sou": "dein-club", "Συνέχεια →": "Weiter →", "✓ Δημιουργία Club": "✓ Club erstellen", "Ρύθμισε πρώτα το config.js": "Richte zuerst config.js ein", "Βάλε ονοματεπώνυμο": "Gib deinen vollständigen Namen ein", "Μη έγκυρο email": "Ungültige E-Mail", "Μη έγκυρο τηλέφωνο": "Ungültige Telefonnummer", "Κωδικός ≥ 6 χαρακτήρες": "Passwort mindestens 6 Zeichen", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Bestätige deine E-Mail, dann melde dich an", "Λογαριασμός έτοιμος!": "Konto bereit!", "Σφάλμα εγγραφής": "Registrierung fehlgeschlagen", "Καλώς ήρθες!": "Willkommen zurück!", "Συνδέθηκες!": "Angemeldet!", "Λάθος email ή κωδικός": "Falsche E-Mail oder falsches Passwort", "Κάνε πρώτα λογαριασμό": "Erstelle zuerst ein Konto", "Βάλε όνομα club": "Gib einen Clubnamen ein", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Füge mindestens 1 Platz hinzu", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Füge mindestens 1 Dauer/Preis hinzu", "Το club κλείνει πριν ανοίξει": "Der Club schließt, bevor er öffnet", "🎉 Το club δημιουργήθηκε!": "🎉 Club erstellt!", "Σφάλμα δημιουργίας": "Erstellen fehlgeschlagen"}};
 let CB_LANG = 'el';
 (function(){
     const q = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
     if (q === 'el' || CB_T[q]) { CB_LANG = q; return; }
     try { const s = localStorage.getItem('cb_lang'); if (s === 'el' || CB_T[s]) CB_LANG = s; } catch(e) {}
 })();
-/* Μεταφράζει κείμενο που φτιάχνει η JavaScript. Κλειδί είναι το ίδιο
-   το ελληνικό — αν λείπει μετάφραση, γυρνάει το ελληνικό αυτούσιο. */
+/* Κλειδί είναι το ίδιο το ελληνικό — αν λείπει μετάφραση, γυρνάει αυτούσιο. */
 function L(s){ const t = CB_S[CB_LANG]; return (t && t[s] != null) ? t[s] : s; }
 </script>
-<script src="config.js"></script>
-<script src="cb.js"></script>
 <script>
-let _account = null; // logged-in user
+let _account = null;          // συνδεδεμένος χρήστης
+let _clubMode = 'full';       // 'training' = μόνο προπονήσεις
+let _cur = 0;                 // θέση στη λίστα ερωτήσεων
 
+const v = id => (document.getElementById(id).value || '').trim();
+
+/* ══════════ Οι ερωτήσεις, με τη σειρά ══════════
+   acct     : εμφανίζεται μόνο όσο δεν υπάρχει λογαριασμός
+   only     : συνθήκη εμφάνισης
+   skip     : προαιρετική — δείχνει «Παράλειψη»
+   check    : επιστρέφει μήνυμα λάθους ή null
+   onNext   : ασύγχρονη ενέργεια πριν προχωρήσει (π.χ. δημιουργία λογαριασμού) */
+const QS = [
+    { id:'ownerName',   acct:true, check:()=> v('ownerName') ? null : L('Βάλε ονοματεπώνυμο') },
+    { id:'ownerEmail',  acct:true, check:()=> cbValidEmail(v('ownerEmail')) ? null : L('Μη έγκυρο email') },
+    { id:'ownerPhone',  acct:true, check:()=> cbValidPhone(v('ownerPhone')) ? null : L('Μη έγκυρο τηλέφωνο') },
+    { id:'ownerPass',   acct:true, check:()=> document.getElementById('ownerPass').value.length >= 6 ? null : L('Κωδικός ≥ 6 χαρακτήρες'), onNext: createAccount },
+    { id:'clubName',    check:()=> v('clubName') ? null : L('Βάλε όνομα club') },
+    { id:'clubSport'  },
+    { id:'clubMode'   },
+    { id:'clubSubs'   },
+    { id:'clubCoaches'},
+    { id:'clubPhone',   skip:true, check:()=> !v('clubPhone') || cbValidPhone(v('clubPhone')) ? null : L('Μη έγκυρο τηλέφωνο') },
+    { id:'clubAddress', skip:true },
+    { id:'clubEmail',   check:()=> !v('clubEmail') || cbValidEmail(v('clubEmail')) ? null : L('Μη έγκυρο email') },
+    { id:'clubHours',   check:()=> _closeM() > _openM() ? null : L('Το club κλείνει πριν ανοίξει') },
+    { id:'clubLogo',    skip:true },
+    { id:'courts',      check:()=> courtVals().length ? null : L('Πρόσθεσε τουλάχιστον 1 γήπεδο') },
+    { id:'durations',   only:()=> _clubMode === 'full', check:()=> durVals().length ? null : L('Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή') },
+];
+const activeQs = () => QS.filter(q => (!q.acct || !_account) && (!q.only || q.only()));
+
+function showQ(i){
+    const list = activeQs();
+    _cur = Math.max(0, Math.min(i, list.length - 1));
+    const q = list[_cur];
+    document.querySelectorAll('.q').forEach(el => el.classList.add('hidden'));
+    const el = document.querySelector('[data-q="' + q.id + '"]');
+    el.classList.remove('hidden');
+    el.classList.remove('q'); void el.offsetWidth; el.classList.add('q');   // ξαναπαίζει η κίνηση
+
+    document.getElementById('progBar').style.width = ((_cur + 1) / list.length * 100) + '%';
+    document.getElementById('counter').textContent = (_cur + 1) + ' / ' + list.length;
+    document.getElementById('backBtn').classList.toggle('invisible', _cur === 0);
+    document.getElementById('skipBtn').classList.toggle('hidden', !q.skip);
+
+    const last = _cur === list.length - 1;
+    const nb = document.getElementById('nextBtn');
+    nb.textContent = last ? L('✓ Δημιουργία Club') : L('Συνέχεια →');
+
+    const inp = el.querySelector('input:not([type=hidden]):not(.hidden), select:not(.hidden)');
+    if (inp && !('ontouchstart' in window)) setTimeout(() => inp.focus(), 60);
+    window.scrollTo(0, 0);
+}
+
+async function qNext(skipping){
+    const list = activeQs(), q = list[_cur];
+    if (!skipping && q.check) {
+        const err = q.check();
+        if (err) return cbToast(err, 'err');
+    }
+    if (!skipping && q.onNext) { if (!await q.onNext()) return; return showQ(0); }
+    if (_cur === list.length - 1) return finish();
+    showQ(_cur + 1);
+}
+function qPrev(){ if (_cur > 0) showQ(_cur - 1); }
+
+document.addEventListener('keydown', e => {
+    if (e.key !== 'Enter' || document.getElementById('loginCard').classList.contains('hidden') === false) return;
+    if (e.target && e.target.tagName === 'TEXTAREA') return;
+    e.preventDefault(); qNext();
+});
+
+/* ── κάρτες επιλογής (αντί για μικροσκοπικά radio/checkbox) ── */
+document.addEventListener('click', e => {
+    const c = e.target.closest('.choice');
+    if (!c) return;
+    const group = c.dataset.choice, val = c.dataset.val;
+    document.querySelectorAll('.choice[data-choice="' + group + '"]').forEach(x => x.classList.toggle('on', x === c));
+    if (group === 'clubSport')   document.getElementById('clubSport').value = val;
+    if (group === 'clubMode')    setClubMode(val);
+    if (group === 'clubSubs')    document.getElementById('clubSubs').checked = val === '1';
+    if (group === 'clubCoaches') document.getElementById('clubCoaches').checked = val === '1';
+});
+
+/* ══════════ Εκκίνηση ══════════ */
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!cbConfigured()) { document.getElementById('cfgWarn').classList.remove('hidden'); }
+    if (!cbConfigured()) document.getElementById('cfgWarn').classList.remove('hidden');
     addCourtRow(L('Γήπεδο 1'));
     addCourtRow(L('Γήπεδο 2'));
-    addDurRow(60, L('1 ώρα'), 24);
-    addDurRow(90, L('1½ ώρα'), 36);
+    addDurRow(60,  L('1 ώρα'),  24);
+    addDurRow(90,  L('1½ ώρα'), 36);
     addDurRow(120, L('2 ώρες'), 48);
+    fillHours();
 
     const u = await cbCurrentUser();
     if (u) {
         _account = u;
-        document.getElementById('loggedInBox').classList.remove('hidden');
-        document.getElementById('accountForm').classList.add('hidden');
-        document.getElementById('loggedInEmail').textContent = u.email;
-        // Αν έχει ήδη club → προσφέρεις γρήγορη μετάβαση
         const { data: mine } = await sb.from('clubs').select('slug,name').eq('owner_id', u.id);
-        if (mine && mine.length) {
-            const box = document.getElementById('loggedInBox');
-            box.innerHTML = `✓ ${L('Συνδεδεμένος ως')} <b>${u.email}</b>.<div class="mt-2 flex flex-col gap-1.5">`
-                + mine.map(c => `<a href="app.html?club=${c.slug}" class="text-brand font-semibold underline">→ ${L('Πήγαινε στο')} "${c.name}"</a>`).join('')
-                + `<button onclick="goStep(2)" class="text-slate-500 underline text-left">${L('+ Φτιάξε νέο club')}</button>`
-                + `<button onclick="doLogout()" class="text-slate-400 underline text-left">${L('Αποσύνδεση')}</button></div>`;
-        }
+        const box = document.getElementById('loggedInBox');
+        box.classList.remove('hidden');
+        box.innerHTML = '✓ ' + L('Συνδεδεμένος ως') + ' <b>' + cbEsc(u.email) + '</b>.'
+            + '<div class="mt-2 flex flex-col gap-1.5">'
+            + (mine || []).map(c => '<a href="app.html?club=' + encodeURIComponent(c.slug) + '" class="text-brand font-semibold underline">→ '
+                + L('Πήγαινε στο') + ' &laquo;' + cbEsc(c.name) + '&raquo;</a>').join('')
+            + '<button type="button" onclick="doLogout()" class="text-slate-400 underline text-left">' + L('Αποσύνδεση') + '</button></div>';
+        const ce = document.getElementById('clubEmail');
+        if (ce && !ce.value) ce.value = u.email || '';
     }
+    showQ(0);
 });
 
-/* ── Step navigation ── */
-/* Τύπος συλλόγου. «training» = μόνο προπονήσεις: χωρίς κρατήσεις
-   γηπέδων και χωρίς τιμοκατάλογο — άρα ούτε βήμα τιμών. */
-let _clubMode = 'full';
-
-/* Ωράριο. Η μισή ώρα προσφέρεται ΜΟΝΟ σε συλλόγους προπονήσεων —
-   εκεί τα τμήματα ξεκινούν «τέσσερις και μισή». Ένα club που νοικιάζει
-   γήπεδα ανοίγει σε ακέραιες ώρες, όπως πάντα. */
-function fillHours(){
-    const step = _clubMode === 'full' ? 60 : 30;
-    const o=document.getElementById('clubOpen'), c=document.getElementById('clubClose');
-    const prevO=parseInt(o.value)||9*60, prevC=parseInt(c.value)||23*60;
-    // Το κλείσιμο φτάνει ως τις 04:00 της επόμενης μέρας — υπάρχουν club
-    // που δουλεύουν μετά τα μεσάνυχτα.
-    const lbl = m => m<=1440 ? cbM2T(m) : cbM2T(m-1440)+L(' (επόμ. μέρα)');
-    const opts=(a,b)=>{ let out=''; for(let m=a;m<=b;m+=step) out+=`<option value="${m}">${lbl(m)}</option>`; return out; };
-    o.innerHTML = opts(0, 1440-step);
-    c.innerHTML = opts(step, 28*60);
-    // κράτα ό,τι είχε διαλέξει, αν χωράει στο νέο βήμα
-    o.value = prevO % step === 0 ? prevO : Math.floor(prevO/step)*step;
-    c.value = prevC % step === 0 ? prevC : Math.ceil(prevC/step)*step;
+/* ══════════ Λογαριασμός ══════════ */
+function showLogin(){
+    document.querySelectorAll('.q').forEach(el => el.classList.add('hidden'));
+    document.getElementById('loginCard').classList.remove('hidden');
+    document.getElementById('navBar').classList.add('hidden');
+    document.getElementById('progWrap').classList.add('hidden');
 }
-fillHours();
-function setClubMode(v) {
-    _clubMode = v;
-    const full = v === 'full';
-    document.getElementById('modeFullBox').className =
-        'flex items-start gap-2.5 p-3 border-2 rounded-xl cursor-pointer transition ' +
-        (full ? 'border-brand bg-blue-50/40' : 'border-slate-200');
-    document.getElementById('modeTrainBox').className =
-        'flex items-start gap-2.5 p-3 border-2 rounded-xl cursor-pointer transition ' +
-        (full ? 'border-slate-200' : 'border-brand bg-blue-50/40');
-    document.getElementById('pricingBlock').classList.toggle('hidden', !full);
-    document.getElementById('step3Title').textContent = full ? L('Γήπεδα & Τιμές') : L('Γήπεδα');
-    document.getElementById('step3Sub').textContent = full
-        ? L('Πρόσθεσε όσα γήπεδα θες')
-        : L('Πρόσθεσε τα γήπεδα όπου γίνονται οι προπονήσεις');
-    fillHours();
+function showRegister(){
+    document.getElementById('loginCard').classList.add('hidden');
+    document.getElementById('navBar').classList.remove('hidden');
+    document.getElementById('progWrap').classList.remove('hidden');
+    showQ(0);
 }
 
-function goStep(n) {
-    // προσυμπλήρωσε το email του club με του owner (αν κενό)
-    if (n === 2 && _account) {
-        const ce = document.getElementById('clubEmail');
-        if (ce && !ce.value) ce.value = _account.email || '';
-    }
-    [1,2,3].forEach(i => document.getElementById('step'+i).classList.add('hidden'));
-    document.getElementById('step'+n).classList.remove('hidden');
-    [1,2,3].forEach(i => {
-        const d = document.getElementById('dot'+i);
-        d.classList.remove('active','done');
-        if (i < n) d.classList.add('done');
-        if (i === n) d.classList.add('active');
-    });
-    window.scrollTo(0,0);
-}
-
-/* ── Account ── */
-function showLogin()    { document.getElementById('accountForm').classList.add('hidden'); document.getElementById('loginForm').classList.remove('hidden'); }
-function showRegister() { document.getElementById('loginForm').classList.add('hidden'); document.getElementById('accountForm').classList.remove('hidden'); }
-
-async function createAccount() {
-    if (!cbConfigured()) return cbToast(L('Ρύθμισε πρώτα το config.js'), 'err');
-    const name  = document.getElementById('ownerName').value.trim();
-    const email = document.getElementById('ownerEmail').value.trim().toLowerCase();
-    const phone = document.getElementById('ownerPhone').value.trim();
-    const pass  = document.getElementById('ownerPass').value;
-    if (!name) return cbToast(L('Βάλε ονοματεπώνυμο'), 'err');
-    if (!cbValidEmail(email)) return cbToast(L('Μη έγκυρο email'), 'err');
-    if (!cbValidPhone(phone)) return cbToast(L('Μη έγκυρο τηλέφωνο'), 'err');
-    if (pass.length < 6) return cbToast(L('Κωδικός ≥ 6 χαρακτήρες'), 'err');
+/* Επιστρέφει true μόνο αν ο λογαριασμός είναι έτοιμος. */
+async function createAccount(){
+    if (!cbConfigured()) { cbToast(L('Ρύθμισε πρώτα το config.js'), 'err'); return false; }
     cbLoading(true);
     try {
-        await cbSignUp(email, pass, name, phone);
-        // some Supabase projects require email confirmation; try immediate sign-in
-        try { await cbSignIn(email, pass); } catch(e) {}
+        await cbSignUp(v('ownerEmail'), document.getElementById('ownerPass').value, v('ownerName'), v('ownerPhone'));
+        try { await cbSignIn(v('ownerEmail'), document.getElementById('ownerPass').value); } catch(e) {}
         const u = await cbCurrentUser();
-        if (!u) { cbToast(L('Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση'), 'ok'); showLogin(); return; }
+        if (!u) { cbToast(L('Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση'), 'ok'); showLogin(); return false; }
         _account = u;
+        const ce = document.getElementById('clubEmail');
+        if (ce && !ce.value) ce.value = u.email || '';
         cbToast(L('Λογαριασμός έτοιμος!'));
-        goStep(2);
+        return true;
     } catch(e) {
         cbToast(e.message || L('Σφάλμα εγγραφής'), 'err');
+        return false;
     } finally { cbLoading(false); }
 }
 
-async function doLogin() {
-    const email = document.getElementById('loginEmail').value.trim().toLowerCase();
-    const pass  = document.getElementById('loginPass').value;
+async function doLogin(){
     cbLoading(true);
     try {
-        await cbSignIn(email, pass);
+        await cbSignIn(v('loginEmail').toLowerCase(), document.getElementById('loginPass').value);
         _account = await cbCurrentUser();
-        // Αν ο χρήστης έχει ήδη club, πήγαινέ τον κατευθείαν εκεί
         const { data: mine } = await sb.from('clubs').select('slug').eq('owner_id', _account.id).limit(1);
-        if (mine && mine.length) { cbToast(L('Καλώς ήρθες!')); location.href = `app.html?club=${mine[0].slug}`; return; }
+        if (mine && mine.length) { cbToast(L('Καλώς ήρθες!')); location.href = 'app.html?club=' + encodeURIComponent(mine[0].slug); return; }
         cbToast(L('Συνδέθηκες!'));
-        goStep(2);
+        showRegister();
     } catch(e) { cbToast(L('Λάθος email ή κωδικός'), 'err'); }
     finally { cbLoading(false); }
 }
+async function doLogout(){ await cbSignOut(); location.reload(); }
 
-async function doLogout() { await cbSignOut(); location.reload(); }
-
-/* ── Slug ── */
-function updateSlug() {
-    const s = cbSlugify(document.getElementById('clubName').value) || L('to-club-sou');
-    document.getElementById('slugPreview').textContent = s;
+/* ══════════ Πεδία ══════════ */
+function updateSlug(){
+    document.getElementById('slugPreview').textContent = cbSlugify(v('clubName')) || L('to-club-sou');
 }
 
-/* ── Courts rows ── */
-function addCourtRow(val='') {
-    const wrap = document.getElementById('courtsList');
+/* Η μισή ώρα προσφέρεται ΜΟΝΟ σε συλλόγους προπονήσεων — εκεί τα τμήματα
+   ξεκινούν «τέσσερις και μισή». Ένα club που νοικιάζει γήπεδα ανοίγει σε
+   ακέραιες ώρες. Το κλείσιμο φτάνει ως τις 04:00 της επόμενης μέρας. */
+function fillHours(){
+    const step = _clubMode === 'full' ? 60 : 30;
+    const o = document.getElementById('clubOpen'), c = document.getElementById('clubClose');
+    const prevO = parseInt(o.value) || 9*60, prevC = parseInt(c.value) || 23*60;
+    const lbl = m => m <= 1440 ? cbM2T(m) : cbM2T(m-1440) + L(' (επόμ. μέρα)');
+    const opts = (a,b) => { let out=''; for (let m=a; m<=b; m+=step) out += '<option value="'+m+'">'+lbl(m)+'</option>'; return out; };
+    o.innerHTML = opts(0, 1440-step);
+    c.innerHTML = opts(step, 28*60);
+    o.value = prevO % step === 0 ? prevO : Math.floor(prevO/step)*step;
+    c.value = prevC % step === 0 ? prevC : Math.ceil(prevC/step)*step;
+}
+function setClubMode(mode){ _clubMode = mode; fillHours(); }
+
+function addCourtRow(val){
     const row = document.createElement('div');
     row.className = 'flex gap-2';
-    row.innerHTML = `<input type="text" value="${val}" placeholder="${L('Όνομα γηπέδου')}" class="court-inp flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <button onclick="this.parentElement.remove()" class="px-3 text-red-400 hover:text-red-600">✕</button>`;
-    wrap.appendChild(row);
+    row.innerHTML = '<input type="text" value="' + cbEsc(val || '') + '" placeholder="' + L('Όνομα γηπέδου') + '" class="court-inp flex-1 px-4 py-3 border border-slate-200 rounded-2xl text-base bg-white">'
+        + '<button type="button" onclick="this.parentElement.remove()" class="px-3 text-red-400 hover:text-red-600">✕</button>';
+    document.getElementById('courtsList').appendChild(row);
 }
-
-/* ── Duration rows ── */
-function addDurRow(min='', label='', price='') {
-    const wrap = document.getElementById('durList');
+function addDurRow(min, label, price){
     const row = document.createElement('div');
     row.className = 'flex gap-2 items-center';
-    row.innerHTML = `
-        <input type="number" value="${min}" placeholder="${L('λεπτά')}" class="dur-min w-20 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <input type="text" value="${label}" placeholder="${L('ετικέτα')}" class="dur-label flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <input type="number" value="${price}" placeholder="€" class="dur-price w-20 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <button onclick="this.parentElement.remove()" class="px-2 text-red-400 hover:text-red-600">✕</button>`;
-    wrap.appendChild(row);
+    row.innerHTML = '<input type="number" value="' + (min||'') + '" placeholder="' + L('λεπτά') + '" class="dur-min w-20 px-2 py-3 border border-slate-200 rounded-2xl text-base bg-white">'
+        + '<input type="text" value="' + cbEsc(label||'') + '" placeholder="' + L('ετικέτα') + '" class="dur-label flex-1 px-3 py-3 border border-slate-200 rounded-2xl text-base bg-white">'
+        + '<input type="number" value="' + (price!==undefined?price:'') + '" placeholder="€" class="dur-price w-20 px-2 py-3 border border-slate-200 rounded-2xl text-base bg-white">'
+        + '<button type="button" onclick="this.parentElement.remove()" class="px-2 text-red-400 hover:text-red-600">✕</button>';
+    document.getElementById('durList').appendChild(row);
 }
 
-/* ── Finish: create club + courts + durations ── */
-function _openM(){  return parseInt(document.getElementById('clubOpen').value)  || 540;  }
-function _closeM(){ return parseInt(document.getElementById('clubClose').value) || 1380; }
-
-async function finish() {
-    if (!_account) { cbToast(L('Κάνε πρώτα λογαριασμό'), 'err'); return goStep(1); }
-    const name = document.getElementById('clubName').value.trim();
-    if (!name) { cbToast(L('Βάλε όνομα club'), 'err'); return goStep(2); }
-
-    const courts = [...document.querySelectorAll('.court-inp')].map(i => i.value.trim()).filter(Boolean);
-    if (!courts.length) return cbToast(L('Πρόσθεσε τουλάχιστον 1 γήπεδο'), 'err');
-
-    const durs = [...document.querySelectorAll('#durList > div')].map(r => ({
+const courtVals = () => [...document.querySelectorAll('.court-inp')].map(i => i.value.trim()).filter(Boolean);
+const durVals   = () => [...document.querySelectorAll('#durList > div')].map(r => ({
         minutes: parseInt(r.querySelector('.dur-min').value),
         label:   r.querySelector('.dur-label').value.trim(),
         price:   parseFloat(r.querySelector('.dur-price').value)
     })).filter(d => d.minutes && d.label && !isNaN(d.price));
-    if (_clubMode === 'full' && !durs.length) return cbToast(L('Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή'), 'err');
 
-    if (_closeM() <= _openM()) return cbToast(L('Το club κλείνει πριν ανοίξει'), 'err');
+const _openM  = () => parseInt(document.getElementById('clubOpen').value)  || 540;
+const _closeM = () => parseInt(document.getElementById('clubClose').value) || 1380;
 
+/* ══════════ Δημιουργία ══════════ */
+async function finish(){
+    if (!_account) { cbToast(L('Κάνε πρώτα λογαριασμό'), 'err'); return showQ(0); }
+    const name = v('clubName');
+    const courts = courtVals(), durs = durVals();
     let slug = cbSlugify(name);
-    document.getElementById('finishBtn').disabled = true;
+    document.getElementById('nextBtn').disabled = true;
     cbLoading(true);
     try {
-        // ensure unique slug
         let { data: existing } = await sb.from('clubs').select('slug').eq('slug', slug).maybeSingle();
         if (existing) slug = slug + '-' + Math.random().toString(36).slice(2,6);
 
         const { data: club, error: cErr } = await sb.from('clubs').insert({
             slug, name,
             sport:      document.getElementById('clubSport').value,
-            logo_url:   document.getElementById('clubLogo').value.trim() || null,
-            phone:      document.getElementById('clubPhone').value.trim() || null,
-            email:      document.getElementById('clubEmail').value.trim() || _account.email || null,
-            address:    document.getElementById('clubAddress').value.trim() || null,
+            logo_url:   v('clubLogo')    || null,
+            phone:      v('clubPhone')   || null,
+            email:      v('clubEmail')   || _account.email || null,
+            address:    v('clubAddress') || null,
             open_hour:  Math.floor(_openM()/60),
             close_hour: Math.floor(_closeM()/60),
             // Μπαίνουν μόνο όταν δεν είναι ακέραια ώρα, ώστε η σελίδα να
@@ -435,9 +516,9 @@ async function finish() {
             slot_minutes: 30,
             owner_id:   _account.id,
             // Μπαίνουν μόνο όταν διαφέρουν από τα προεπιλεγμένα, ώστε η σελίδα
-            // να δουλεύει και πριν τρέξουν τα δύο migrations.
+            // να δουλεύει και πριν τρέξουν τα migrations.
             ...(_clubMode === 'full' ? {} : { bookings_enabled: false }),
-            ...(document.getElementById('clubSubs').checked ? { subscriptions_enabled: true } : {}),
+            ...(document.getElementById('clubSubs').checked    ? { subscriptions_enabled: true } : {}),
             ...(document.getElementById('clubCoaches').checked ? { coaches_enabled: true } : {})
         }).select().single();
         if (cErr) throw cErr;
@@ -446,15 +527,15 @@ async function finish() {
         if (durs.length) await sb.from('durations').insert(durs.map(d => ({ club_id: club.id, ...d })));
 
         cbToast(L('🎉 Το club δημιουργήθηκε!'));
-        setTimeout(() => location.href = `app.html?club=${slug}`, 900);
+        setTimeout(() => location.href = 'app.html?club=' + encodeURIComponent(slug), 900);
     } catch(e) {
         cbToast(e.message || L('Σφάλμα δημιουργίας'), 'err');
-        document.getElementById('finishBtn').disabled = false;
+        document.getElementById('nextBtn').disabled = false;
     } finally { cbLoading(false); }
 }
 </script>
 <script>
-/* Εφαρμογή γλώσσας στα στατικά κείμενα και στα δυναμικά που ήδη υπάρχουν. */
+/* Εφαρμογή γλώσσας στα στατικά κείμενα και σε όσα έφτιαξε ήδη η JavaScript. */
 (function(){
     const nodes = document.querySelectorAll('[data-i18n]');
     const phs   = document.querySelectorAll('[data-i18n-ph]');
@@ -471,30 +552,27 @@ async function finish() {
             if (seen.indexOf(inp.value) >= 0) inp.value = L(greek[i]);
         });
     }
-
     function apply(lang){
         CB_LANG = lang;
         const t = CB_T[lang] || null;
         nodes.forEach(el => {
-            const v = t ? t[el.dataset.i18n] : ORIG[el.dataset.i18n];
-            if (v != null) el.innerHTML = v;
+            const val = t ? t[el.dataset.i18n] : ORIG[el.dataset.i18n];
+            if (val != null) el.innerHTML = val;
         });
         phs.forEach(el => {
-            const v = t ? t[el.dataset.i18nPh] : ORIGPH[el.dataset.i18nPh];
-            if (v != null) el.placeholder = v;
+            const val = t ? t[el.dataset.i18nPh] : ORIGPH[el.dataset.i18nPh];
+            if (val != null) el.placeholder = val;
         });
         document.documentElement.lang = lang;
         document.title = t ? t._title : ELTITLE;
-
-        /* όσα έφτιαξε η JavaScript πριν την αλλαγή */
         document.querySelectorAll('.court-inp').forEach(i => i.placeholder = L('Όνομα γηπέδου'));
         document.querySelectorAll('.dur-min').forEach(i => i.placeholder = L('λεπτά'));
         document.querySelectorAll('.dur-label').forEach(i => i.placeholder = L('ετικέτα'));
         swapDefaults('.court-inp', ['Γήπεδο 1','Γήπεδο 2']);
         swapDefaults('.dur-label', ['1 ώρα','1½ ώρα','2 ώρες']);
-        if (typeof setClubMode === 'function') setClubMode(_clubMode);
+        if (typeof fillHours === 'function') fillHours();
         if (typeof updateSlug === 'function') updateSlug();
-
+        if (typeof showQ === 'function') showQ(_cur);   // ξαναγράφει και τα κουμπιά πλοήγησης
         sw.querySelectorAll('button').forEach(b => {
             b.className = 'px-1.5 py-1 rounded-md transition ' + (b.dataset.lang === lang
                 ? 'bg-brand-light text-brand font-bold'
@@ -502,7 +580,6 @@ async function finish() {
         });
         try { localStorage.setItem('cb_lang', lang); } catch(e) {}
     }
-
     sw.addEventListener('click', e => {
         const b = e.target.closest('button[data-lang]');
         if (b) apply(b.dataset.lang);
