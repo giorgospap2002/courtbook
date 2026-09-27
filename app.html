@@ -619,7 +619,10 @@ let bookingsOn=true;
 // Μηνιαίες συνδρομές μελών (clubs.subscriptions_enabled). Ξεκινά κλειστό.
 let subsOn=false, payments=new Set(), myPaidMonths=new Set();
 let paymentDetails=new Map();   // "playerId|YYYY-MM" → {paid_date, note}
-// Ρόλος προπονητή — μόνο σε συλλόγους «μόνο προπονήσεις».
+// Λογαριασμοί προπονητών + έγκριση νέων μελών (clubs.coaches_enabled).
+// Δική του σημαία: ένας σύλλογος μπορεί να νοικιάζει γήπεδα ΚΑΙ να έχει
+// προπονητές με δικό τους κωδικό. Ξεκινά κλειστό.
+let coachesOn=false;
 let isCoach=false, myCoach=null, coaches=[];
 let activeTab='booking', pickerSlot=null, dayData=[], myBookings=[], _refresh=null, _busy=false;
 
@@ -646,6 +649,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     club = data;
     bookingsOn = club.bookings_enabled !== false;
     subsOn     = club.subscriptions_enabled === true;
+    // Αν η στήλη δεν υπάρχει ακόμα (πριν τρέξει το migration) κρατάμε την
+    // παλιά συμπεριφορά: προπονητές είχαν οι σύλλογοι μόνο-προπονήσεων.
+    coachesOn  = club.coaches_enabled === undefined ? !bookingsOn
+                                                   : club.coaches_enabled === true;
 
     const [cRes, dRes, eRes] = await Promise.all([
         sb.from('courts').select('*').eq('club_id', club.id).order('sort_order'),
@@ -1050,7 +1057,11 @@ async function enterApp(){
     if(isOwner) document.getElementById('exportMonth').value=today.slice(0,7);
     buildQuickDates();
     renderPartnerCta();
-    switchTab((!bookingsOn && !isOwner && !isCoach) ? 'mytrainings' : 'booking');
+    // Σε σύλλογο που νοικιάζει γήπεδα, η καρτέλα «Κρατήσεις» είναι ημερολόγιο
+    // ενοικίασης — ο προπονητής θέλει το δικό του πρόγραμμα. Σε σύλλογο μόνο
+    // προπονήσεων η ίδια καρτέλα ΕΙΝΑΙ το πρόγραμμα, οπότε μένει ως έχει.
+    switchTab(isCoach && bookingsOn ? 'myschedule'
+            : (!bookingsOn && !isOwner && !isCoach) ? 'mytrainings' : 'booking');
     await loadRoster();
     await loadTrainingSchedule();
     await loadMine();
@@ -2961,7 +2972,7 @@ function dayBlock(kind,k,title,count,inner){
 
 /* ══════════════ ΠΡΟΠΟΝΗΤΕΣ ══════════════ */
 async function loadCoaches(){
-    if(bookingsOn) { coaches=[]; return; }
+    if(!coachesOn) { coaches=[]; return; }
     const { data }=await sb.from('coaches').select('*').eq('club_id',club.id).order('name');
     coaches=data||[];
 }
@@ -2970,7 +2981,7 @@ async function loadCoaches(){
 // οποίο έκανε εγγραφή ο προπονητής, και η βάση δένει τα δικαιώματα εκεί.
 async function detectCoach(){
     isCoach=false; myCoach=null;
-    if(bookingsOn || isOwner || !me?.email) return;
+    if(!coachesOn || isOwner || !me?.email) return;
     const { data }=await sb.from('coaches').select('*')
         .eq('club_id',club.id).ilike('email',me.email).maybeSingle();
     if(data){ isCoach=true; myCoach=data; }
@@ -2979,8 +2990,8 @@ async function detectCoach(){
 function renderCoaches(){
     const card=document.getElementById('coachesCard');
     if(!card) return;
-    card.classList.toggle('hidden', bookingsOn || !isOwner);
-    if(bookingsOn || !isOwner) return;
+    card.classList.toggle('hidden', !coachesOn || !isOwner);
+    if(!coachesOn || !isOwner) return;
     const el=document.getElementById('coachesList');
     el.innerHTML = coaches.length ? coaches.map(c=>{
         const n=groups.filter(g=>g.coach_id===c.id).length;
@@ -3346,7 +3357,7 @@ function playerDetailHtml(id){
    από λίστα ΩΣΤΕ να δοθεί και δικαίωμα πρόσβασης — όχι μόνο όνομα.
    Επιστρέφει {coach_id, coach} ή null αν ο χρήστης ακύρωσε. */
 function pickCoach(defaultName){
-    if(!bookingsOn && coaches.length){
+    if(coachesOn && coaches.length){
         const menu=coaches.map((c,i)=>`${i+1}. ${c.name}`).join('\n');
         const ans=prompt('Ποιος προπονητής;\n\n'+menu+'\n0. Κανένας', '');
         if(ans===null) return null;
