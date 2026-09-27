@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Όροι Χρήσης — CourtBook</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = { theme: { extend: {
+            colors: { brand: { light:'#dbeafe', DEFAULT:'#2563eb', dark:'#1d4ed8' }, ink: { DEFAULT:'#0f172a', soft:'#334155' } },
+            fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+        }}}
+    </script>
+    <style>
+@font-face {
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url('fonts/inter-greek.woff2') format('woff2');
+  unicode-range:U+0370-0377, U+037A-037F, U+0384-038A, U+038C, U+038E-03A1, U+03A3-03FF;
+}
+@font-face {
+  font-family:'Inter';
+  font-style:normal;
+  font-weight:100 900;
+  font-display:swap;
+  src:url('fonts/inter-latin.woff2') format('woff2');
+  unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
+}
+        body { font-family:'Inter',system-ui,sans-serif; -webkit-font-smoothing:antialiased; }
+    </style>
+</head>
+<body class="bg-white text-ink">
+<nav class="border-b border-slate-100">
+    <div class="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
+        <a href="index.html" class="font-extrabold text-lg tracking-tight">Court<span class="text-brand">Book</span></a>
+        <a href="index.html" class="text-sm font-semibold text-slate-500 hover:text-brand transition">&larr; Αρχική</a>
+    </div>
+</nav>
+<main class="max-w-3xl mx-auto px-5 py-12">
+
+<h1 class="text-3xl font-extrabold tracking-tight mb-2">Όροι Χρήσης</h1>
+<p class="text-sm text-slate-400 mb-8">Τελευταία ενημέρωση: Σεπτέμβριος 2026</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">1. Τι είναι η υπηρεσία</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Το CourtBook είναι λογισμικό διαχείρισης αθλητικών συλλόγων που παρέχεται μέσω διαδικτύου:
+κρατήσεις γηπέδων, πρόγραμμα προπονήσεων, παρουσιολόγια, μητρώο μελών και παρακολούθηση
+συνδρομών. Δεν απαιτείται εγκατάσταση λογισμικού.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">2. Ποιος είναι υπεύθυνος για το περιεχόμενο</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Κάθε σύλλογος είναι αποκλειστικά υπεύθυνος για τα δεδομένα που καταχωρεί: στοιχεία μελών,
+τιμές, ωράρια και πρόγραμμα. Ο σύλλογος οφείλει να διαθέτει τη νόμιμη βάση για την επεξεργασία
+των δεδομένων των μελών του και να τα ενημερώνει σχετικά.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">3. Λογαριασμοί και πρόσβαση</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Κάθε χρήστης είναι υπεύθυνος για τη φύλαξη των κωδικών του. Ο σύλλογος αποφασίζει ποιος
+έχει πρόσβαση διαχειριστή και ποιος ρόλο προπονητή, και οφείλει να ανακαλεί την πρόσβαση όταν
+κάποιος αποχωρεί.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">4. Διαθεσιμότητα</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Καταβάλλεται κάθε εύλογη προσπάθεια ώστε η υπηρεσία να είναι διαθέσιμη συνεχώς, ωστόσο
+<b>δεν παρέχεται εγγύηση αδιάλειπτης λειτουργίας</b>. Ενδέχεται να υπάρξουν διακοπές για
+συντήρηση, αναβαθμίσεις ή λόγω βλάβης σε υποδομές τρίτων παρόχων.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">5. Αντίγραφα ασφαλείας</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Τηρούνται τακτικά αντίγραφα ασφαλείας. Παρότι καταβάλλεται κάθε προσπάθεια για την
+ακεραιότητά τους, συνιστάται στους συλλόγους να διατηρούν και δικά τους αντίγραφα, μέσω της
+δυνατότητας εξαγωγής σε αρχείο Excel που παρέχει η υπηρεσία.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">6. Περιορισμός ευθύνης</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Η υπηρεσία παρέχεται &laquo;ως έχει&raquo;. Δεν αναλαμβάνεται ευθύνη για έμμεσες ή
+αποθετικές ζημίες, διαφυγόντα κέρδη, ή απώλειες που προκύπτουν από εσφαλμένη καταχώριση
+δεδομένων από τον σύλλογο, από μη εξουσιοδοτημένη χρήση λογαριασμού, ή από διακοπές σε υποδομές
+τρίτων παρόχων.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">7. Χρεώσεις</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Το κόστος και ο τρόπος πληρωμής συμφωνούνται χωριστά με κάθε σύλλογο. Τυχόν αλλαγές
+γνωστοποιούνται εγκαίρως και δεν εφαρμόζονται αναδρομικά.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">8. Διακοπή συνεργασίας</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Κάθε πλευρά μπορεί να διακόψει τη συνεργασία με προειδοποίηση. Σε περίπτωση διακοπής, ο
+σύλλογος μπορεί να ζητήσει εξαγωγή των δεδομένων του πριν τη διαγραφή τους.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">9. Τροποποιήσεις</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Οι παρόντες όροι ενδέχεται να επικαιροποιηθούν. Η ημερομηνία τελευταίας ενημέρωσης
+αναγράφεται στην αρχή της σελίδας.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">10. Εφαρμοστέο δίκαιο</h2>
+<p class="text-slate-600 leading-relaxed mb-3">Εφαρμόζεται το ελληνικό δίκαιο.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2">11. Επικοινωνία</h2>
+<p class="text-slate-600 leading-relaxed mb-3"><a href="mailto:info@court-book.gr" class="text-brand font-semibold">info@court-book.gr</a></p>
+
+</main>
+<footer class="border-t border-slate-100 mt-16 py-8 px-5">
+    <div class="max-w-3xl mx-auto text-center text-sm text-slate-400">
+        <p><a href="privacy.html" class="hover:text-brand transition">Πολιτική Απορρήτου</a> &middot;
+           <a href="terms.html" class="hover:text-brand transition">Όροι Χρήσης</a> &middot;
+           <a href="mailto:info@court-book.gr" class="hover:text-brand transition">info@court-book.gr</a></p>
+        <p class="text-xs mt-2">&copy; <span id="y"></span> CourtBook</p>
+    </div>
+</footer>
+<script>document.getElementById('y').textContent=new Date().getFullYear();</script>
+</body>
+</html>
