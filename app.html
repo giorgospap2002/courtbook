@@ -3305,23 +3305,27 @@ function firstRoundPairs(qs){
     return pairs;
 }
 
-async function genKnockout(cid){
+/* size: 0 = αυτόματο μέγεθος · 4/8/16/32 = σταθερό ταμπλό
+   fill: true = γεμίζει με seeds από τη βαθμολογία · false = άδειο, το στήνεις εσύ */
+async function genKnockout(cid, size, fill){
     const cat = tCats.find(c=>c.id===cid);
     const qs  = qualifiers(cat);
-    if(qs.length < 2) return cbToast('Δεν έχουν προκριθεί αρκετοί ακόμα','err');
+    if(fill && qs.length < 2) return cbToast('Δεν έχουν προκριθεί αρκετοί ακόμα','err');
+    const n = size ? parseInt(size) : bracketSize(qs.length);
+    if(fill && qs.length > n) return cbToast('Το ταμπλό των '+n+' δεν χωράει '+qs.length+' προκριθέντες','err');
     const pend = tMatches.filter(m=>m.category_id===cid && m.stage!=='ko' && !matchDone(m)).length;
-    if(pend && !confirm('Υπάρχουν '+pend+' αγώνες ομίλων χωρίς σκορ. Να βγει ταμπλό με τη σημερινή βαθμολογία;')) return;
+    if(fill && pend && !confirm('Υπάρχουν '+pend+' αγώνες ομίλων χωρίς σκορ. Να βγει ταμπλό με τη σημερινή βαθμολογία;')) return;
     if(tMatches.some(m=>m.category_id===cid && m.stage==='ko')
        && !confirm('Υπάρχει ήδη ταμπλό. Να αντικατασταθεί; Τα σκορ του θα χαθούν.')) return;
 
-    const pairs = firstRoundPairs(qs);
+    const pairs = fill ? firstRoundPairs(qs.slice(0,n))
+                       : Array.from({length:n/2},()=>[null,null]);
     const rows = pairs.map((p,i)=>({ category_id:cid, stage:'ko', round:1, slot:i,
                                      p1_id:p[0]?p[0].id:null, p2_id:p[1]?p[1].id:null }));
-    // άδειοι αγώνες για τους επόμενους γύρους — γεμίζουν καθώς βγαίνουν νικητές
-    let n = pairs.length, rd = 2;
-    while(n > 1){
-        n = n/2;
-        for(let s=0;s<n;s++) rows.push({ category_id:cid, stage:'ko', round:rd, slot:s });
+    let k = pairs.length, rd = 2;
+    while(k > 1){
+        k = k/2;
+        for(let s=0;s<k;s++) rows.push({ category_id:cid, stage:'ko', round:rd, slot:s, p1_id:null, p2_id:null });
         rd++;
     }
     cbLoading(true);
@@ -3330,9 +3334,43 @@ async function genKnockout(cid){
     cbLoading(false);
     if(error) return cbToast('Δεν δημιουργήθηκε το ταμπλό','err');
     await loadTournaments();
-    await autoAdvance(cid);      // περνάει αμέσως όσοι έχουν bye
+    if(fill) await autoAdvance(cid);
     renderTournaments();
-    cbToast('Ταμπλό '+bracketSize(qs.length)+' θέσεων');
+    cbToast('Ταμπλό '+n+' θέσεων');
+}
+
+/* Χειροκίνητη τοποθέτηση στον πρώτο γύρο. Ό,τι μένει κενό είναι bye
+   και ο αντίπαλος περνάει μόνος του. */
+async function setKoSlot(mid, which, val){
+    const m = tMatches.find(x=>x.id===mid);
+    if(!m) return;
+    if(val){
+        const dup = tMatches.find(x=>x.category_id===m.category_id && x.stage==='ko' && x.round===1
+                        && x.id!==mid && (x.p1_id===val || x.p2_id===val));
+        if(dup) return cbToast('Είναι ήδη τοποθετημένος αλλού','err');
+    }
+    cbLoading(true);
+    const { error }=await sb.from('tournament_matches').update({ [which]: val||null }).eq('id',mid);
+    cbLoading(false);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    m[which] = val||null;
+    await autoAdvance(m.category_id);
+    renderTournaments();
+}
+
+function koSlotPicker(m){
+    const used = new Set();
+    tMatches.filter(x=>x.category_id===m.category_id && x.stage==='ko' && x.round===1)
+            .forEach(x=>{ if(x.p1_id) used.add(x.p1_id); if(x.p2_id) used.add(x.p2_id); });
+    const one = which => {
+        const cur = m[which];
+        const opts = acceptedEntries(m.category_id).filter(e=> !used.has(e.id) || e.id===cur);
+        return `<select onchange="setKoSlot('${m.id}','${which}',this.value)" class="w-full px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">
+            <option value="">— κενό (bye) —</option>
+            ${opts.map(e=>`<option value="${e.id}" ${e.id===cur?'selected':''}>${cbEsc(entryName(e.id))}</option>`).join('')}
+        </select>`;
+    };
+    return `<div class="space-y-1.5 mb-1.5">${one('p1_id')}${one('p2_id')}</div>`;
 }
 
 /* Ο νικητής κάθε αγώνα πάει στον επόμενο γύρο: θέση s → θέση s/2,
@@ -3743,13 +3781,26 @@ function categoryBlock(cat, editable){
     };
     const bracket = !kMs.length ? '' : `
         <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mt-5 mb-1.5">Νοκ-άουτ</p>
+        ${editable?'<p class="text-[11px] text-slate-400 mb-1">Στον πρώτο γύρο αλλάζεις ζευγάρια όσο δεν έχει γραφτεί σκορ.</p>':''}
         ${koRounds.map(rd=>`
             <p class="text-[10px] font-bold tracking-wide text-brand uppercase mt-3 mb-1.5">${koName(rd,koRounds.length)}</p>
-            <div class="space-y-2">${kMs.filter(m=>m.round===rd).map(m=>matchCard(m,editable)).join('')}</div>`).join('')}`;
+            <div class="space-y-2">${kMs.filter(m=>m.round===rd).map(m=>
+                (editable && rd===1 && !matchDone(m) ? koSlotPicker(m) : '') + matchCard(m,editable)).join('')}</div>`).join('')}`;
 
-    const koBtn = (!editable || !groupsKo || !gMs.length) ? '' :
-        `<button onclick="genKnockout('${cat.id}')" class="w-full mt-2 py-2.5 border-2 border-brand text-brand rounded-xl text-sm font-bold hover:bg-blue-50 transition">
-            ${kMs.length?'↻ Νέο ταμπλό νοκ-άουτ':'🏁 Δημιουργία ταμπλό νοκ-άουτ'}</button>`;
+    const nQual = groupsKo ? qualifiers(cat).length : 0;
+    const koBtn = (!editable || !groupsKo || !gMs.length) ? '' : `
+        <div class="mt-3 border border-slate-200 rounded-xl p-3">
+            <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-1.5">Ταμπλό νοκ-άουτ</p>
+            <p class="text-[11px] text-slate-400 mb-2">Προκρίνονται ${nQual}. Διάλεξε μέγεθος — ό,τι περισσεύει μένει κενό (bye).</p>
+            <div class="flex flex-wrap gap-1.5 mb-2">
+                ${[4,8,16,32].map(n=>`<button onclick="genKnockout('${cat.id}',${n},true)" class="px-3 py-1.5 rounded-lg text-xs font-bold border border-brand text-brand hover:bg-blue-50">${n}άρι</button>`).join('')}
+                <button onclick="genKnockout('${cat.id}',0,true)" class="px-3 py-1.5 rounded-lg text-xs font-bold bg-brand text-white">Αυτόματο</button>
+            </div>
+            <div class="flex flex-wrap gap-1.5">
+                <span class="text-[11px] text-slate-400 self-center mr-1">Άδειο, το στήνω μόνος μου:</span>
+                ${[4,8,16,32].map(n=>`<button onclick="genKnockout('${cat.id}',${n},false)" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold bg-slate-100 text-slate-600 hover:bg-slate-200">${n}</button>`).join('')}
+            </div>
+        </div>`;
 
     return `<div class="border-2 border-brand rounded-xl p-3">
         <button onclick="tToggle('${cat.id}')" class="w-full flex items-center justify-between gap-2 text-left mb-2">
