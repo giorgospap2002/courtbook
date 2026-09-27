@@ -3527,6 +3527,52 @@ async function saveNewCat(){
     cbToast('«'+name+'» προστέθηκε');
 }
 
+/* Σβήνει όλο το πρόγραμμα μιας κατηγορίας, ώστε να ξεκλειδώσουν οι όμιλοι
+   και να τους ξαναφτιάξεις. Χωρίς αυτό το «κλειδωμένοι» ήταν αδιέξοδο:
+   έλεγε «σβήσε το πρώτα» χωρίς να δίνει τρόπο. */
+async function clearSchedule(cid){
+    const n = tMatches.filter(m=>m.category_id===cid).length;
+    if(!n) return cbToast('Δεν υπάρχει πρόγραμμα','err');
+    if(!confirm('Να σβηστούν και οι '+n+' αγώνες αυτής της κατηγορίας, μαζί με τα σκορ τους;\n\nΟι συμμετοχές και οι όμιλοι μένουν.')) return;
+    cbLoading(true);
+    const { error }=await sb.from('tournament_matches').delete().eq('category_id',cid);
+    cbLoading(false);
+    if(error) return cbToast('Δεν σβήστηκε','err');
+    await loadTournaments(); renderTournaments();
+    cbToast('Το πρόγραμμα σβήστηκε — οι όμιλοι ξεκλείδωσαν');
+}
+
+/* Δημοσίευση στα μέλη. Μέχρι τότε ομίλους και ταμπλό τα βλέπει
+   μόνο η γραμματεία — το κλείδωμα είναι στη βάση, όχι στην οθόνη. */
+async function togglePublish(cid){
+    const c=tCats.find(x=>x.id===cid);
+    if(!c) return;
+    const v = !c.published;
+    if(v && !tMatches.some(m=>m.category_id===cid)
+        && !confirm('Δεν υπάρχει ακόμα πρόγραμμα αγώνων. Να δημοσιευτεί έτσι;')) return;
+    cbLoading(true);
+    const { error }=await sb.from('tournament_categories').update({ published:v }).eq('id',cid);
+    cbLoading(false);
+    if(error) return cbToast('Δεν άλλαξε','err');
+    c.published=v; renderTournaments();
+    cbToast(v?'Δημοσιεύτηκε — το βλέπουν τα μέλη':'Αποσύρθηκε από τα μέλη');
+}
+
+/* Προθεσμία δηλώσεων. Κενό = χωρίς προθεσμία. */
+async function setDeadline(cid){
+    const c=tCats.find(x=>x.id===cid);
+    if(!c) return;
+    const v=(prompt('Τελευταία μέρα δηλώσεων (ΕΕΕΕ-ΜΜ-ΗΗ) — κενό για καμία:', c.entries_deadline||'')||'').trim();
+    if(v && !/^\d{4}-\d{2}-\d{2}$/.test(v)) return cbToast('Λάθος μορφή ημερομηνίας','err');
+    cbLoading(true);
+    const { error }=await sb.from('tournament_categories').update({ entries_deadline: v||null }).eq('id',cid);
+    cbLoading(false);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    c.entries_deadline = v||null; renderTournaments();
+}
+const deadlinePassed = c => !!c.entries_deadline && c.entries_deadline < cbToday();
+const declOpen = c => c.entries_open!==false && !deadlinePassed(c);
+
 /* Ανοίγει/κλείνει τις δηλώσεις μιας κατηγορίας. */
 async function toggleEntries(cid){
     const c=tCats.find(x=>x.id===cid);
@@ -3698,7 +3744,7 @@ function categoryBlock(cat, editable){
                 ${(mine.days||[]).length?`<p class="text-[11px] text-slate-400 mt-1">${availText(mine)}</p>`:''}
                 ${(!asPartner && mine.status==='pending')?`<button onclick="withdrawDeclaration('${mine.id}')" class="text-red-400 text-[11px] font-semibold mt-2">Απόσυρση</button>`:''}
             </div>`;
-        } else if(cat.entries_open!==false && myPlayer){
+        } else if(declOpen(cat) && myPlayer){
             const d=_decl[cat.id]||{days:[],bands:[],partner:''};
             const chip=(on,label,onclick)=>`<button onclick="${onclick}" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${on?'bg-brand text-white border-brand':'bg-white text-slate-500 border-slate-200'}">${label}</button>`;
             const free = roster.filter(p=>p.id!==myPlayer.id && !inCategory(cat.id,p.id));
@@ -3720,7 +3766,9 @@ function categoryBlock(cat, editable){
                 <button onclick="submitDeclaration('${cat.id}')" class="w-full mt-3 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark transition">Δήλωση συμμετοχής</button>
             </div>`;
         } else {
-            picker = `<p class="text-slate-400 text-sm mt-2">${cat.entries_open===false?'Οι δηλώσεις έκλεισαν.':'Δεν βρέθηκε η καρτέλα σου στο μητρώο.'}</p>`;
+            picker = `<p class="text-slate-400 text-sm mt-2">${!declOpen(cat)
+                ? (deadlinePassed(cat) ? 'Η προθεσμία δηλώσεων έληξε στις '+cbFmtDate(cat.entries_deadline)+'.' : 'Οι δηλώσεις έκλεισαν.')
+                : 'Δεν βρέθηκε η καρτέλα σου στο μητρώο.'}</p>`;
         }
     } else {
         // ── η γραμματεία: εκκρεμείς δηλώσεις ──
@@ -3746,7 +3794,10 @@ function categoryBlock(cat, editable){
             <div class="mt-3">
                 <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-1">Ποιος σε ποιον όμιλο</p>
                 ${locked
-                    ? '<p class="text-[11px] text-amber-600 mb-2">🔒 Κλειδωμένοι — υπάρχει ήδη πρόγραμμα αγώνων. Σβήσε το για να αλλάξεις ομίλους.</p>'
+                    ? `<div class="flex items-center justify-between gap-2 mb-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
+                         <span class="text-[11px] text-amber-700">🔒 Κλειδωμένοι — υπάρχει πρόγραμμα αγώνων.</span>
+                         <button onclick="clearSchedule('${cat.id}')" class="text-red-500 text-[11px] font-bold flex-shrink-0">Σβήσε το πρόγραμμα</button>
+                       </div>`
                     : `<p class="text-[11px] text-slate-400 mb-2">Διάλεξε όμιλο για τον καθένα. Δες πρώτα τις ώρες του — το πράσινο δείχνει πότε μπορούν όλοι μαζί.</p>
                        <details class="mb-2">
                          <summary class="text-[11px] text-brand font-semibold cursor-pointer">Θες να σου προτείνω μοιρασιά;</summary>
@@ -3894,22 +3945,42 @@ function categoryBlock(cat, editable){
             </div>
         </div>`;
 
+    const hidden = !editable && !cat.published;
+    if(hidden){
+        return `<div class="border-2 border-brand rounded-xl p-3">
+            <button onclick="tToggle('${cat.id}')" class="w-full flex items-center justify-between gap-2 text-left mb-2">
+                <span class="font-bold truncate">${cbEsc(cat.name)}</span>
+                <span class="text-[11px] text-slate-400 flex-shrink-0">▲</span>
+            </button>
+            <p class="text-[11px] text-slate-400 mb-2">${dbl?'Ζευγάρια':'Μονό'}${declOpen(cat)&&cat.entries_deadline?' · δηλώσεις ως '+cbFmtDate(cat.entries_deadline):''}</p>
+            ${picker}
+            <p class="text-slate-400 text-sm mt-3">📋 Οι όμιλοι και το πρόγραμμα θα ανακοινωθούν όταν κλείσουν οι δηλώσεις.</p>
+        </div>`;
+    }
     return `<div class="border-2 border-brand rounded-xl p-3">
         <button onclick="tToggle('${cat.id}')" class="w-full flex items-center justify-between gap-2 text-left mb-2">
             <span class="font-bold truncate">${cbEsc(cat.name)}</span>
             <span class="text-[11px] text-slate-400 flex-shrink-0">▲</span>
         </button>
-        <p class="text-[11px] text-slate-400 mb-2">${dbl?'Ζευγάρια':'Μονό'} · ${cat.format==='groups_ko'?'όμιλοι + νοκ-άουτ':'όλοι με όλους'}${cat.entries_open===false?' · δηλώσεις κλειστές':''}</p>
+        <p class="text-[11px] text-slate-400 mb-2">${dbl?'Ζευγάρια':'Μονό'} · ${cat.format==='groups_ko'?'όμιλοι + νοκ-άουτ':'όλοι με όλους'}${!declOpen(cat)?' · δηλώσεις κλειστές':(cat.entries_deadline?' · ως '+cbFmtDate(cat.entries_deadline):'')}</p>
+        ${editable?`<button onclick="togglePublish('${cat.id}')" class="w-full mb-2 py-2 rounded-xl text-xs font-bold border-2 transition ${cat.published
+            ?'border-green-600 bg-green-50 text-green-700'
+            :'border-slate-300 bg-slate-50 text-slate-500'}">
+            ${cat.published?'👁 Δημοσιευμένο — το βλέπουν τα μέλη · πάτα για απόκρυψη':'🔒 Κρυφό από τα μέλη · πάτα για δημοσίευση'}</button>`:''}
         ${editable?`<div class="flex items-center justify-between gap-2">
             <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">${dbl?'Ζευγάρια':'Συμμετέχοντες'} (${ent.length})</p>
             <span class="flex items-center gap-3 flex-shrink-0">
-                <button onclick="toggleEntries('${cat.id}')" class="text-brand text-[11px] font-semibold">${cat.entries_open===false?'Άνοιγμα δηλώσεων':'Κλείσιμο δηλώσεων'}</button>
+                <button onclick="setDeadline('${cat.id}')" class="text-brand text-[11px] font-semibold">Προθεσμία</button>
+                <button onclick="toggleEntries('${cat.id}')" class="text-brand text-[11px] font-semibold">${cat.entries_open===false?'Άνοιγμα δηλώσεων':'Κλείσιμο'}</button>
                 <button onclick="delCategory('${cat.id}')" class="text-red-400 text-[11px] font-semibold">Διαγραφή</button>
             </span>
         </div>`:`<p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">${dbl?'Ζευγάρια':'Συμμετέχοντες'} (${ent.length})</p>`}
         ${picker}
-        ${editable?`<button onclick="genSchedule('${cat.id}')" class="w-full mt-3 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark transition">
-            ${ms.length?'↻ Νέο πρόγραμμα αγώνων':'Δημιουργία προγράμματος αγώνων'}</button>`:''}
+        ${editable?`<div class="flex gap-2 mt-3">
+            <button onclick="genSchedule('${cat.id}')" class="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-bold hover:bg-brand-dark transition">
+                ${ms.length?'↻ Νέο πρόγραμμα αγώνων':'Δημιουργία προγράμματος αγώνων'}</button>
+            ${ms.length?`<button onclick="clearSchedule('${cat.id}')" class="px-4 py-2.5 rounded-xl text-sm font-bold border border-red-200 text-red-500 hover:bg-red-50 transition">Σβήσιμο</button>`:''}
+        </div>`:''}
         ${koBtn}
         ${table}
         ${matches}
