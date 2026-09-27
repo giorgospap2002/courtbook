@@ -35,72 +35,123 @@
 <nav class="border-b border-slate-100">
     <div class="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
         <a href="index.html" class="font-extrabold text-lg tracking-tight">Court<span class="text-brand">Book</span></a>
-        <a href="index.html" class="text-sm font-semibold text-slate-500 hover:text-brand transition">&larr; Αρχική</a>
+        <div class="flex items-center gap-3">
+            <div id="langSw" class="flex items-center gap-0.5 text-[11px] tracking-wide" aria-label="Language">
+                <button type="button" data-lang="el" class="px-1.5 py-1 rounded-md transition bg-brand-light text-brand font-bold">EL</button>
+                <button type="button" data-lang="en" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">EN</button>
+                <button type="button" data-lang="de" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">DE</button>
+            </div>
+            <a href="index.html" class="text-sm font-semibold text-slate-500 hover:text-brand transition" data-i18n="t4">&larr; Αρχική</a>
+        </div>
     </div>
 </nav>
 <main class="max-w-3xl mx-auto px-5 py-12">
 
-<h1 class="text-3xl font-extrabold tracking-tight mb-2">Όροι Χρήσης</h1>
-<p class="text-sm text-slate-400 mb-8">Τελευταία ενημέρωση: Σεπτέμβριος 2026</p>
+<h1 class="text-3xl font-extrabold tracking-tight mb-2" data-i18n="t5">Όροι Χρήσης</h1>
+<p class="text-sm text-slate-400 mb-8" data-i18n="t6">Τελευταία ενημέρωση: Σεπτέμβριος 2026</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">1. Τι είναι η υπηρεσία</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Το CourtBook είναι λογισμικό διαχείρισης αθλητικών συλλόγων που παρέχεται μέσω διαδικτύου:
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t7">1. Τι είναι η υπηρεσία</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t8">Το CourtBook είναι λογισμικό διαχείρισης αθλητικών συλλόγων που παρέχεται μέσω διαδικτύου:
 κρατήσεις γηπέδων, πρόγραμμα προπονήσεων, παρουσιολόγια, μητρώο μελών και παρακολούθηση
 συνδρομών. Δεν απαιτείται εγκατάσταση λογισμικού.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">2. Ποιος είναι υπεύθυνος για το περιεχόμενο</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Κάθε σύλλογος είναι αποκλειστικά υπεύθυνος για τα δεδομένα που καταχωρεί: στοιχεία μελών,
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t9">2. Ποιος είναι υπεύθυνος για το περιεχόμενο</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t10">Κάθε σύλλογος είναι αποκλειστικά υπεύθυνος για τα δεδομένα που καταχωρεί: στοιχεία μελών,
 τιμές, ωράρια και πρόγραμμα. Ο σύλλογος οφείλει να διαθέτει τη νόμιμη βάση για την επεξεργασία
 των δεδομένων των μελών του και να τα ενημερώνει σχετικά.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">3. Λογαριασμοί και πρόσβαση</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Κάθε χρήστης είναι υπεύθυνος για τη φύλαξη των κωδικών του. Ο σύλλογος αποφασίζει ποιος
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t11">3. Λογαριασμοί και πρόσβαση</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t12">Κάθε χρήστης είναι υπεύθυνος για τη φύλαξη των κωδικών του. Ο σύλλογος αποφασίζει ποιος
 έχει πρόσβαση διαχειριστή και ποιος ρόλο προπονητή, και οφείλει να ανακαλεί την πρόσβαση όταν
 κάποιος αποχωρεί.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">4. Διαθεσιμότητα</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Καταβάλλεται κάθε εύλογη προσπάθεια ώστε η υπηρεσία να είναι διαθέσιμη συνεχώς, ωστόσο
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t13">4. Διαθεσιμότητα</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t14">Καταβάλλεται κάθε εύλογη προσπάθεια ώστε η υπηρεσία να είναι διαθέσιμη συνεχώς, ωστόσο
 <b>δεν παρέχεται εγγύηση αδιάλειπτης λειτουργίας</b>. Ενδέχεται να υπάρξουν διακοπές για
 συντήρηση, αναβαθμίσεις ή λόγω βλάβης σε υποδομές τρίτων παρόχων.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">5. Αντίγραφα ασφαλείας</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Τηρούνται τακτικά αντίγραφα ασφαλείας. Παρότι καταβάλλεται κάθε προσπάθεια για την
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t15">5. Αντίγραφα ασφαλείας</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t16">Τηρούνται τακτικά αντίγραφα ασφαλείας. Παρότι καταβάλλεται κάθε προσπάθεια για την
 ακεραιότητά τους, συνιστάται στους συλλόγους να διατηρούν και δικά τους αντίγραφα, μέσω της
 δυνατότητας εξαγωγής σε αρχείο Excel που παρέχει η υπηρεσία.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">6. Περιορισμός ευθύνης</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Η υπηρεσία παρέχεται &laquo;ως έχει&raquo;. Δεν αναλαμβάνεται ευθύνη για έμμεσες ή
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t17">6. Περιορισμός ευθύνης</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t18">Η υπηρεσία παρέχεται &laquo;ως έχει&raquo;. Δεν αναλαμβάνεται ευθύνη για έμμεσες ή
 αποθετικές ζημίες, διαφυγόντα κέρδη, ή απώλειες που προκύπτουν από εσφαλμένη καταχώριση
 δεδομένων από τον σύλλογο, από μη εξουσιοδοτημένη χρήση λογαριασμού, ή από διακοπές σε υποδομές
 τρίτων παρόχων.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">7. Χρεώσεις</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Το κόστος και ο τρόπος πληρωμής συμφωνούνται χωριστά με κάθε σύλλογο. Τυχόν αλλαγές
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t19">7. Χρεώσεις</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t20">Το κόστος και ο τρόπος πληρωμής συμφωνούνται χωριστά με κάθε σύλλογο. Τυχόν αλλαγές
 γνωστοποιούνται εγκαίρως και δεν εφαρμόζονται αναδρομικά.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">8. Διακοπή συνεργασίας</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Κάθε πλευρά μπορεί να διακόψει τη συνεργασία με προειδοποίηση. Σε περίπτωση διακοπής, ο
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t21">8. Διακοπή συνεργασίας</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t22">Κάθε πλευρά μπορεί να διακόψει τη συνεργασία με προειδοποίηση. Σε περίπτωση διακοπής, ο
 σύλλογος μπορεί να ζητήσει εξαγωγή των δεδομένων του πριν τη διαγραφή τους.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">9. Τροποποιήσεις</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Οι παρόντες όροι ενδέχεται να επικαιροποιηθούν. Η ημερομηνία τελευταίας ενημέρωσης
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t23">9. Τροποποιήσεις</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t24">Οι παρόντες όροι ενδέχεται να επικαιροποιηθούν. Η ημερομηνία τελευταίας ενημέρωσης
 αναγράφεται στην αρχή της σελίδας.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">10. Εφαρμοστέο δίκαιο</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Εφαρμόζεται το ελληνικό δίκαιο.</p>
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t25">10. Εφαρμοστέο δίκαιο και γλώσσα</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t26">Εφαρμόζεται το ελληνικό δίκαιο.</p>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t27">Οι παρόντες όροι συντάσσονται στα ελληνικά. Οι μεταφράσεις σε άλλες γλώσσες
+παρέχονται για διευκόλυνση&middot; σε περίπτωση απόκλισης υπερισχύει το ελληνικό κείμενο.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">11. Επικοινωνία</h2>
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t28">11. Επικοινωνία</h2>
 <p class="text-slate-600 leading-relaxed mb-3"><a href="mailto:info@court-book.gr" class="text-brand font-semibold">info@court-book.gr</a></p>
 
 </main>
 <footer class="border-t border-slate-100 mt-16 py-8 px-5">
     <div class="max-w-3xl mx-auto text-center text-sm text-slate-400">
-        <p><a href="privacy.html" class="hover:text-brand transition">Πολιτική Απορρήτου</a> &middot;
+        <p data-i18n="t30"><a href="privacy.html" class="hover:text-brand transition">Πολιτική Απορρήτου</a> &middot;
            <a href="terms.html" class="hover:text-brand transition">Όροι Χρήσης</a> &middot;
            <a href="mailto:info@court-book.gr" class="hover:text-brand transition">info@court-book.gr</a></p>
-        <p class="text-xs mt-2">&copy; <span id="y"></span> CourtBook</p>
+        <p class="text-xs mt-2" data-i18n="t31">&copy; <span id="y"></span> CourtBook</p>
     </div>
 </footer>
+<script>
+/* ══════════ Πολυγλωσσία (EL προεπιλογή · EN · DE) ══════════
+   Νομικό κείμενο: το ελληνικό είναι το αυθεντικό και ζει στο HTML.
+   Οι μεταφράσεις είναι διευκόλυνση — βλ. ρήτρα γλώσσας. */
+(function(){
+    const T = {"en": {"t4": "&larr; Home", "t5": "Terms of Use", "t6": "Last updated: September 2026", "t7": "1. What the service is", "t8": "CourtBook is sports club management software delivered over the internet: court bookings, training schedules, attendance sheets, member registries and subscription tracking. No software installation is required.", "t9": "2. Who is responsible for the content", "t10": "Each club is solely responsible for the data it enters: member details, prices, opening hours and schedule. The club must have a lawful basis for processing its members&rsquo; data and must inform them accordingly.", "t11": "3. Accounts and access", "t12": "Each user is responsible for keeping their password safe. The club decides who has administrator access and who has a coach role, and must revoke access when someone leaves.", "t13": "4. Availability", "t14": "Every reasonable effort is made to keep the service continuously available; however, <b>no guarantee of uninterrupted operation is given</b>. Interruptions may occur for maintenance, upgrades, or because of faults in third-party infrastructure.", "t15": "5. Backups", "t16": "Regular backups are kept. Although every effort is made to preserve their integrity, clubs are advised to keep copies of their own as well, using the Excel export the service provides.", "t17": "6. Limitation of liability", "t18": "The service is provided &ldquo;as is&rdquo;. No liability is accepted for indirect or consequential damages, loss of profits, or losses arising from incorrect data entry by the club, from unauthorised use of an account, or from interruptions in third-party infrastructure.", "t19": "7. Charges", "t20": "The cost and the method of payment are agreed separately with each club. Any changes are communicated in good time and are not applied retroactively.", "t21": "8. Ending the arrangement", "t22": "Either party may end the arrangement with notice. On termination, the club may request an export of its data before it is deleted.", "t23": "9. Amendments", "t24": "These terms may be updated. The date of the last update is shown at the top of the page.", "t25": "10. Governing law and language", "t26": "Greek law applies.", "t27": "These terms are drawn up in Greek. Translations into other languages are provided for convenience; in the event of any discrepancy, the Greek text prevails.", "t28": "11. Contact", "t30": "<a href=\"privacy.html\" class=\"hover:text-brand transition\">Privacy Policy</a> &middot;\n           <a href=\"terms.html\" class=\"hover:text-brand transition\">Terms of Use</a> &middot;\n           <a href=\"mailto:info@court-book.gr\" class=\"hover:text-brand transition\">info@court-book.gr</a>", "t31": "&copy; <span id=\"y\"></span> CourtBook", "_title": "Terms of Use — CourtBook"}, "de": {"t4": "&larr; Startseite", "t5": "Nutzungsbedingungen", "t6": "Zuletzt aktualisiert: September 2026", "t7": "1. Was der Dienst ist", "t8": "CourtBook ist eine über das Internet bereitgestellte Software zur Verwaltung von Sportvereinen: Platzbuchungen, Trainingspläne, Anwesenheitslisten, Mitgliederkarteien und Beitragsverwaltung. Eine Installation von Software ist nicht erforderlich.", "t9": "2. Wer für die Inhalte verantwortlich ist", "t10": "Jeder Club ist allein verantwortlich für die von ihm eingegebenen Daten: Mitgliederdaten, Preise, Öffnungszeiten und Programm. Der Club muss über eine Rechtsgrundlage für die Verarbeitung der Daten seiner Mitglieder verfügen und diese entsprechend informieren.", "t11": "3. Konten und Zugang", "t12": "Jeder Nutzer ist für die sichere Aufbewahrung seines Passworts verantwortlich. Der Club entscheidet, wer Administratorzugang und wer eine Trainerrolle erhält, und muss den Zugang entziehen, wenn jemand ausscheidet.", "t13": "4. Verfügbarkeit", "t14": "Es werden alle zumutbaren Anstrengungen unternommen, damit der Dienst durchgehend verfügbar ist; <b>eine Garantie für einen unterbrechungsfreien Betrieb wird jedoch nicht gegeben</b>. Unterbrechungen sind für Wartung, Aktualisierungen oder aufgrund von Störungen bei Infrastrukturanbietern Dritter möglich.", "t15": "5. Sicherungskopien", "t16": "Es werden regelmäßig Sicherungskopien erstellt. Obwohl jede Anstrengung für deren Unversehrtheit unternommen wird, wird den Clubs empfohlen, über den Excel-Export des Dienstes auch eigene Kopien aufzubewahren.", "t17": "6. Haftungsbeschränkung", "t18": "Der Dienst wird &bdquo;wie besehen&ldquo; bereitgestellt. Für mittelbare Schäden oder Folgeschäden, entgangenen Gewinn oder Verluste aus fehlerhafter Dateneingabe durch den Club, aus unbefugter Nutzung eines Kontos oder aus Störungen bei Infrastrukturanbietern Dritter wird keine Haftung übernommen.", "t19": "7. Entgelte", "t20": "Kosten und Zahlungsweise werden mit jedem Club gesondert vereinbart. Etwaige Änderungen werden rechtzeitig mitgeteilt und nicht rückwirkend angewendet.", "t21": "8. Beendigung der Zusammenarbeit", "t22": "Jede Seite kann die Zusammenarbeit mit Vorankündigung beenden. Im Fall einer Beendigung kann der Club vor der Löschung einen Export seiner Daten verlangen.", "t23": "9. Änderungen", "t24": "Diese Bedingungen können aktualisiert werden. Das Datum der letzten Aktualisierung steht am Anfang der Seite.", "t25": "10. Anwendbares Recht und Sprache", "t26": "Es gilt griechisches Recht.", "t27": "Diese Bedingungen sind in griechischer Sprache abgefasst. Übersetzungen in andere Sprachen dienen lediglich der Erleichterung; bei Abweichungen ist der griechische Text maßgeblich.", "t28": "11. Kontakt", "t30": "<a href=\"privacy.html\" class=\"hover:text-brand transition\">Datenschutz</a> &middot;\n           <a href=\"terms.html\" class=\"hover:text-brand transition\">Nutzungsbedingungen</a> &middot;\n           <a href=\"mailto:info@court-book.gr\" class=\"hover:text-brand transition\">info@court-book.gr</a>", "t31": "&copy; <span id=\"y\"></span> CourtBook", "_title": "Nutzungsbedingungen — CourtBook"}};
+    const nodes = document.querySelectorAll('[data-i18n]');
+    const ORIG = {}, ELTITLE = document.title;
+    nodes.forEach(el => ORIG[el.dataset.i18n] = el.innerHTML);
+    const sw = document.getElementById('langSw');
+
+    function setYear(){
+        const y = document.getElementById('y');
+        if (y) y.textContent = new Date().getFullYear();
+    }
+    function apply(lang){
+        const t = T[lang] || null;
+        nodes.forEach(el => {
+            const v = t ? t[el.dataset.i18n] : ORIG[el.dataset.i18n];
+            if (v != null) el.innerHTML = v;
+        });
+        document.documentElement.lang = lang;
+        document.title = t ? t._title : ELTITLE;
+        setYear();
+        sw.querySelectorAll('button').forEach(b => {
+            b.className = 'px-1.5 py-1 rounded-md transition ' + (b.dataset.lang === lang
+                ? 'bg-brand-light text-brand font-bold'
+                : 'text-slate-400 hover:text-slate-700 font-semibold');
+        });
+        try { localStorage.setItem('cb_lang', lang); } catch(e) {}
+    }
+    sw.addEventListener('click', e => {
+        const b = e.target.closest('button[data-lang]');
+        if (b) apply(b.dataset.lang);
+    });
+    let init = 'el';
+    const q = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
+    if (q === 'el' || T[q]) init = q;
+    else { try { const s = localStorage.getItem('cb_lang'); if (s === 'el' || T[s]) init = s; } catch(e) {} }
+    apply(init);
+})();
+</script>
 <script>document.getElementById('y').textContent=new Date().getFullYear();</script>
 </body>
 </html>

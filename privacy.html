@@ -35,78 +35,131 @@
 <nav class="border-b border-slate-100">
     <div class="max-w-3xl mx-auto px-5 h-16 flex items-center justify-between">
         <a href="index.html" class="font-extrabold text-lg tracking-tight">Court<span class="text-brand">Book</span></a>
-        <a href="index.html" class="text-sm font-semibold text-slate-500 hover:text-brand transition">&larr; Αρχική</a>
+        <div class="flex items-center gap-3">
+            <div id="langSw" class="flex items-center gap-0.5 text-[11px] tracking-wide" aria-label="Language">
+                <button type="button" data-lang="el" class="px-1.5 py-1 rounded-md transition bg-brand-light text-brand font-bold">EL</button>
+                <button type="button" data-lang="en" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">EN</button>
+                <button type="button" data-lang="de" class="px-1.5 py-1 rounded-md transition text-slate-400 hover:text-slate-700 font-semibold">DE</button>
+            </div>
+            <a href="index.html" class="text-sm font-semibold text-slate-500 hover:text-brand transition" data-i18n="t4">&larr; Αρχική</a>
+        </div>
     </div>
 </nav>
 <main class="max-w-3xl mx-auto px-5 py-12">
 
-<h1 class="text-3xl font-extrabold tracking-tight mb-2">Πολιτική Απορρήτου</h1>
-<p class="text-sm text-slate-400 mb-8">Τελευταία ενημέρωση: Σεπτέμβριος 2026</p>
+<h1 class="text-3xl font-extrabold tracking-tight mb-2" data-i18n="t5">Πολιτική Απορρήτου</h1>
+<p class="text-sm text-slate-400 mb-8" data-i18n="t6">Τελευταία ενημέρωση: Σεπτέμβριος 2026</p>
 
-<p class="text-slate-600 leading-relaxed mb-3">Η παρούσα πολιτική εξηγεί πώς το CourtBook διαχειρίζεται προσωπικά δεδομένα, τόσο για τους
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t7">Η παρούσα πολιτική εξηγεί πώς το CourtBook διαχειρίζεται προσωπικά δεδομένα, τόσο για τους
 επισκέπτες αυτού του ιστότοπου όσο και για τους χρήστες των συστημάτων που λειτουργούν οι
 συνεργαζόμενοι σύλλογοι.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">1. Δύο διαφορετικοί ρόλοι</h2>
-<p class="text-slate-600 leading-relaxed mb-3"><b>Στον ιστότοπο court-book.gr</b> υπεύθυνος επεξεργασίας είναι το CourtBook.</p>
-<p class="text-slate-600 leading-relaxed mb-3"><b>Στο σύστημα κάθε συλλόγου</b> υπεύθυνος επεξεργασίας είναι <b>ο ίδιος ο σύλλογος</b>.
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t8">1. Δύο διαφορετικοί ρόλοι</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t9"><b>Στον ιστότοπο court-book.gr</b> υπεύθυνος επεξεργασίας είναι το CourtBook.</p>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t10"><b>Στο σύστημα κάθε συλλόγου</b> υπεύθυνος επεξεργασίας είναι <b>ο ίδιος ο σύλλογος</b>.
 Το CourtBook παρέχει την τεχνική υποδομή και επεξεργάζεται δεδομένα αποκλειστικά κατ&rsquo;
 εντολή του συλλόγου.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">2. Τι δεδομένα συλλέγονται</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Στον ιστότοπο <b>δεν χρησιμοποιούνται cookies παρακολούθησης</b>, δεν υπάρχουν εργαλεία
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t11">2. Τι δεδομένα συλλέγονται</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t12">Στον ιστότοπο <b>δεν χρησιμοποιούνται cookies παρακολούθησης</b>, δεν υπάρχουν εργαλεία
 στατιστικών τρίτων και δεν συλλέγονται προσωπικά δεδομένα &mdash; εκτός αν επικοινωνήσετε μαζί
 μας με email, οπότε κρατάμε ό,τι μας στείλετε για να απαντήσουμε.</p>
-<p class="text-slate-600 leading-relaxed mb-3">Στα συστήματα των συλλόγων τηρούνται:</p>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t13">Στα συστήματα των συλλόγων τηρούνται:</p>
 <ul class="text-slate-600 leading-relaxed mb-3 list-disc pl-5 space-y-1">
-    <li>Ονοματεπώνυμο, email και τηλέφωνο μέλους</li>
-    <li>Ιστορικό κρατήσεων, συμμετοχής σε τμήματα και παρουσιών</li>
-    <li>Κατάσταση συνδρομής, όπου ο σύλλογος τη χρησιμοποιεί</li>
+    <li data-i18n="t14">Ονοματεπώνυμο, email και τηλέφωνο μέλους</li>
+    <li data-i18n="t15">Ιστορικό κρατήσεων, συμμετοχής σε τμήματα και παρουσιών</li>
+    <li data-i18n="t16">Κατάσταση συνδρομής, όπου ο σύλλογος τη χρησιμοποιεί</li>
 </ul>
 
-<h2 class="text-lg font-bold mt-9 mb-2">3. Σκοπός και νομική βάση</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Τα δεδομένα χρησιμοποιούνται αποκλειστικά για τη λειτουργία του συλλόγου: κρατήσεις,
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t17">3. Σκοπός και νομική βάση</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t18">Τα δεδομένα χρησιμοποιούνται αποκλειστικά για τη λειτουργία του συλλόγου: κρατήσεις,
 οργάνωση προπονήσεων, ενημέρωση μελών και παρακολούθηση συνδρομών. Νομική βάση αποτελεί η
 εκτέλεση της σχέσης μεταξύ μέλους και συλλόγου, καθώς και το έννομο συμφέρον του συλλόγου να
 οργανώνει τη δραστηριότητά του. <b>Δεν πωλούνται και δεν παραχωρούνται δεδομένα σε τρίτους για
 διαφημιστικούς σκοπούς.</b></p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">4. Πού φυλάσσονται</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Τα δεδομένα αποθηκεύονται κρυπτογραφημένα σε διακομιστές <b>εντός Ευρωπαϊκής Ένωσης</b>
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t19">4. Πού φυλάσσονται</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t20">Τα δεδομένα αποθηκεύονται κρυπτογραφημένα σε διακομιστές <b>εντός Ευρωπαϊκής Ένωσης</b>
 (Supabase, Ιρλανδία). Η πρόσβαση γίνεται μέσω κρυπτογραφημένης σύνδεσης (HTTPS) και διέπεται
 από κανόνες που περιορίζουν κάθε χρήστη σε όσα τον αφορούν: το μέλος βλέπει μόνο τα δικά του,
 ο προπονητής μόνο τα τμήματά του, η γραμματεία τα δεδομένα του δικού της συλλόγου.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">5. Αποστολή email</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Για ειδοποιήσεις (επιβεβαίωση κράτησης, ακύρωση, νέα εγγραφή) χρησιμοποιείται η υπηρεσία
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t21">5. Αποστολή email</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t22">Για ειδοποιήσεις (επιβεβαίωση κράτησης, ακύρωση, νέα εγγραφή) χρησιμοποιείται η υπηρεσία
 Resend. Διαβιβάζεται μόνο ό,τι χρειάζεται για την αποστολή του μηνύματος.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">6. Χρόνος διατήρησης</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Τα δεδομένα διατηρούνται όσο το μέλος παραμένει εγγεγραμμένο στον σύλλογο. Με τη διαγραφή
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t23">6. Χρόνος διατήρησης</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t24">Τα δεδομένα διατηρούνται όσο το μέλος παραμένει εγγεγραμμένο στον σύλλογο. Με τη διαγραφή
 του μέλους διαγράφονται και τα σχετικά δεδομένα, εκτός αν ο σύλλογος υποχρεούται να τα τηρήσει
 για νομικούς λόγους.</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">7. Τα δικαιώματά σας</h2>
-<p class="text-slate-600 leading-relaxed mb-3">Έχετε δικαίωμα πρόσβασης, διόρθωσης, διαγραφής, περιορισμού και φορητότητας των δεδομένων
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t25">7. Τα δικαιώματά σας</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t26">Έχετε δικαίωμα πρόσβασης, διόρθωσης, διαγραφής, περιορισμού και φορητότητας των δεδομένων
 σας, καθώς και δικαίωμα εναντίωσης.</p>
-<p class="text-slate-600 leading-relaxed mb-3">Επειδή υπεύθυνος για τα δεδομένα του συστήματος είναι <b>ο σύλλογός σας</b>, απευθυνθείτε
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t27">Επειδή υπεύθυνος για τα δεδομένα του συστήματος είναι <b>ο σύλλογός σας</b>, απευθυνθείτε
 πρώτα σε εκείνον. Αν δεν λάβετε απάντηση, γράψτε μας στο
 <a href="mailto:info@court-book.gr" class="text-brand font-semibold">info@court-book.gr</a>.</p>
-<p class="text-slate-600 leading-relaxed mb-3">Έχετε επίσης δικαίωμα καταγγελίας στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t28">Έχετε επίσης δικαίωμα καταγγελίας στην Αρχή Προστασίας Δεδομένων Προσωπικού Χαρακτήρα
 (<a href="https://www.dpa.gr" target="_blank" rel="noopener" class="text-brand font-semibold">dpa.gr</a>).</p>
 
-<h2 class="text-lg font-bold mt-9 mb-2">8. Επικοινωνία</h2>
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t29">8. Γλώσσα</h2>
+<p class="text-slate-600 leading-relaxed mb-3" data-i18n="t30">Η παρούσα πολιτική συντάσσεται στα ελληνικά. Οι μεταφράσεις σε άλλες γλώσσες
+παρέχονται για διευκόλυνση&middot; σε περίπτωση απόκλισης υπερισχύει το ελληνικό κείμενο.</p>
+
+<h2 class="text-lg font-bold mt-9 mb-2" data-i18n="t31">9. Επικοινωνία</h2>
 <p class="text-slate-600 leading-relaxed mb-3"><a href="mailto:info@court-book.gr" class="text-brand font-semibold">info@court-book.gr</a></p>
 
 </main>
 <footer class="border-t border-slate-100 mt-16 py-8 px-5">
     <div class="max-w-3xl mx-auto text-center text-sm text-slate-400">
-        <p><a href="privacy.html" class="hover:text-brand transition">Πολιτική Απορρήτου</a> &middot;
+        <p data-i18n="t33"><a href="privacy.html" class="hover:text-brand transition">Πολιτική Απορρήτου</a> &middot;
            <a href="terms.html" class="hover:text-brand transition">Όροι Χρήσης</a> &middot;
            <a href="mailto:info@court-book.gr" class="hover:text-brand transition">info@court-book.gr</a></p>
-        <p class="text-xs mt-2">&copy; <span id="y"></span> CourtBook</p>
+        <p class="text-xs mt-2" data-i18n="t34">&copy; <span id="y"></span> CourtBook</p>
     </div>
 </footer>
+<script>
+/* ══════════ Πολυγλωσσία (EL προεπιλογή · EN · DE) ══════════
+   Νομικό κείμενο: το ελληνικό είναι το αυθεντικό και ζει στο HTML.
+   Οι μεταφράσεις είναι διευκόλυνση — βλ. ρήτρα γλώσσας. */
+(function(){
+    const T = {"en": {"t4": "&larr; Home", "t5": "Privacy Policy", "t6": "Last updated: September 2026", "t7": "This policy explains how CourtBook handles personal data, both for visitors to this website and for users of the systems operated by the clubs we work with.", "t8": "1. Two different roles", "t9": "<b>On the court-book.gr website</b> the data controller is CourtBook.", "t10": "<b>In each club&rsquo;s system</b> the data controller is <b>the club itself</b>. CourtBook provides the technical infrastructure and processes data solely on the club&rsquo;s instructions.", "t11": "2. What data is collected", "t12": "On the website <b>no tracking cookies are used</b>, there are no third-party analytics tools and no personal data is collected &mdash; unless you contact us by email, in which case we keep what you send us in order to reply.", "t13": "The clubs&rsquo; systems hold:", "t14": "Member name, email and phone number", "t15": "History of bookings, group membership and attendance", "t16": "Subscription status, where the club uses it", "t17": "3. Purpose and legal basis", "t18": "The data is used solely to run the club: bookings, organising training, informing members and tracking subscriptions. The legal basis is the performance of the relationship between member and club, together with the club&rsquo;s legitimate interest in organising its activity. <b>Data is never sold or passed to third parties for advertising purposes.</b>", "t19": "4. Where it is stored", "t20": "Data is stored encrypted on servers <b>inside the European Union</b> (Supabase, Ireland). Access is over an encrypted connection (HTTPS) and is governed by rules that limit every user to what concerns them: a member sees only their own data, a coach only their own groups, the office only its own club&rsquo;s data.", "t21": "5. Sending email", "t22": "The Resend service is used for notifications (booking confirmation, cancellation, new sign-up). Only what is needed to send the message is transmitted.", "t23": "6. Retention period", "t24": "Data is kept for as long as the member remains registered with the club. When the member is deleted, the related data is deleted too, unless the club is legally required to retain it.", "t25": "7. Your rights", "t26": "You have the right of access, rectification, erasure, restriction and portability of your data, as well as the right to object.", "t27": "Because the controller for the data in the system is <b>your club</b>, please contact them first. If you receive no reply, write to us at <a href=\"mailto:info@court-book.gr\" class=\"text-brand font-semibold\">info@court-book.gr</a>.", "t28": "You also have the right to lodge a complaint with the Hellenic Data Protection Authority (<a href=\"https://www.dpa.gr\" target=\"_blank\" rel=\"noopener\" class=\"text-brand font-semibold\">dpa.gr</a>).", "t29": "8. Language", "t30": "This policy is drawn up in Greek. Translations into other languages are provided for convenience; in the event of any discrepancy, the Greek text prevails.", "t31": "9. Contact", "t33": "<a href=\"privacy.html\" class=\"hover:text-brand transition\">Privacy Policy</a> &middot;\n           <a href=\"terms.html\" class=\"hover:text-brand transition\">Terms of Use</a> &middot;\n           <a href=\"mailto:info@court-book.gr\" class=\"hover:text-brand transition\">info@court-book.gr</a>", "t34": "&copy; <span id=\"y\"></span> CourtBook", "_title": "Privacy Policy — CourtBook"}, "de": {"t4": "&larr; Startseite", "t5": "Datenschutzerklärung", "t6": "Zuletzt aktualisiert: September 2026", "t7": "Diese Erklärung beschreibt, wie CourtBook mit personenbezogenen Daten umgeht &mdash; sowohl für Besucher dieser Website als auch für Nutzer der Systeme, die die angeschlossenen Clubs betreiben.", "t8": "1. Zwei unterschiedliche Rollen", "t9": "<b>Auf der Website court-book.gr</b> ist CourtBook der Verantwortliche.", "t10": "<b>Im System jedes Clubs</b> ist <b>der Club selbst</b> der Verantwortliche. CourtBook stellt die technische Infrastruktur bereit und verarbeitet Daten ausschließlich im Auftrag des Clubs.", "t11": "2. Welche Daten erhoben werden", "t12": "Auf der Website werden <b>keine Tracking-Cookies verwendet</b>, es gibt keine Analysewerkzeuge Dritter und es werden keine personenbezogenen Daten erhoben &mdash; es sei denn, Sie schreiben uns eine E-Mail; dann bewahren wir auf, was Sie uns senden, um zu antworten.", "t13": "In den Systemen der Clubs werden gespeichert:", "t14": "Name, E-Mail und Telefonnummer des Mitglieds", "t15": "Verlauf von Buchungen, Gruppenzugehörigkeit und Anwesenheit", "t16": "Beitragsstatus, sofern der Club ihn nutzt", "t17": "3. Zweck und Rechtsgrundlage", "t18": "Die Daten werden ausschließlich für den Betrieb des Clubs verwendet: Buchungen, Organisation des Trainings, Information der Mitglieder und Beitragsverwaltung. Rechtsgrundlage sind die Durchführung des Verhältnisses zwischen Mitglied und Club sowie das berechtigte Interesse des Clubs an der Organisation seiner Tätigkeit. <b>Daten werden nicht verkauft und nicht zu Werbezwecken an Dritte weitergegeben.</b>", "t19": "4. Wo sie gespeichert werden", "t20": "Die Daten werden verschlüsselt auf Servern <b>innerhalb der Europäischen Union</b> gespeichert (Supabase, Irland). Der Zugriff erfolgt über eine verschlüsselte Verbindung (HTTPS) und unterliegt Regeln, die jeden Nutzer auf das beschränken, was ihn betrifft: das Mitglied sieht nur seine eigenen Daten, der Trainer nur seine Gruppen, das Sekretariat nur die Daten des eigenen Clubs.", "t21": "5. E-Mail-Versand", "t22": "Für Benachrichtigungen (Buchungsbestätigung, Stornierung, neue Anmeldung) wird der Dienst Resend verwendet. Übermittelt wird nur das, was für den Versand der Nachricht erforderlich ist.", "t23": "6. Speicherdauer", "t24": "Die Daten werden so lange aufbewahrt, wie das Mitglied im Club registriert bleibt. Mit der Löschung des Mitglieds werden auch die zugehörigen Daten gelöscht, sofern der Club sie nicht aus rechtlichen Gründen aufbewahren muss.", "t25": "7. Ihre Rechte", "t26": "Sie haben das Recht auf Auskunft, Berichtigung, Löschung, Einschränkung und Übertragbarkeit Ihrer Daten sowie ein Widerspruchsrecht.", "t27": "Da für die Daten im System <b>Ihr Club</b> verantwortlich ist, wenden Sie sich bitte zuerst an diesen. Erhalten Sie keine Antwort, schreiben Sie uns an <a href=\"mailto:info@court-book.gr\" class=\"text-brand font-semibold\">info@court-book.gr</a>.", "t28": "Sie haben außerdem das Recht, sich bei der griechischen Datenschutzbehörde zu beschweren (<a href=\"https://www.dpa.gr\" target=\"_blank\" rel=\"noopener\" class=\"text-brand font-semibold\">dpa.gr</a>).", "t29": "8. Sprache", "t30": "Diese Erklärung ist in griechischer Sprache abgefasst. Übersetzungen in andere Sprachen dienen lediglich der Erleichterung; bei Abweichungen ist der griechische Text maßgeblich.", "t31": "9. Kontakt", "t33": "<a href=\"privacy.html\" class=\"hover:text-brand transition\">Datenschutz</a> &middot;\n           <a href=\"terms.html\" class=\"hover:text-brand transition\">Nutzungsbedingungen</a> &middot;\n           <a href=\"mailto:info@court-book.gr\" class=\"hover:text-brand transition\">info@court-book.gr</a>", "t34": "&copy; <span id=\"y\"></span> CourtBook", "_title": "Datenschutzerklärung — CourtBook"}};
+    const nodes = document.querySelectorAll('[data-i18n]');
+    const ORIG = {}, ELTITLE = document.title;
+    nodes.forEach(el => ORIG[el.dataset.i18n] = el.innerHTML);
+    const sw = document.getElementById('langSw');
+
+    function setYear(){
+        const y = document.getElementById('y');
+        if (y) y.textContent = new Date().getFullYear();
+    }
+    function apply(lang){
+        const t = T[lang] || null;
+        nodes.forEach(el => {
+            const v = t ? t[el.dataset.i18n] : ORIG[el.dataset.i18n];
+            if (v != null) el.innerHTML = v;
+        });
+        document.documentElement.lang = lang;
+        document.title = t ? t._title : ELTITLE;
+        setYear();
+        sw.querySelectorAll('button').forEach(b => {
+            b.className = 'px-1.5 py-1 rounded-md transition ' + (b.dataset.lang === lang
+                ? 'bg-brand-light text-brand font-bold'
+                : 'text-slate-400 hover:text-slate-700 font-semibold');
+        });
+        try { localStorage.setItem('cb_lang', lang); } catch(e) {}
+    }
+    sw.addEventListener('click', e => {
+        const b = e.target.closest('button[data-lang]');
+        if (b) apply(b.dataset.lang);
+    });
+    let init = 'el';
+    const q = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
+    if (q === 'el' || T[q]) init = q;
+    else { try { const s = localStorage.getItem('cb_lang'); if (s === 'el' || T[s]) init = s; } catch(e) {} }
+    apply(init);
+})();
+</script>
 <script>document.getElementById('y').textContent=new Date().getFullYear();</script>
 </body>
 </html>
