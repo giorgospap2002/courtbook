@@ -4,14 +4,31 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Κρατήσεις — CourtBook</title>
+    <meta name="theme-color" content="#f5f3ee">
+    <link rel="preload" href="fonts/sofia-cond-greek.woff2" as="font" type="font/woff2" crossorigin>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <script>
+        /* Νέο design: ίδιο σύστημα με το court-book.gr.
+           brand = μελάνι (κύριες ενέργειες) · blue = διαθεσιμότητα · green = «δικό μου»
+           · purple = προπονήσεις · slate = ζεστό γκρι χαρτιού */
         tailwind.config = { theme: { extend: {
-            colors: { brand: { light:'#dbeafe', DEFAULT:'#2563eb', dark:'#1d4ed8' } },
-            fontFamily: { sans: ['Inter','system-ui','sans-serif'] }
+            colors: {
+                brand:  { light:'#ece8df', DEFAULT:'#0b0f17', dark:'#1f2533' },
+                slate:  { 50:'#faf9f6', 100:'#f3f0ea', 200:'#e5e0d6', 300:'#d3ccbe', 400:'#8b8f9b', 500:'#6b7080', 600:'#4a4f5c', 700:'#2d3340', 800:'#1a1f2a', 900:'#0b0f17' },
+                blue:   { 50:'#eef2fe', 100:'#e1e8fd', 200:'#c3d0fb', 300:'#9db1f7', 400:'#6f8af0', 500:'#4466e6', 600:'#1f45d6', 700:'#1633a6', 800:'#142b85', 900:'#13286b' },
+                indigo: { 50:'#eef2fe', 100:'#e1e8fd', 200:'#c3d0fb', 300:'#9db1f7', 400:'#6f8af0', 500:'#1f45d6', 600:'#1a3cc0', 700:'#1633a6', 800:'#142b85', 900:'#13286b' },
+                green:  { 50:'#ecf8f1', 100:'#d9f1e3', 200:'#b3e2c6', 300:'#80cba1', 400:'#47ad77', 500:'#1f9259', 600:'#0f7a46', 700:'#0c6439', 800:'#0b4f2e', 900:'#093f25' },
+                emerald:{ 50:'#ecf8f1', 100:'#d9f1e3', 200:'#b3e2c6', 300:'#80cba1', 400:'#47ad77', 500:'#1f9259', 600:'#0f7a46', 700:'#0c6439', 800:'#0b4f2e', 900:'#093f25' },
+                purple: { 50:'#f4f0fe', 100:'#ebe4fd', 200:'#d6c9fb', 300:'#b8a2f5', 400:'#9575ec', 500:'#7a55e2', 600:'#6a45d9', 700:'#5634b8', 800:'#462b94', 900:'#392577' },
+                red:    { 50:'#fdf1ee', 100:'#fbe2dc', 200:'#f6c3b8', 300:'#ee9a88', 400:'#e2705a', 500:'#d24f35', 600:'#b83d25', 700:'#97311f', 800:'#7a2a1d', 900:'#64251b' }
+            },
+            fontFamily: {
+                sans:    ['Inter','system-ui','sans-serif'],
+                display: ['"Sofia Sans Condensed"','Inter','sans-serif']
+            }
         }}}
     </script>
     <style>
@@ -32,26 +49,128 @@
   unicode-range:U+0000-00FF, U+0131, U+0152-0153, U+02BB-02BC, U+02C6, U+02DA, U+02DC, U+0304, U+0308, U+0329, U+2000-206F, U+20AC, U+2122, U+2191, U+2193, U+2212, U+2215, U+FEFF, U+FFFD;
 }
 
-        body { font-family:'Inter',sans-serif; -webkit-tap-highlight-color:transparent; }
+        body { font-family:'Inter',sans-serif; }
         .no-scrollbar::-webkit-scrollbar{display:none} .no-scrollbar{scrollbar-width:none}
-        .tab-active { color:#2563eb; border-bottom:2px solid #2563eb; font-weight:600; }
-        .slot-free      { background:linear-gradient(135deg,#eff6ff,#dbeafe); border-color:#93c5fd; }
-        .slot-pick      { background:linear-gradient(135deg,#eff6ff,#dbeafe); border-color:#2563eb; box-shadow:0 0 0 2px rgba(37,99,235,.2); }
-        .slot-mine      { background:linear-gradient(135deg,#f0fdf4,#dcfce7); border-color:#86efac; }
-        .slot-other     { background:#f8fafc; border-color:#e2e8f0; }
-        .slot-cont      { background:#f8fafc; border-color:#e2e8f0; border-style:dashed; }
-        .slot-past      { background:#f1f5f9; border-color:#cbd5e1; opacity:.5; }
-        input:focus,select:focus { outline:none; border-color:#2563eb; box-shadow:0 0 0 3px rgba(37,99,235,.12); }
-        button:active { transform:scale(.97); }
-        @keyframes up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
-        .anim-up { animation: up .22s ease-out both; }
+
+@font-face{font-family:'Sofia Sans Condensed';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/sofia-cond-greek.woff2') format('woff2');unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:'Sofia Sans Condensed';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/sofia-cond-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+/* ═══════════════════ CourtBook · νέο design ═══════════════════ */
+:root{
+  --paper:#f5f3ee; --paper-2:#ece8df; --ink:#0b0f17; --ink-2:#2d3340; --muted:#6b7080;
+  --line:#e5e0d6; --line-2:#d3ccbe; --brand:#1f45d6; --brand-soft:#e1e8fd;
+  --ball:#d6f250; --mine:#0f7a46; --mine-soft:#e2f5e9; --train:#6a45d9; --night:#0a0e1a;
+  --ease:cubic-bezier(.2,.7,.2,1);
+  --card-shadow:0 0 0 1px rgba(11,15,23,.055),0 1px 2px rgba(11,15,23,.04),0 12px 32px -24px rgba(11,15,23,.32);
+}
+html{-webkit-text-size-adjust:100%}
+body{background:var(--paper)!important;color:var(--ink);-webkit-font-smoothing:antialiased;-webkit-tap-highlight-color:transparent;font-feature-settings:"cv11"}
+::selection{background:var(--ball);color:var(--ink)}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px;border-radius:8px}
+
+/* ── τυπογραφία: τίτλοι με τη στενή γραμματοσειρά του site ── */
+h1,h2,.font-extrabold,.font-black,
+.text-lg.font-bold,.text-xl.font-bold,.text-2xl.font-bold{font-family:'Sofia Sans Condensed',Inter,sans-serif;letter-spacing:-.006em}
+h1.text-2xl,h1.text-3xl,#authClubName{font-size:2.15rem;line-height:1;font-weight:800}
+h2.text-xl,.text-xl.font-bold,.text-xl.font-extrabold{font-size:1.6rem;line-height:1.05;font-weight:800}
+.text-lg.font-bold,.text-lg.font-extrabold{font-size:1.35rem;line-height:1.1;font-weight:800}
+.text-2xl.font-extrabold,.text-2xl.font-bold,.text-2xl.font-black{font-size:1.9rem;line-height:1.02}
+p.font-bold.mb-4:not(.uppercase):not([class*=text-]),p.font-bold.mb-3:not(.uppercase):not([class*=text-]){font-family:'Sofia Sans Condensed',Inter,sans-serif;font-size:1.3rem;font-weight:800;line-height:1.1;letter-spacing:-.004em}
+/* μικρές ετικέτες σε κεφαλαία → ετικέτες «spec sheet» */
+.uppercase{font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:700!important;letter-spacing:.13em!important}
+.uppercase.text-\[10px\]{font-size:11.5px}
+.uppercase.text-\[11px\]{font-size:12px}
+.tabular,.font-mono{font-variant-numeric:tabular-nums}
+
+/* ── κάρτες ── */
+.shadow-sm{box-shadow:var(--card-shadow)!important}
+.shadow,.shadow-md{box-shadow:0 0 0 1px rgba(11,15,23,.06),0 18px 40px -26px rgba(11,15,23,.4)!important}
+.shadow-lg,.shadow-xl,.shadow-2xl{box-shadow:0 0 0 1px rgba(11,15,23,.06),0 40px 80px -36px rgba(11,15,23,.55)!important}
+.rounded-2xl{border-radius:20px}
+.rounded-3xl{border-radius:28px}
+
+/* ── πεδία ── */
+input:not([type=checkbox]):not([type=radio]):not([type=range]):not([type=color]),select,textarea{background-color:#fff;transition:border-color .2s,box-shadow .2s}
+input:not([type=checkbox]):not([type=radio]):hover,select:hover,textarea:hover{border-color:#bdb5a5}
+input:focus,select:focus,textarea:focus{outline:none!important;border-color:var(--ink)!important;box-shadow:0 0 0 3px rgba(11,15,23,.08)!important}
+input::placeholder,textarea::placeholder{color:#aaa59b}
+input[type=checkbox],input[type=radio]{accent-color:var(--ink)}
+select{-webkit-appearance:none;appearance:none;padding-right:2.2rem!important;
+  background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 16 16' fill='none' stroke='%230b0f17' stroke-width='1.8' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M4 6l4 4 4-4'/%3E%3C/svg%3E");
+  background-repeat:no-repeat;background-position:right .8rem center;background-size:14px}
+
+/* ── κουμπιά ── */
+button,a{transition:background-color .2s,color .2s,box-shadow .2s,transform .2s var(--ease),opacity .2s}
+button:active{transform:scale(.97)}
+.bg-brand:not(span){box-shadow:inset 0 1px 0 rgba(255,255,255,.12),0 8px 18px -12px rgba(11,15,23,.65)}
+button.w-full.bg-brand,a.bg-brand.px-6{border-radius:999px}
+button.bg-brand:hover:not(:disabled){background:#1f2533}
+.text-brand{color:var(--ink)}
+span.text-brand,button.text-brand.underline,.text-brand.font-semibold{text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px}
+
+/* ── κεφαλίδα + καρτέλες ── */
+#appScreen > header{background:rgba(245,243,238,.86)!important;backdrop-filter:saturate(1.4) blur(16px);-webkit-backdrop-filter:saturate(1.4) blur(16px);box-shadow:none!important;border-bottom:1px solid var(--line)!important}
+#appScreen > header button.border{border-radius:999px;background:rgba(255,255,255,.6)}
+#hdrClub{font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:700;letter-spacing:.13em;font-size:11px;color:var(--muted)}
+#welcomeName{font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:800;font-size:1.2rem;line-height:1.05;letter-spacing:-.004em}
+#adminBadge{background:var(--ball)!important;color:#29310a!important;font-family:'Sofia Sans Condensed',Inter,sans-serif;letter-spacing:.1em;font-size:10.5px}
+.club-mark{background:var(--ink)!important;color:var(--ball)!important;font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:800;letter-spacing:.02em}
+#hdrLogoFallback.club-mark{font-size:14px;border-radius:11px}
+#authLogoFallback.club-mark{font-size:28px;border-radius:22px;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 40px -18px rgba(0,0,0,.8)}
+.tab-btn{display:inline-flex!important;align-items:center;gap:7px;border:0!important;border-radius:999px;padding:8px 14px!important;margin:6px 0 10px;font-size:13.5px!important;font-weight:550!important;color:var(--muted)}
+.tab-btn svg{width:16px;height:16px;flex-shrink:0;opacity:.85}
+.tab-btn:hover{color:var(--ink)!important;background:rgba(11,15,23,.05)}
+.tab-active,.tab-active:hover{background:var(--ink)!important;color:#fff!important;font-weight:600!important}
+.tab-active svg{opacity:1}
+.tab-active #openMatchBadge{background:var(--ball)!important;color:#29310a!important}
+
+/* ── οθόνη εισόδου: νύχτα + γραμμές γηπέδου ── */
+#authScreen{background-color:var(--night)!important;background-image:
+  radial-gradient(1200px 600px at 50% -10%,rgba(31,69,214,.35),transparent 60%),
+  radial-gradient(700px 400px at 100% 110%,rgba(214,242,80,.10),transparent 60%),
+  url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='560' height='1100' viewBox='0 0 560 1100' fill='none' stroke='rgba(255,255,255,0.06)' stroke-width='1.5'%3E%3Cpath d='M60 40h440v1020H60zM110 40v1020M450 40v1020M20 550h520M110 290h340M110 810h340M280 290v520'/%3E%3C/svg%3E")!important;
+  background-position:center,center,center!important;background-size:auto,auto,560px auto!important;background-repeat:no-repeat!important}
+#authScreen .text-slate-400{color:rgba(255,255,255,.55)!important}
+#authScreen > .bg-white{border-radius:28px;padding:34px 30px}
+#authScreen > .bg-white .text-slate-400{color:var(--muted)!important}
+#authScreen h2{font-size:1.75rem}
+#authBtn,#authScreen button.w-full{padding-top:14px!important;padding-bottom:14px!important;font-size:15px!important}
+
+/* ── τιμοκατάλογος ── */
+#priceBox{background:#fff!important;border:0!important;box-shadow:var(--card-shadow)}
+#priceCards > div{background:var(--paper)!important;box-shadow:none!important;border:1px solid var(--line);border-radius:14px}
+#priceCards p.font-extrabold{font-size:1.65rem;line-height:1}
+
+/* ── slots ημέρας ── */
+#slots > div{border-radius:16px!important;padding:13px 14px!important}
+#slots .font-bold.text-sm{font-family:'Sofia Sans Condensed',Inter,sans-serif;font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:0}
+.slot-free{background:#fff;border-color:var(--line)!important;box-shadow:0 1px 0 rgba(11,15,23,.02);cursor:pointer}
+.slot-free:hover{border-color:var(--brand)!important;box-shadow:0 0 0 1px var(--brand),0 12px 24px -18px rgba(31,69,214,.6);transform:translateY(-1px)}
+.slot-pick{background:#fff;border-color:var(--ink)!important;box-shadow:0 0 0 1px var(--ink),0 22px 40px -24px rgba(11,15,23,.5)!important}
+.slot-mine{background:linear-gradient(90deg,var(--mine-soft),#f1faf5);border-color:#b3e2c6!important;box-shadow:inset 3px 0 0 var(--mine)}
+.slot-other{background:var(--paper-2);border-color:var(--paper-2)!important}
+.slot-cont{background:transparent;border-color:var(--line-2)!important;border-style:dashed}
+.slot-past{background:transparent;border-color:var(--line)!important;opacity:.45}
+
+/* ── παράθυρα ── */
+.bg-black\/50{background:rgba(11,15,23,.55)!important;backdrop-filter:blur(4px);-webkit-backdrop-filter:blur(4px)}
+.fixed.inset-0 > .bg-white{border-radius:26px 26px 0 0}
+@media(min-width:640px){.fixed.inset-0 > .bg-white{border-radius:26px}}
+
+/* ── λοιπά ── */
+.anim-up{animation:up .45s var(--ease) both}
+@keyframes up{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+@media (prefers-reduced-motion:reduce){.anim-up{animation:none}button:active{transform:none}}
+hr,.border-t,.border-b{border-color:var(--line)}
+#forgotLink{color:var(--muted)!important}
+#forgotLink:hover,#toggleAuth:hover{color:var(--ink)!important}
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
 
 <!-- ═══ CLUB NOT FOUND ═══ -->
 <div id="notFound" class="hidden min-h-screen flex flex-col items-center justify-center p-6 text-center">
-    <div class="text-6xl mb-4">🤔</div>
+    <div class="mb-4 text-slate-300"><svg class="w-14 h-14 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="M20 20l-4-4"/></svg></div>
     <h1 class="text-2xl font-bold mb-2">Το club δεν βρέθηκε</h1>
     <p class="text-slate-500 mb-6">Έλεγξε το link ή φτιάξε το δικό σου club.</p>
     <a href="signup.html" class="bg-brand text-white px-6 py-3 rounded-xl font-bold">Φτιάξε Club</a>
@@ -61,7 +180,7 @@
 <div id="authScreen" class="hidden min-h-screen flex flex-col items-center justify-center p-4 bg-gradient-to-br from-slate-900 via-slate-800 to-slate-900">
     <div class="mb-8 text-center">
         <img id="authLogo" src="" alt="" class="w-24 h-24 rounded-full object-cover mx-auto mb-4 border-4 border-white/20 shadow-2xl hidden">
-        <div id="authLogoFallback" class="w-20 h-20 bg-brand rounded-2xl flex items-center justify-center mx-auto mb-4 text-white text-3xl font-black">🎾</div>
+        <div id="authLogoFallback" class="club-mark w-20 h-20 bg-brand rounded-2xl flex items-center justify-center mx-auto mb-4 text-white text-3xl font-black">CB</div>
         <h1 id="authClubName" class="text-2xl font-extrabold text-white"></h1>
         <p class="text-slate-400 text-sm mt-1">Online Κρατήσεις</p>
     </div>
@@ -117,7 +236,7 @@
 
         <!-- Έκανε εγγραφή αλλά περιμένει έγκριση από τη γραμματεία -->
         <div id="pendingBox" class="hidden text-center">
-            <div class="text-4xl mb-3">⏳</div>
+            <div class="mb-3 text-slate-400"><svg class="w-10 h-10 mx-auto" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h12M6 21h12M7 3c0 5 10 5 10 9s-10 4-10 9M17 3c0 5-10 5-10 9"/></svg></div>
             <h2 class="text-xl font-bold mb-1">Η εγγραφή σου εστάλη</h2>
             <p class="text-sm text-slate-500 mb-6">Η γραμματεία του <b id="pdClub" class="text-slate-700"></b> θα την εγκρίνει. Θα μπορείς να μπεις μόλις γίνει.</p>
             <button onclick="location.reload()" class="w-full py-3 bg-brand text-white rounded-xl font-bold text-sm hover:bg-brand-dark transition">Δοκίμασε ξανά</button>
@@ -233,7 +352,7 @@
         <div class="max-w-4xl mx-auto px-3 sm:px-4 pt-3 sm:pt-4 flex justify-between items-center gap-2">
             <div class="flex items-center gap-2 sm:gap-3 min-w-0">
                 <img id="hdrLogo" src="" class="w-9 h-9 rounded-full object-cover border-2 border-slate-100 hidden flex-shrink-0">
-                <div id="hdrLogoFallback" class="w-9 h-9 bg-brand rounded-xl flex items-center justify-center text-white flex-shrink-0">🎾</div>
+                <div id="hdrLogoFallback" class="club-mark w-9 h-9 bg-brand rounded-xl flex items-center justify-center text-white flex-shrink-0">CB</div>
                 <div class="min-w-0">
                     <p class="text-[10px] text-slate-400 uppercase tracking-wider font-medium truncate" id="hdrClub"></p>
                     <h2 id="welcomeName" class="font-bold text-sm leading-tight truncate">Παίκτης</h2>
@@ -247,17 +366,17 @@
         </div>
         <!-- Οι καρτέλες κυλούν οριζόντια στο κινητό αντί να στριμώχνονται -->
         <div class="max-w-4xl mx-auto px-3 sm:px-4 flex gap-1 mt-2 overflow-x-auto no-scrollbar">
-            <button data-tab="booking"    class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📅 Κράτηση</button>
-            <button data-tab="mybookings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">📋 Οι Κρατήσεις μου</button>
-            <button data-tab="openmatches" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Ανοιχτά Ματς <span id="openMatchBadge" class="hidden ml-1 bg-brand text-white rounded-full px-1.5 text-[10px]"></span></button>
-            <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
-            <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
-            <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Πελάτες</button>
-            <button id="myScheduleTabBtn" data-tab="myschedule" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🗓️ Το πρόγραμμά μου</button>
-            <button id="attendanceTabBtn" data-tab="attendance" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">✅ Παρουσίες</button>
-            <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Προπονήσεις</button>
-            <button id="tournamentsTabBtn" data-tab="tournaments" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏆 Τουρνουά</button>
-            <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">⚙️ Ρυθμίσεις</button>
+            <button data-tab="booking"    class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17"/></svg>Κράτηση</button>
+            <button data-tab="mybookings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 5h10M9 12h10M9 19h10"/><circle cx="4.5" cy="5" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="19" r="1"/></svg>Οι Κρατήσεις μου</button>
+            <button data-tab="openmatches" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M5.2 6.8c3 2.4 3 8 0 10.4M18.8 6.8c-3 2.4-3 8 0 10.4"/></svg>Ανοιχτά Ματς <span id="openMatchBadge" class="hidden ml-1 bg-brand text-white rounded-full px-1.5 text-[10px]"></span></button>
+            <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 4.5a1.5 1.5 0 1 0 0-.01"/><path d="M7 21l3-6 3 2v4M10 15l1-5 4 3h4M11 10l-3-1-3 3"/></svg>Οι Προπονήσεις μου</button>
+            <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin</button>
+            <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 5.2a3.5 3.5 0 0 1 0 6.6M18.5 14.8c1.6.8 2.6 2.5 3 5.2"/></svg>Πελάτες</button>
+            <button id="myScheduleTabBtn" data-tab="myschedule" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17M8 14h3M8 17h6"/></svg>Το πρόγραμμά μου</button>
+            <button id="attendanceTabBtn" data-tab="attendance" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.2l2.8 2.8L16.5 9"/></svg>Παρουσίες</button>
+            <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l6-6"/><ellipse cx="14.5" cy="9.5" rx="5" ry="6" transform="rotate(45 14.5 9.5)"/><circle cx="6" cy="6" r="1.6"/></svg>Προπονήσεις</button>
+            <button id="tournamentsTabBtn" data-tab="tournaments" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M10 17h4l.5 3.5h-5z"/></svg>Τουρνουά</button>
+            <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ρυθμίσεις</button>
         </div>
     </header>
 
@@ -284,8 +403,8 @@
             <div id="rainBar"></div>
         </div>
         <div class="flex gap-4 text-xs text-slate-500 px-1">
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-blue-400"></span>Ελεύθερο</span>
-            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-400"></span>Δική μου</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-white ring-1 ring-slate-300"></span>Ελεύθερο</span>
+            <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-green-600"></span>Δική μου</span>
             <span class="flex items-center gap-1.5"><span class="w-2.5 h-2.5 rounded-full bg-slate-300"></span>Κλεισμένο</span>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm">
@@ -315,7 +434,7 @@
     <!-- ADMIN -->
     <div id="tab-admin" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <div class="bg-white rounded-2xl p-4 shadow-sm anim-up flex items-center gap-2 flex-wrap">
-            <p class="font-bold text-sm">📥 Εξαγωγή Excel</p>
+            <p class="font-bold text-sm">Εξαγωγή Excel</p>
             <span id="exportHint" class="text-[11px] text-slate-400">κρατήσεις + προπονήσεις του μήνα</span>
             <input type="month" id="exportMonth" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs ml-auto">
             <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">Κατέβασε</button>
@@ -347,7 +466,7 @@
             <div id="adminDayList"></div>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
-            <p class="font-bold mb-2">🔗 Το link του club σου</p>
+            <p class="font-bold mb-2">Το link του club σου</p>
             <p class="text-xs text-slate-500 mb-3">Μοιράσου το με τους πελάτες σου</p>
             <div class="flex gap-2">
                 <input id="shareLink" readonly class="flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-xs bg-slate-50">
@@ -369,7 +488,7 @@
     <div id="tab-roster" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <!-- Εκκρεμείς εγγραφές (μόνο σε συλλόγους που απαιτούν έγκριση) -->
         <div id="pendingCard" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm anim-up">
-            <p class="font-bold mb-1">⏳ Εκκρεμείς εγγραφές <span id="pendingCount" class="text-amber-600 font-normal text-sm"></span></p>
+            <p class="font-bold mb-1">Εκκρεμείς εγγραφές <span id="pendingCount" class="text-amber-600 font-normal text-sm"></span></p>
             <p class="text-[11px] text-amber-700 mb-4">Δεν βλέπουν τίποτα μέχρι να τους εγκρίνεις.</p>
             <div id="pendingList" class="space-y-2"></div>
         </div>
@@ -528,7 +647,7 @@
     <div id="tab-settings" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <!-- Club info -->
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
-            <p class="font-bold mb-4">🏷️ Στοιχεία Club</p>
+            <p class="font-bold mb-4">Στοιχεία Club</p>
             <div class="space-y-3">
                 <div>
                     <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Όνομα</label>
@@ -560,13 +679,13 @@
                     </div>
                 </div>
                 <div id="partnerField">
-                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">🎾 Σύνδεσμος «Βρες συμπαίκτη» (WhatsApp/Viber ομάδα)</label>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Σύνδεσμος «Βρες συμπαίκτη» (WhatsApp/Viber ομάδα)</label>
                     <input id="setPartnerLink" type="url" placeholder="https://chat.whatsapp.com/…  ή  https://invite.viber.com/…" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
                     <p class="text-[10px] text-slate-400 mt-1">Οι πελάτες βλέπουν κουμπί στην κράτηση για να μπουν στην ομαδική & να βρουν συμπαίκτες.</p>
                 </div>
                 <div id="loyaltyField">
-                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">🎁 Μήνυμα επιβράβευσης (πάνω από τις κρατήσεις πελάτη)</label>
-                    <input id="setLoyaltyMsg" type="text" placeholder="π.χ. Στις 10 κρατήσεις, η 1 ΔΩΡΟ! 🎁" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Μήνυμα επιβράβευσης (πάνω από τις κρατήσεις πελάτη)</label>
+                    <input id="setLoyaltyMsg" type="text" placeholder="π.χ. Στις 10 κρατήσεις, η 1 ΔΩΡΟ! " class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
                     <p class="text-[10px] text-slate-400 mt-1">Άφησέ το κενό για να μην εμφανίζεται.</p>
                 </div>
                 <button id="saveInfoBtn" class="w-full grad bg-brand text-white py-3 rounded-xl font-bold text-sm hover:bg-brand-dark transition">Αποθήκευση Στοιχείων</button>
@@ -575,8 +694,8 @@
 
         <!-- Courts -->
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
-            <p class="font-bold mb-1">🎾 Γήπεδα</p>
-            <p class="text-[11px] text-slate-400 mb-4">⚠️ Η διαγραφή γηπέδου σβήνει και τις κρατήσεις του.</p>
+            <p class="font-bold mb-1">Γήπεδα</p>
+            <p class="text-[11px] text-slate-400 mb-4">Η διαγραφή γηπέδου σβήνει και τις κρατήσεις του.</p>
             <div id="setCourts" class="space-y-2 mb-3"></div>
             <div class="flex gap-2">
                 <button id="addCourtBtn" class="text-brand text-sm font-semibold">+ Προσθήκη γηπέδου</button>
@@ -586,7 +705,7 @@
 
         <!-- Pricing -->
         <div id="pricingSection" class="bg-white rounded-2xl p-5 shadow-sm anim-up">
-            <p class="font-bold mb-1">💰 Διάρκειες & Τιμές</p>
+            <p class="font-bold mb-1">Διάρκειες & Τιμές</p>
             <p class="text-[11px] text-slate-400 mb-3">Κοινές τιμές για όλα τα γήπεδα, ή διαφορετικές ανά γήπεδο (π.χ. ποδόσφαιρο ≠ squash).</p>
             <select id="durScope" class="w-full mb-2 px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
             <p id="durScopeHint" class="text-[11px] text-amber-600 mb-3"></p>
@@ -599,7 +718,7 @@
 
         <!-- Extras -->
         <div id="extrasSection" class="bg-white rounded-2xl p-5 shadow-sm anim-up">
-            <p class="font-bold mb-1">➕ Έξτρα Χρεώσεις</p>
+            <p class="font-bold mb-1">Έξτρα Χρεώσεις</p>
             <p class="text-[11px] text-slate-400 mb-4">π.χ. ενοικίαση ρακέτας, κουτί μπαλάκια. Εμφανίζονται στον τιμοκατάλογο.</p>
             <div id="setExtras" class="space-y-2 mb-3"></div>
             <div class="flex gap-2">
@@ -653,7 +772,7 @@ sb.auth.onAuthStateChange((event) => {
 });
 
 document.addEventListener('DOMContentLoaded', async () => {
-    if (!cbConfigured()) { document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:Inter"><h2 style="font-weight:800;font-size:20px">⚠️ Λείπει το config.js</h2><p style="color:#64748b;margin-top:8px">Συμπλήρωσε το Supabase URL & anon key. Δες το README.</p></div>'; return; }
+    if (!cbConfigured()) { document.body.innerHTML = '<div style="padding:40px;text-align:center;font-family:Inter"><h2 style="font-weight:800;font-size:20px">Λείπει το config.js</h2><p style="color:#64748b;margin-top:8px">Συμπλήρωσε το Supabase URL & anon key. Δες το README.</p></div>'; return; }
     if (CB_CONFIG.EJS_PUBLIC_KEY && window.emailjs) { try { emailjs.init(CB_CONFIG.EJS_PUBLIC_KEY); } catch(e){} }
 
     const slug = cbQS('club');
@@ -706,6 +825,10 @@ function applyBranding() {
     document.title = `${club.name} — Κρατήσεις`;
     document.getElementById('authClubName').textContent = club.name;
     document.getElementById('hdrClub').textContent = club.name;
+    // αρχικά του club (π.χ. «Όμιλος Αντισφαίρισης Πάτρας» → «ΟΑ») όταν δεν υπάρχει λογότυπο
+    const ini = (club.name || 'CB').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim().split(/\s+/).filter(w => w.length > 2 || /\p{N}/u.test(w))
+        .slice(0, 2).map(w => w[0]).join('').toUpperCase() || (club.name || 'CB').slice(0, 2).toUpperCase();
+    ['authLogoFallback','hdrLogoFallback'].forEach(id => document.getElementById(id).textContent = ini);
     document.getElementById('shareLink').value = location.origin + location.pathname + '?club=' + club.slug;
     if (club.logo_url) {
         ['authLogo','hdrLogo'].forEach(id => { const el=document.getElementById(id); el.src=club.logo_url; el.classList.remove('hidden'); });
@@ -905,7 +1028,7 @@ async function handleReset(){
         // θα ξέρει σε ποιο club να προωθήσει
         try{ localStorage.setItem('cb_reset_club', club.slug); }catch(e){}
         await sb.auth.resetPasswordForEmail(email, { redirectTo: back });
-        cbToast('📧 Σου στείλαμε email — πάτα το link για να βάλεις νέο κωδικό');
+        cbToast('Σου στείλαμε email — πάτα το link για να βάλεις νέο κωδικό');
         setMode('login');
     }catch(e){ cbToast(e.message||'Σφάλμα','err'); }
     finally{ cbLoading(false); }
@@ -1105,7 +1228,7 @@ function startRefresh(){ if(_refresh)clearInterval(_refresh); _refresh=setInterv
 function applyClubMode(){
     if(bookingsOn) return;
     const bookBtn=document.querySelector('[data-tab="booking"]');
-    if(bookBtn) bookBtn.textContent='📅 Πρόγραμμα';
+    if(bookBtn) bookBtn.textContent='Πρόγραμμα';
     // Ο αθλητής δεν χρειάζεται το ημερολόγιο των γηπέδων — μόνο τις δικές
     // του προπονήσεις. Το πρόγραμμα το βλέπουν γραμματεία και προπονητές.
     if(!isOwner && !isCoach && bookBtn) bookBtn.classList.add('hidden');
@@ -1365,9 +1488,9 @@ function renderSlots(){
                 }).join('');
                 const adminFields = isOwner ? `
                     <div class="mb-2 p-2 bg-indigo-50 rounded-lg">
-                        <p class="text-[10px] text-indigo-600 font-bold mb-1.5">📞 Τηλεφωνική κράτηση</p>
+                        <p class="text-[10px] text-indigo-600 font-bold mb-1.5">Τηλεφωνική κράτηση</p>
                         <div id="bfChip" class="mb-1">${bfChipHtml()}</div>
-                        <input id="bfSearch" oninput="bfSearchInput(this.value)" onfocus="bfSearchInput(this.value)" autocomplete="off" placeholder="🔍 Ψάξε εγγεγραμμένο πελάτη…" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                        <input id="bfSearch" oninput="bfSearchInput(this.value)" onfocus="bfSearchInput(this.value)" autocomplete="off" placeholder="Ψάξε εγγεγραμμένο πελάτη…" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
                         <div id="bfSuggest" class="mt-1 max-h-28 overflow-y-auto"></div>
                         <p class="text-[10px] text-slate-400 my-1 text-center">— ή νέος πελάτης (χωρίς ιστορικό) —</p>
                         <input id="bfNewName" oninput="bfNewInput(this.value)" value="${pickerNewName||''}" placeholder="Όνομα" class="w-full mb-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
@@ -1375,9 +1498,9 @@ function renderSlots(){
                     </div>` : '';
                 const coPlayerField = `
                     <div class="mb-2">
-                        <p class="text-[10px] text-slate-400 font-bold mb-1">👥 Συμπαίκτες (προαιρετικό)</p>
+                        <p class="text-[10px] text-slate-400 font-bold mb-1">Συμπαίκτες (προαιρετικό)</p>
                         <div id="coChips" class="flex flex-wrap gap-1 mb-1">${coChipsHtml()}</div>
-                        <input id="coSearch" oninput="coSearchInput(this.value)" onfocus="coSearchInput(this.value)" autocomplete="off" placeholder="🔍 Γράψε όνομα εγγεγραμμένου παίκτη…" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                        <input id="coSearch" oninput="coSearchInput(this.value)" onfocus="coSearchInput(this.value)" autocomplete="off" placeholder="Γράψε όνομα εγγεγραμμένου παίκτη…" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
                         <div id="coSuggest" class="mt-1 max-h-32 overflow-y-auto"></div>
                         <button type="button" onclick="coAddGuest()" class="mt-1 text-[11px] text-slate-500 border border-dashed border-slate-300 rounded-lg px-2 py-1 hover:bg-slate-50 w-full">+ Παίκτης χωρίς λογαριασμό</button>
                     </div>`;
@@ -1479,7 +1602,7 @@ function renderOpenMatches(){
             ? `<a href="tel:${cbEsc(m.organizer_phone)}" onclick="event.stopPropagation()" class="text-brand font-semibold">${cbEsc(m.organizer_phone)}</a>` : '';
         const who = `<p class="text-[11px] text-slate-500 mt-0.5">Διοργανωτής: <b>${cbEsc(m.organizer)}</b>${lvl}</p>`
             + ((m.joined||[]).length ? `<p class="text-[11px] text-slate-500">Παίζουν επίσης: ${cbEsc(m.joined.join(', '))}</p>` : '')
-            + (tel ? `<p class="text-[11px] text-slate-500 mt-0.5">📞 ${tel}</p>` : '');
+            + (tel ? `<p class="text-[11px] text-slate-500 mt-0.5">${tel}</p>` : '');
         let action;
         if(m.is_mine)         action=`<button onclick="copyMatchLink('${m.id}')" class="text-xs text-brand border border-brand/30 px-3 py-1.5 rounded-lg font-semibold hover:bg-blue-50">Αντιγραφή link</button>`;
         else if(m.already_in) action=`<button onclick="doLeaveMatch('${m.id}')" class="text-xs text-slate-500 border border-slate-200 px-3 py-1.5 rounded-lg font-semibold hover:bg-slate-50">Αποχώρηση</button>`;
@@ -1749,7 +1872,7 @@ function renderPartnerCta(){
     if(isOwner || !bookingsOn || !club.partner_link){ el.innerHTML=''; return; }
     el.innerHTML=`<a href="${club.partner_link}" target="_blank" rel="noopener"
         class="block bg-gradient-to-r from-emerald-500 to-teal-500 text-white rounded-2xl p-4 shadow-sm anim-up hover:opacity-95 transition">
-        <p class="font-bold text-sm">🎾 Ψάχνεις συμπαίκτη;</p>
+        <p class="font-bold text-sm">Ψάχνεις συμπαίκτη;</p>
         <p class="text-[12px] opacity-90 mt-0.5">Μπες στην ομαδική μας & βρες παρέα για το επόμενο ματς →</p>
     </a>`;
 }
@@ -1761,7 +1884,7 @@ function renderLoyaltyBanner(){
     // Δεν δείχνουμε μετρητή: το μήνυμα του club είναι ελεύθερο κείμενο
     // («5 τον μήνα», «10 τον χρόνο»…) και ο αριθμός θα ήταν παραπλανητικός.
     el.innerHTML=`<div class="bg-gradient-to-r from-amber-50 to-orange-50 border border-amber-200 rounded-xl p-3.5 mb-4">
-        <p class="text-sm font-semibold text-amber-800">🎁 ${club.loyalty_msg}</p>
+        <p class="text-sm font-semibold text-amber-800">${club.loyalty_msg}</p>
     </div>`;
 }
 
@@ -1791,17 +1914,17 @@ function myCard(b,isPast){
     return `<div class="flex items-center justify-between p-3.5 ${isPast?'bg-slate-50 opacity-60':'bg-blue-50 border border-blue-100'} rounded-xl mb-2">
         <div><p class="font-semibold text-sm">${cbFmtDate(b.booking_date)} · ${b.start_time}</p>
         <p class="text-xs text-slate-400">${b.courts?.name||''} · ${d.label} · ${price}€</p>
-        ${b.guest_players&&b.guest_players.length?`<p class="text-[11px] text-slate-400 mt-0.5">👥 + ${b.guest_players.join(', ')}</p>`:''}
+        ${b.guest_players&&b.guest_players.length?`<p class="text-[11px] text-slate-400 mt-0.5">+ ${b.guest_players.join(', ')}</p>`:''}
         ${b.co_players&&b.co_players.length?`<p class="text-[11px] text-slate-500 mt-0.5">Παίζουν μαζί: ${b.co_players.join(', ')}</p>`:''}
-        ${b.note?`<p class="text-[11px] text-slate-500 mt-1 italic">💬 ${cbEsc(b.note)}</p>`:''}
+        ${b.note?`<p class="text-[11px] text-slate-500 mt-1 italic">${cbEsc(b.note)}</p>`:''}
         ${(!isPast&&b.open_spots>0)?`<p class="text-[11px] text-emerald-700 font-bold mt-1">Ανοιχτό ματς · ψάχνεις ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}</p>
             <div class="flex gap-2 mt-1">
                 <button onclick="copyMatchLink('${b.id}')" class="text-[11px] text-brand border border-brand/30 px-2 py-1 rounded-lg font-semibold hover:bg-blue-50">Αντιγραφή link</button>
                 ${b.mine_direct!==false?`<button onclick="closeMatch('${b.id}')" class="text-[11px] text-slate-500 border border-slate-200 px-2 py-1 rounded-lg font-semibold hover:bg-slate-50">Κλείσε το ματς</button>`:''}
             </div>`:''}
-        ${(b.mine_direct===false)?`<p class="text-[11px] text-indigo-500 mt-0.5">📞 κλείστηκε από το club</p>`:''}
-        ${isOwner?`<p class="text-[11px] text-slate-500 mt-1">👤 ${b.user_name||'—'}${b.user_phone?` · 📞 ${b.user_phone}`:''}${b.user_email?` · ${b.user_email}`:''}</p>`:''}</div>
-        ${isPast?`<span class="text-[10px] text-slate-400 font-medium">Τελείωσε</span>`:(b.mine_direct===false?`<span class="text-[10px] text-slate-400 font-medium">🎾 συμμετοχή</span>`:`<button onclick="doCancel('${b.id}')" class="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 font-medium">Ακύρωση</button>`)}
+        ${(b.mine_direct===false)?`<p class="text-[11px] text-indigo-500 mt-0.5">κλείστηκε από το club</p>`:''}
+        ${isOwner?`<p class="text-[11px] text-slate-500 mt-1">${b.user_name||'—'}${b.user_phone?` · ${b.user_phone}`:''}${b.user_email?` · ${b.user_email}`:''}</p>`:''}</div>
+        ${isPast?`<span class="text-[10px] text-slate-400 font-medium">Τελείωσε</span>`:(b.mine_direct===false?`<span class="text-[10px] text-slate-400 font-medium">συμμετοχή</span>`:`<button onclick="doCancel('${b.id}')" class="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 font-medium">Ακύρωση</button>`)}
     </div>`;
 }
 
@@ -1841,7 +1964,7 @@ function makeupsBanner(rows){
         ? `Έχεις ${pend.length} ${pend.length===1?'αναπλήρωση σε εκκρεμότητα':'αναπληρώσεις σε εκκρεμότητα'}`
         : `${set.length===1?'Προγραμματίστηκε η αναπλήρωσή σου':'Προγραμματίστηκαν οι αναπληρώσεις σου'}`;
     return `<div class="bg-amber-50 border border-amber-200 rounded-xl p-3.5 mb-4">
-            <p class="font-bold text-sm text-amber-800 mb-1">🔁 ${title}</p>
+            <p class="font-bold text-sm text-amber-800 mb-1">${title}</p>
             <p class="text-[11px] text-amber-700 mb-2">Προπονήσεις που ακυρώθηκαν και αναπληρώνονται.</p>
             ${items}
         </div>`;
@@ -1963,7 +2086,7 @@ function trainingCard(it,showDate){
     const court=courts.find(c=>c.id===it.court_id);
     return `
         <div class="flex items-center gap-3 p-3.5 bg-purple-50 border border-purple-100 rounded-xl mb-2">
-            <div class="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0">🎾</div>
+            <div class="w-9 h-9 bg-purple-100 rounded-xl flex items-center justify-center flex-shrink-0 text-purple-700"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="8.5"/><path d="M5.2 6.8c3 2.4 3 8 0 10.4M18.8 6.8c-3 2.4-3 8 0 10.4"/></svg></div>
             <div class="min-w-0">
                 <p class="font-semibold text-sm truncate">${cbEsc(it.title)}</p>
                 ${showDate?`<p class="text-[11px] text-indigo-500 font-medium">${cbFmtDate(it.date)}</p>`:''}
@@ -2046,7 +2169,7 @@ function adminCard(b,showDate){
     const open=_openBooking===b.id;
     const details = !open ? '' : `
         <div class="mt-3 pt-3 border-t border-slate-200">
-            ${(b.user_phone||b.user_email)?`<p class="text-[11px] text-slate-500 mb-2">📞 ${b.user_phone||'—'} · ${b.user_email||'—'}</p>`:''}
+            ${(b.user_phone||b.user_email)?`<p class="text-[11px] text-slate-500 mb-2">${b.user_phone||'—'} · ${b.user_email||'—'}</p>`:''}
             <p class="text-[11px] font-bold text-slate-500 uppercase mb-1.5">Παίκτες (${players.length+1})</p>
             <div class="space-y-1">
                 <div class="flex items-center justify-between text-[11px] bg-white rounded-lg px-2 py-1.5">
@@ -2061,17 +2184,17 @@ function adminCard(b,showDate){
                 : `<p class="text-[11px] text-slate-400 px-2 py-1">Δεν έχουν δηλωθεί συμπαίκτες</p>`}
             </div>
             ${b.open_spots>0?`<p class="text-[11px] text-emerald-700 font-semibold mt-2">Ανοιχτό ματς · ψάχνει ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}</p>`:''}
-            ${b.note?`<p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mt-2 whitespace-pre-wrap">💬 ${cbEsc(b.note)}</p>`:''}
+            ${b.note?`<p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mt-2 whitespace-pre-wrap">${cbEsc(b.note)}</p>`:''}
         </div>`;
     return `<div class="p-3.5 bg-slate-50 rounded-xl border mb-2">
         <div class="flex items-center justify-between gap-2 cursor-pointer" onclick="toggleBooking('${b.id}')">
             <div class="flex items-center gap-3 min-w-0">
-                <div class="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0">👤</div>
+                <div class="w-9 h-9 bg-indigo-100 rounded-xl flex items-center justify-center flex-shrink-0 text-blue-700"><svg class="w-4 h-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg></div>
                 <div class="min-w-0">
                     <p class="font-semibold text-sm truncate">${cbEsc(b.user_name||b.user_email||'—')}</p>
                     ${showDate?`<p class="text-[11px] text-indigo-500 font-medium">${cbFmtDate(b.booking_date)}</p>`:''}
                     <p class="text-[11px] text-slate-400">${b.courts?.name||''} · ${b.start_time}–${end} · ${d.label}${bookingsOn?` · ${price}€`:''}</p>
-                    <p class="text-[11px] text-slate-400">${players.length?`👥 ${players.length+1} παίκτες`:'👤 μόνος'} · <span class="text-brand font-semibold">${open?'λιγότερα':'λεπτομέρειες'}</span></p>
+                    <p class="text-[11px] text-slate-400">${players.length?`${players.length+1} παίκτες`:'μόνος'} · <span class="text-brand font-semibold">${open?'λιγότερα':'λεπτομέρειες'}</span></p>
                 </div>
             </div>
             <button onclick="event.stopPropagation();doCancel('${b.id}')" class="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 font-medium flex-shrink-0">Ακύρωση</button>
@@ -2924,7 +3047,7 @@ async function addTsched(){
     if(clash){
         const cName=(courts.find(c=>c.id===court_id)||{}).name||'το γήπεδο';
         const gName=clash.training_groups?.name||'άλλο γκρουπ';
-        if(!confirm(`⚠️ ${cName} την ${_GRDAYS[weekday]} ${clash.start_time} έχει ήδη «${gName}». Να μπει κι αυτό ΠΑΝΩ στο ίδιο ραντεβού;`)) return;
+        if(!confirm(`${cName} την ${_GRDAYS[weekday]} ${clash.start_time} έχει ήδη «${gName}». Να μπει κι αυτό ΠΑΝΩ στο ίδιο ραντεβού;`)) return;
     }
     const fb=await futureBookingClashes({ court_id }, weekday, start_time, duration_min);
     if(fb.length && !confirm(`Υπάρχουν ήδη ${fb.length} κρατήσεις πελατών εκείνη την ώρα τις επόμενες εβδομάδες:\n`
@@ -2990,13 +3113,13 @@ function editPlayer(id){
     const esc=s=>(s||'').replace(/"/g,'&quot;');
     det.innerHTML=`
         <div class="bg-white rounded-lg p-3 space-y-2 border border-blue-100">
-            <p class="text-[10px] font-bold text-slate-500 uppercase">✏️ Επεξεργασία μέλους</p>
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Επεξεργασία μέλους</p>
             <input id="ep-name-${id}" value="${esc(p.name)}" placeholder="Όνομα" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
             <input id="ep-phone-${id}" value="${esc(p.phone)}" placeholder="Τηλέφωνο" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
             <input id="ep-email-${id}" value="${esc(p.email)}" placeholder="Email" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
             <input id="ep-level-${id}" type="number" min="0" max="5" value="${p.level!=null?p.level:''}" placeholder="Επίπεδο 0-5" class="${bookingsOn?'':'hidden '}w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
             <div class="flex gap-2 pt-1">
-                <button onclick="savePlayer('${id}')" class="flex-1 bg-brand text-white py-2 rounded-lg text-sm font-bold">💾 Αποθήκευση</button>
+                <button onclick="savePlayer('${id}')" class="flex-1 bg-brand text-white py-2 rounded-lg text-sm font-bold">Αποθήκευση</button>
                 <button onclick="renderPlayers()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">Άκυρο</button>
             </div>
         </div>`;
@@ -3833,7 +3956,7 @@ function matchCard(m, editable){
     const nm = id => cbEsc(entryName(id));
     const row = (id,label,a,b,c) => `
         <div class="flex items-center gap-2 ${w===id?'font-bold':''}">
-            <span class="flex-1 truncate text-sm">${w===id?'🏆 ':''}${label}</span>
+            <span class="flex-1 truncate text-sm">${w===id?'<span class="text-green-700 font-bold">✓</span> ':''}${label}</span>
             ${scoreCell(m.id,a[0],a[1],editable)}
             ${scoreCell(m.id,b[0],b[1],editable)}
             ${scoreCell(m.id,c[0],c[1],editable)}
@@ -3871,7 +3994,7 @@ function categoryBlock(cat, editable){
         if(mine){
             const asPartner = myPlayer && mine.player2_id===myPlayer.id;
             picker = `<div class="mt-2 p-3 rounded-xl ${mine.status==='pending'?'bg-amber-50 border border-amber-200':'bg-green-50 border border-green-200'}">
-                <p class="text-sm font-semibold">${mine.status==='pending'?'⏳ Η δήλωσή σου εκκρεμεί':'✓ Είσαι δηλωμένος'}</p>
+                <p class="text-sm font-semibold">${mine.status==='pending'?'Η δήλωσή σου εκκρεμεί':'✓ Είσαι δηλωμένος'}</p>
                 <p class="text-[11px] text-slate-500 mt-0.5">${cbEsc(entryName(mine.id))}</p>
                 ${asPartner?`<p class="text-[11px] text-slate-500 mt-0.5">Σε δήλωσε ο/η ${cbEsc(mine.player_name)}</p>`:''}
                 ${(mine.days||[]).length?`<p class="text-[11px] text-slate-400 mt-1">${availText(mine)}</p>`:''}
@@ -3928,15 +4051,15 @@ function categoryBlock(cat, editable){
                 <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-1">Ποιος σε ποιον όμιλο</p>
                 ${locked
                     ? `<div class="flex items-center justify-between gap-2 mb-2 p-2 bg-amber-50 border border-amber-200 rounded-lg">
-                         <span class="text-[11px] text-amber-700">🔒 Κλειδωμένοι — υπάρχει πρόγραμμα αγώνων.</span>
+                         <span class="text-[11px] text-amber-700">Κλειδωμένοι — υπάρχει πρόγραμμα αγώνων.</span>
                          <button onclick="clearSchedule('${cat.id}')" class="text-red-500 text-[11px] font-bold flex-shrink-0">Σβήσε το πρόγραμμα</button>
                        </div>`
                     : `<p class="text-[11px] text-slate-400 mb-2">Διάλεξε όμιλο για τον καθένα. Δες πρώτα τις ώρες του — το πράσινο δείχνει πότε μπορούν όλοι μαζί.</p>
                        <details class="mb-2">
                          <summary class="text-[11px] text-brand font-semibold cursor-pointer">Θες να σου προτείνω μοιρασιά;</summary>
                          <div class="flex flex-wrap gap-2 mt-1.5 pl-1">
-                           <button onclick="assignGroups('${cat.id}','avail')" class="text-brand text-[11px] font-bold">🕑 Με τις ώρες</button>
-                           <button onclick="assignGroups('${cat.id}','random')" class="text-brand text-[11px] font-semibold">🎲 Τυχαία</button>
+                           <button onclick="assignGroups('${cat.id}','avail')" class="text-brand text-[11px] font-bold">Με τις ώρες</button>
+                           <button onclick="assignGroups('${cat.id}','random')" class="text-brand text-[11px] font-semibold">Τυχαία</button>
                            <button onclick="assignGroups('${cat.id}','level')" class="text-brand text-[11px] font-semibold">Με επίπεδο</button>
                            <button onclick="assignGroups('${cat.id}','clear')" class="text-slate-400 text-[11px] font-semibold">Καθάρισμα</button>
                          </div>
@@ -3962,7 +4085,7 @@ function categoryBlock(cat, editable){
                                 <span class="text-[11px] font-bold text-slate-500 uppercase tracking-wide flex-shrink-0">Όμιλος ${gn}</span>
                                 <span class="text-[11px] text-right ${com.length?'text-green-700':'text-red-500 font-semibold'}">
                                     ${com.length? '✓ '+com.slice(0,3).map(slotLabel).join(' · ')+(com.length>3?' +'+(com.length-3):'')
-                                                : '⚠ καμία κοινή ώρα'}</span>
+                                                : 'καμία κοινή ώρα'}</span>
                             </div>
                             <div class="divide-y">${mem.map(row).join('')}</div>
                         </div>`;
@@ -4087,7 +4210,7 @@ function categoryBlock(cat, editable){
             </button>
             <p class="text-[11px] text-slate-400 mb-2">${dbl?'Ζευγάρια':'Μονό'}${declOpen(cat)&&cat.entries_deadline?' · δηλώσεις ως '+cbFmtDate(cat.entries_deadline):''}</p>
             ${picker}
-            <p class="text-slate-400 text-sm mt-3">📋 Οι όμιλοι και το πρόγραμμα θα ανακοινωθούν όταν κλείσουν οι δηλώσεις.</p>
+            <p class="text-slate-400 text-sm mt-3">Οι όμιλοι και το πρόγραμμα θα ανακοινωθούν όταν κλείσουν οι δηλώσεις.</p>
         </div>`;
     }
     return `<div class="border-2 border-brand rounded-xl p-3">
@@ -4099,7 +4222,7 @@ function categoryBlock(cat, editable){
         ${editable?`<button onclick="togglePublish('${cat.id}')" class="w-full mb-2 py-2 rounded-xl text-xs font-bold border-2 transition ${cat.published
             ?'border-green-600 bg-green-50 text-green-700'
             :'border-slate-300 bg-slate-50 text-slate-500'}">
-            ${cat.published?'👁 Δημοσιευμένο — το βλέπουν τα μέλη · πάτα για απόκρυψη':'🔒 Κρυφό από τα μέλη · πάτα για δημοσίευση'}</button>`:''}
+            ${cat.published?'Δημοσιευμένο — το βλέπουν τα μέλη · πάτα για απόκρυψη':'Κρυφό από τα μέλη · πάτα για δημοσίευση'}</button>`:''}
         ${editable?`<div class="flex items-center justify-between gap-2">
             <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase">${dbl?'Ζευγάρια':'Συμμετέχοντες'} (${ent.length})</p>
             <span class="flex items-center gap-3 flex-shrink-0">
@@ -4177,7 +4300,7 @@ function renderTournaments(){
         return `<div class="border border-slate-200 rounded-2xl p-3">
             <button onclick="tToggle('${t.id}')" class="w-full flex items-center justify-between gap-2 text-left">
                 <span class="min-w-0">
-                    <span class="font-bold block truncate">🏆 ${cbEsc(t.name)}</span>
+                    <span class="font-bold block truncate">${cbEsc(t.name)}</span>
                     <span class="text-[11px] text-slate-400">${when||''}${when?' · ':''}${cats.length} κατηγορίες</span>
                 </span>
                 <span class="text-slate-400 flex-shrink-0">${open?'▲':'▼'}</span>
@@ -4333,7 +4456,7 @@ function editPayment(id){
     const monthLabel=new Date(m+'-01T12:00:00').toLocaleDateString('el-GR',{month:'long',year:'numeric'});
     det.innerHTML=`
         <div class="bg-white rounded-lg p-3 space-y-2 border border-green-100">
-            <p class="text-[10px] font-bold text-slate-500 uppercase">💶 Συνδρομή — <span style="text-transform:capitalize">${monthLabel}</span></p>
+            <p class="text-[10px] font-bold text-slate-500 uppercase">Συνδρομή — <span style="text-transform:capitalize">${monthLabel}</span></p>
             <div>
                 <label class="text-[10px] text-slate-400 block mb-1">Ημερομηνία πληρωμής</label>
                 <input id="pay-date-${id}" type="date" value="${cur.paid_date||cbToday()}" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
@@ -4343,7 +4466,7 @@ function editPayment(id){
                 <input id="pay-note-${id}" value="${cbEsc(cur.note)}" placeholder="π.χ. Απόδειξη #2026-114" class="w-full px-3 py-2 border border-slate-200 rounded-lg text-sm">
             </div>
             <div class="flex gap-2 pt-1">
-                <button onclick="savePaymentDetails('${id}')" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold">💾 Αποθήκευση</button>
+                <button onclick="savePaymentDetails('${id}')" class="flex-1 bg-green-600 text-white py-2 rounded-lg text-sm font-bold">Αποθήκευση</button>
                 ${payments.has(key)?`<button onclick="unmarkPayment('${id}')" class="px-3 py-2 border border-red-200 text-red-500 rounded-lg text-sm">Ακύρωση</button>`:''}
                 <button onclick="renderPlayers()" class="px-3 py-2 border border-slate-200 rounded-lg text-sm">Κλείσιμο</button>
             </div>
@@ -4458,13 +4581,13 @@ function memberRow(p,nowKey){
                 <div class="min-w-0">
                     <p class="text-sm font-semibold flex items-center gap-1.5 min-w-0"><span class="truncate">${p.name}</span>${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}</p>
                     <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`🎾 ${gM} · `:''}🏃 ${tM}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`${gM} · `:''}${tM}</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
-                    ${payBtn}${subM?`<button onclick="event.stopPropagation();editPayment('${p.id}')" title="Ημερομηνία & σχόλιο" class="text-slate-400 hover:text-brand text-xs border border-slate-200 px-1.5 py-1 rounded-lg">📝</button>`:''}
+                    ${payBtn}${subM?`<button onclick="event.stopPropagation();editPayment('${p.id}')" title="Ημερομηνία & σχόλιο" class="text-slate-400 hover:text-brand text-xs border border-slate-200 px-1.5 py-1 rounded-lg"><svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M5 4h10l4 4v12H5z"/><path d="M9 12h6M9 16h4"/></svg></button>`:''}
                     <span class="text-slate-300 text-xs" id="pchev-${p.id}">▼</span>
-                    <button onclick="event.stopPropagation();editPlayer('${p.id}')" class="text-slate-500 text-xs border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-100">✏️</button>
-                    <button onclick="event.stopPropagation();delPlayer('${p.id}')" class="text-red-400 text-xs border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">🗑️</button>
+                    <button onclick="event.stopPropagation();editPlayer('${p.id}')" class="text-slate-500 text-xs border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-100"><svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button>
+                    <button onclick="event.stopPropagation();delPlayer('${p.id}')" class="text-red-400 text-xs border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50"><svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M9 7V4h6v3M6 7l1 13h10l1-13"/></svg></button>
                 </div>
             </div>
             <div id="pdet-${p.id}" class="hidden px-3 pb-3"></div>
@@ -4501,11 +4624,11 @@ function derivedRow(c,i,nowKey){
                 <div class="min-w-0">
                     <p class="text-sm font-semibold truncate">${c.name||'—'}</p>
                     <p class="text-[11px] text-slate-400 truncate">${c.phone||''}${(c.phone&&c.email)?' · ':''}${c.email||''}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: 🎾 ${gM} · σύνολο ${c.games.length}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${gM} · σύνολο ${c.games.length}</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     <span class="text-slate-300 text-xs" id="dchev-${i}">▼</span>
-                    <button onclick="event.stopPropagation();addDerivedToRoster(${i})" class="text-brand text-[11px] border border-brand/30 px-2 py-1 rounded-lg font-semibold hover:bg-blue-50">➕ Μητρώο</button>
+                    <button onclick="event.stopPropagation();addDerivedToRoster(${i})" class="text-brand text-[11px] border border-brand/30 px-2 py-1 rounded-lg font-semibold hover:bg-blue-50">Μητρώο</button>
                 </div>
             </div>
             <div id="ddet-${i}" class="hidden px-3 pb-3"></div>
@@ -4519,7 +4642,7 @@ function toggleDerived(i){
         const c=_derived[i]||{games:[]};
         const courtName=cid=>(courts.find(x=>x.id===cid)||{}).name||'';
         const rows=c.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time))
-            .map(g=>`<div class="text-[11px] text-slate-500 py-0.5">🎾 ${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
+            .map(g=>`<div class="text-[11px] text-slate-500 py-0.5">${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
         det.innerHTML=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παιχνίδια (${c.games.length})</p>${rows}</div>`;
     } else { det.classList.add('hidden'); if(chev)chev.textContent='▼'; }
 }
@@ -4545,12 +4668,12 @@ function playerDetailHtml(id){
     a.trains.forEach(t=>{ const k=t.date.slice(0,7); (months[k]=months[k]||{g:0,t:0}).t++; });
     const mName=k=>{ const [y,m]=k.split('-'); return _GRMONTH[+m-1]+' '+y; };
     // Σύλλογος μόνο-προπονήσεων: δεν παίζονται αγώνες, οπότε η μπάρα
-    // δείχνει μόνο τον αριθμό προπονήσεων, όχι το πάντα-μηδενικό 🎾.
-    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">${bookingsOn?`🎾 ${months[k].g} · `:''}🏃 ${months[k].t}</span></div>`).join('')||`<p class="text-[11px] text-slate-400">${bookingsOn?'Καμία δραστηριότητα':'Καμία προπόνηση ακόμα'}</p>`;
+    // δείχνει μόνο τον αριθμό προπονήσεων, όχι το πάντα-μηδενικό .
+    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">${bookingsOn?`${months[k].g} · `:''}${months[k].t}</span></div>`).join('')||`<p class="text-[11px] text-slate-400">${bookingsOn?'Καμία δραστηριότητα':'Καμία προπόνηση ακόμα'}</p>`;
     const courtName=cid=>(courts.find(c=>c.id===cid)||{}).name||'';
     const groupName=gid=>(groups.find(g=>g.id===gid)||{}).name||'';
-    const gDates=a.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).map(g=>`<div class="text-[11px] text-slate-500 py-0.5">🎾 ${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
-    const tDates=a.trains.slice().sort((x,y)=>y.date.localeCompare(x.date)).map(t=>`<div class="text-[11px] text-slate-500 py-0.5">🏃 ${cbFmtDate(t.date)}${groupName(t.group)?' · '+groupName(t.group):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
+    const gDates=a.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).map(g=>`<div class="text-[11px] text-slate-500 py-0.5">${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
+    const tDates=a.trains.slice().sort((x,y)=>y.date.localeCompare(x.date)).map(t=>`<div class="text-[11px] text-slate-500 py-0.5">${cbFmtDate(t.date)}${groupName(t.group)?' · '+groupName(t.group):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
     const trainBox=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Προπονήσεις (${a.trains.length})</p>${tDates}</div>`;
     const gamesBox=`<div class="bg-white rounded-lg p-2"><p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παιχνίδια (${a.games.length})</p>${gDates}</div>`;
     let subBox='';
@@ -4749,7 +4872,7 @@ function renderGroups(){
         <div class="border rounded-xl">
             <div onclick="toggleGroup('${g.id}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
                 <div class="min-w-0">
-                    <p class="font-bold text-sm flex items-center gap-1.5 min-w-0"><span class="truncate">${g.name}</span><span class="text-[10px] text-slate-400 font-normal flex-shrink-0">(${g.memberIds.length} μέλη)</span><button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px] flex-shrink-0">✏️</button></p>
+                    <p class="font-bold text-sm flex items-center gap-1.5 min-w-0"><span class="truncate">${g.name}</span><span class="text-[10px] text-slate-400 font-normal flex-shrink-0">(${g.memberIds.length} μέλη)</span><button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px] flex-shrink-0"><svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button></p>
                     <p class="text-[11px] text-slate-500 mt-0.5 truncate">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'}</p>
                 </div>
                 <span id="gchev-${g.id}" class="text-slate-400 text-[10px] flex-shrink-0 transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
@@ -4765,7 +4888,7 @@ function renderGroups(){
                 <button onclick="addMember('${g.id}')" class="bg-brand text-white px-3 rounded-lg text-xs font-bold">OK</button>
             </div>
             <div class="bg-slate-50 rounded-lg p-2 mb-2">
-                <p class="text-[10px] font-bold text-slate-500 mb-1.5">📋 Παρουσιολόγιο (ανά μέρα)</p>
+                <p class="text-[10px] font-bold text-slate-500 mb-1.5">Παρουσιολόγιο (ανά μέρα)</p>
                 <div class="flex gap-2 mb-2">
                     <input type="date" id="ad-${g.id}" value="${cbToday()}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
                     <button onclick="openAttendance('${g.id}')" class="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold">Άνοιγμα</button>
@@ -4773,7 +4896,7 @@ function renderGroups(){
                 <div id="att-${g.id}"></div>
             </div>
             <div class="bg-slate-50 rounded-lg p-2">
-                <p class="text-[10px] font-bold text-slate-500 mb-1.5">📅 Παρουσιολόγιο μήνα</p>
+                <p class="text-[10px] font-bold text-slate-500 mb-1.5">Παρουσιολόγιο μήνα</p>
                 <div class="flex gap-2 mb-2">
                     <input type="month" id="gm-${g.id}" value="${cbToday().slice(0,7)}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
                     <button onclick="showGroupMonth('${g.id}')" class="bg-purple-600 text-white px-3 rounded-lg text-xs font-bold">Δες</button>
@@ -4842,7 +4965,7 @@ async function openAttendance(gid){
         const p=playersFull.find(x=>x.id===pid); if(!p) return '';
         const checked = sess?.id ? (existing[pid]!==false) : true; // default: παρών
         return `<label class="flex items-center justify-between py-1 text-xs border-b last:border-0"><span>${p.name}</span><input type="checkbox" class="att-chk" data-pid="${pid}" ${checked?'checked':''}></label>`;
-    }).join('')+`<button onclick="saveAttendance('${gid}','${date}')" class="w-full mt-2 bg-green-500 text-white py-1.5 rounded-lg text-xs font-bold">💾 Αποθήκευση Παρουσιολογίου</button>`;
+    }).join('')+`<button onclick="saveAttendance('${gid}','${date}')" class="w-full mt-2 bg-green-500 text-white py-1.5 rounded-lg text-xs font-bold">Αποθήκευση Παρουσιολογίου</button>`;
 }
 
 async function saveAttendance(gid,date){
