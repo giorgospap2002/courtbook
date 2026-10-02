@@ -2046,8 +2046,15 @@ async function loadAdmin(){
 }
 
 // ποιοι παίζουν σε αυτή την κράτηση: εγγεγραμμένοι + καλεσμένοι χωρίς λογαριασμό
+/* Οι συμπαίκτες μιας κράτησης, ΧΩΡΙΣ τον διοργανωτή. Όταν η γραμματεία κλείνει
+   για εγγεγραμμένο πελάτη, ο πελάτης μπαίνει και στο booking_players (για να
+   μετρά στο ιστορικό του) — δεν πρέπει όμως να φαίνεται δεύτερη φορά. */
 function bookingPlayers(b){
-    const reg=(b.booking_players||[]).map(x=>x.players).filter(Boolean);
+    const norm=s=>(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/\s+/g,' ').trim();
+    const digits=s=>(s||'').replace(/\D/g,'').slice(-10);
+    const orgName=norm(b.user_name), orgPhone=digits(b.user_phone);
+    const isOrganizer=p=>(orgPhone && digits(p.phone)===orgPhone) || (orgName && norm(p.name)===orgName);
+    const reg=(b.booking_players||[]).map(x=>x.players).filter(Boolean).filter(p=>!isOrganizer(p));
     const guests=(b.guest_players||[]).map(n=>({name:n,phone:null,guest:true}));
     return [...reg,...guests];
 }
