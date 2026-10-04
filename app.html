@@ -271,6 +271,7 @@
             <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏃 Οι Προπονήσεις μου</button>
             <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🛡️ Admin</button>
             <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">👥 Πελάτες</button>
+            <button id="athletesTabBtn" data-tab="athletes" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🏅 Αθλητές</button>
             <button id="myScheduleTabBtn" data-tab="myschedule" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🗓️ Το πρόγραμμά μου</button>
             <button id="attendanceTabBtn" data-tab="attendance" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">✅ Παρουσίες</button>
             <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">🎾 Προπονήσεις</button>
@@ -384,6 +385,23 @@
     </div>
 
     <!-- ROSTER (Μητρώο: Παίκτες + Γκρουπ + Παρουσιολόγιο) -->
+    <!-- ══════════ ΑΘΛΗΤΕΣ ΠΡΟΠΟΝΗΣΗΣ ══════════ -->
+    <div id="tab-athletes" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <p class="font-bold">Αθλητές προπόνησης <span id="athCount" class="text-slate-400 font-normal text-sm"></span></p>
+                <button onclick="exportAthletes()" class="text-brand text-sm font-semibold flex-shrink-0">Εξαγωγή Excel</button>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-4">Μόνο όσοι είναι σε γκρουπ προπόνησης, με το γκρουπ και τον προπονητή τους. Κλικ σε αθλητή για λεπτομέρειες.</p>
+            <div class="grid grid-cols-12 gap-2 mb-3">
+                <input id="athSearch" oninput="renderAthletes()" placeholder="Αναζήτηση ονόματος…" class="col-span-12 sm:col-span-6 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                <select id="athGroup" onchange="renderAthletes()" class="col-span-6 sm:col-span-3 px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
+                <select id="athCoach" onchange="renderAthletes()" class="col-span-6 sm:col-span-3 px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
+            </div>
+            <div id="athList"><p class="text-slate-400 text-sm py-2">Φόρτωση…</p></div>
+        </div>
+    </div>
+
     <div id="tab-roster" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <!-- Εκκρεμείς εγγραφές (μόνο σε συλλόγους που απαιτούν έγκριση) -->
         <div id="pendingCard" class="hidden bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm anim-up">
@@ -1137,6 +1155,9 @@ async function enterApp(){
         document.getElementById('adminTabBtn').classList.remove('hidden');
         document.getElementById('rosterTabBtn').classList.remove('hidden');
         document.getElementById('trainingTabBtn').classList.remove('hidden');
+        // «Αθλητές»: μόνο σε συλλόγους που έχουν γκρουπ προπόνησης
+        sb.from('training_groups').select('id',{ count:'exact', head:true }).eq('club_id',club.id)
+          .then(({ count })=>{ if(count>0) document.getElementById('athletesTabBtn').classList.remove('hidden'); });
         document.getElementById('settingsTabBtn').classList.remove('hidden');
         document.getElementById('mytrainingsTabBtn').classList.add('hidden'); // ο admin δεν χρειάζεται «Οι Προπονήσεις μου»
     }
@@ -1245,6 +1266,7 @@ function switchTab(tab){
     if(tab==='mytrainings') renderMyTrainings();
     if(tab==='admin') loadAdmin();
     if(tab==='roster'||tab==='training') renderRoster();
+    if(tab==='athletes') renderAthletesTab();
     if(tab==='myschedule') renderMySchedule();
     if(tab==='attendance') renderCoachAttendance();
     if(tab==='tournaments') renderTournaments();
@@ -3277,6 +3299,108 @@ function exportPlayers(){
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Πελάτες');
     XLSX.writeFile(wb, `${club.slug||'club'}-pelates-${cbToday()}.xlsx`);
     cbToast(`Κατέβηκαν ${rows.length} πελάτες`);
+}
+
+/* ══════════════ ΑΘΛΗΤΕΣ ΠΡΟΠΟΝΗΣΗΣ ══════════════
+   Μόνο όσοι ανήκουν σε γκρουπ, με γκρουπ + προπονητή, παρουσίες του μήνα,
+   τελευταία προπόνηση και (αν υπάρχουν συνδρομές) αν πλήρωσαν τον μήνα. */
+let _athOpen=null;
+async function renderAthletesTab(){
+    if(!isOwner) return;
+    await Promise.all([loadPlayersFull(), loadGroups(), loadPlayerActivity(), loadTrainingSchedule()]);
+    await loadPayments();
+    renderAthletes();
+}
+function athletesData(){
+    const byId=new Map(playersFull.filter(p=>p.approved!==false).map(p=>[p.id,p]));
+    const map=new Map();
+    groups.forEach(g=>(g.memberIds||[]).forEach(pid=>{
+        const p=byId.get(pid); if(!p) return;
+        const a=map.get(pid)||{ p, groups:[] };
+        a.groups.push(g); map.set(pid,a);
+    }));
+    const ym=cbToday().slice(0,7);
+    return [...map.values()].map(a=>{
+        const tr=(playerActivity[a.p.id]?.trains)||[];
+        const last=tr.reduce((m,t)=>t.date>m?t.date:m,'');
+        return { ...a, coaches:[...new Set(a.groups.flatMap(groupCoaches))],
+                 month:tr.filter(t=>t.date.slice(0,7)===ym).length, total:tr.length, last,
+                 paid: subsOn ? payments.has(a.p.id+'|'+ym) : null };
+    }).sort((x,y)=>(x.p.name||'').localeCompare(y.p.name||'','el'));
+}
+function renderAthletes(){
+    const el=document.getElementById('athList'); if(!el) return;
+    const all=athletesData();
+    fillFilter('athGroup', groups.map(g=>({ v:g.id, t:`${g.name} (${all.filter(a=>a.groups.some(x=>x.id===g.id)).length})` })), 'Όλα τα γκρουπ');
+    fillFilter('athCoach', [...new Set(all.flatMap(a=>a.coaches))].sort().map(c=>({ v:c, t:c })), 'Όλοι οι προπονητές');
+    const q=(document.getElementById('athSearch').value||'').trim().toLowerCase();
+    const fg=document.getElementById('athGroup').value, fc=document.getElementById('athCoach').value;
+    let list=all;
+    if(q)  list=list.filter(a=>(a.p.name||'').toLowerCase().includes(q) || (a.p.phone||'').includes(q));
+    if(fg) list=list.filter(a=>a.groups.some(g=>g.id===fg));
+    if(fc) list=list.filter(a=>a.coaches.includes(fc));
+    document.getElementById('athCount').textContent = all.length ? (list.length===all.length?`(${all.length})`:`(${list.length} από ${all.length})`) : '';
+    if(!all.length){ el.innerHTML='<p class="text-slate-400 text-sm py-2">Κανένας αθλητής σε γκρουπ ακόμα. Βάλε μέλη στα γκρουπ από την καρτέλα «Προπονήσεις».</p>'; return; }
+    if(!list.length){ el.innerHTML='<p class="text-slate-400 text-sm py-2">Κανένας αθλητής με αυτά τα κριτήρια.</p>'; return; }
+    const fmt=d=>d?new Date(d+'T12:00:00').toLocaleDateString(cbLocale(),{ day:'numeric', month:'short' }):'—';
+    el.innerHTML=list.map(a=>{
+        const open=_athOpen===a.p.id;
+        const chips=a.groups.map(g=>{ const c=groupCoaches(g);
+            return `<span class="inline-flex items-center gap-1 text-[11px] bg-purple-50 text-purple-700 border border-purple-100 rounded-full px-2 py-0.5 whitespace-nowrap max-w-full overflow-hidden">${cbEsc(g.name)}${c.length?`<span class="text-purple-400">· ${cbEsc(c.join(', '))}</span>`:''}</span>`; }).join(' ');
+        const pay = a.paid===null ? '' : (a.paid
+            ? '<span class="text-[10px] font-bold text-green-700 bg-green-100 rounded-full px-2 py-0.5">Πληρωμένη</span>'
+            : '<span class="text-[10px] font-bold text-amber-700 bg-amber-100 rounded-full px-2 py-0.5">Εκκρεμεί</span>');
+        const detail = !open ? '' : `
+            <div class="mt-3 pt-3 border-t border-slate-200 grid grid-cols-2 gap-x-4 gap-y-1 text-[11px]">
+                <span class="text-slate-400">Τηλέφωνο</span><span>${cbEsc(a.p.phone||'—')}</span>
+                <span class="text-slate-400">Email</span><span class="truncate">${cbEsc(a.p.email||'—')}</span>
+                <span class="text-slate-400">Μέλος από</span><span>${(a.p.created_at||'').slice(0,10)?fmt((a.p.created_at||'').slice(0,10))+' '+(a.p.created_at||'').slice(0,4):'—'}</span>
+                <span class="text-slate-400">Προπονήσεις συνολικά</span><span>${a.total}</span>
+            </div>
+            <button onclick="event.stopPropagation();openInRoster('${a.p.id}')" class="w-full mt-3 py-2 text-xs font-bold rounded-lg border border-slate-200 bg-white hover:bg-slate-50">Ιστορικό, καρτέλα & στοιχεία →</button>`;
+        return `<div onclick="_athOpen=(_athOpen==='${a.p.id}'?null:'${a.p.id}');renderAthletes()" class="p-3 bg-slate-50 rounded-xl border mb-2 cursor-pointer">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="text-sm font-semibold truncate">${cbEsc(a.p.name||'—')}</p>
+                    <div class="flex flex-wrap gap-1 mt-1">${chips}</div>
+                </div>
+                <div class="text-right flex-shrink-0">
+                    <p class="text-[11px] text-slate-500">Αυτόν τον μήνα: <b class="text-slate-700">${a.month}</b></p>
+                    <p class="text-[10px] text-slate-400">Τελευταία: ${fmt(a.last)}</p>
+                    ${pay?`<div class="mt-1">${pay}</div>`:''}
+                </div>
+            </div>${detail}
+        </div>`;
+    }).join('');
+}
+// πάει στους «Πελάτες» και ανοίγει την πλήρη καρτέλα του αθλητή (ιστορικό, χρεώσεις, παρουσίες)
+async function openInRoster(pid){
+    const p=playersFull.find(x=>x.id===pid); if(!p) return;
+    switchTab('roster');
+    await renderRoster();
+    const box=document.getElementById('playersBox');
+    if(box && box.classList.contains('hidden')) togglePlayers();
+    const s=document.getElementById('rosterSearch'); if(s){ s.value=p.name||''; }
+    const lv=document.getElementById('rosterLevel'); if(lv) lv.value='';
+    renderPlayers();
+    togglePlayer(pid);
+    document.getElementById('pdet-'+pid)?.parentElement?.scrollIntoView({ behavior:'smooth', block:'start' });
+}
+function exportAthletes(){
+    if(typeof XLSX==='undefined') return cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err');
+    const list=athletesData();
+    if(!list.length) return cbToast('Δεν υπάρχουν αθλητές σε γκρουπ','err');
+    const rows=list.map(a=>({
+        'Όνομα':a.p.name||'', 'Τηλέφωνο':a.p.phone||'', 'Email':a.p.email||'',
+        'Γκρουπ':a.groups.map(g=>g.name).join(', '), 'Προπονητής':a.coaches.join(', '),
+        'Προπονήσεις μήνα':a.month, 'Προπονήσεις συνολικά':a.total, 'Τελευταία προπόνηση':a.last||'',
+        ...(subsOn?{ 'Συνδρομή μήνα':a.paid?'Πληρωμένη':'Εκκρεμεί' }:{}),
+        'Μέλος από':(a.p.created_at||'').slice(0,10)
+    }));
+    const wb=XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Αθλητές');
+    XLSX.writeFile(wb, `${club.slug||'club'}-athlites-${cbToday()}.xlsx`);
+    cbToast(`Κατέβηκαν ${rows.length} αθλητές`);
 }
 
 /* Γεμίζει ένα dropdown φίλτρου κρατώντας την επιλογή του χρήστη. */
