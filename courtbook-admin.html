@@ -104,6 +104,12 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
 .acts{display:flex;gap:6px;justify-content:flex-end}
 .ibtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:13px;font-weight:600}
 .ibtn:hover{border-color:var(--ink)}
+.ibtn.unlock{color:var(--ok);border-color:#b7e2c8}
+.ibtn.unlock:hover{background:var(--ok-soft);border-color:var(--ok)}
+.club.paused{background:#faf9f6}
+.club.paused .nm{color:var(--muted)}
+.lockhint{margin-top:10px;font-size:13px;color:var(--ink-2);background:var(--paper-2);border-radius:10px;padding:9px 12px}
+.ibtn.sq{width:36px;padding:0}
 .ibtn.del{width:36px;padding:0;color:var(--bad)}
 .ibtn.del:hover{border-color:var(--bad);background:var(--bad-soft)}
 .danger{margin-top:30px;border:1.5px solid #f3c7c2;border-radius:16px;padding:16px;background:#fff}
@@ -287,6 +293,7 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
         <div class="sec">
             <div class="lab">Κατάσταση</div>
             <div class="seg" id="edStatus"></div>
+            <div class="lockhint hidden" id="edLockHint">Σε παύση ο σύλλογος <b>κλειδώνει</b>: ούτε ο ίδιος ούτε τα μέλη του μπορούν να κάνουν κρατήσεις ή αλλαγές, μέχρι να τον βάλεις ξανά «Ενεργό». Τίποτα δεν σβήνεται.</div>
             <div id="edTrialBox" style="margin-top:12px">
                 <label class="field" style="margin-top:0"><span>Δωρεάν δοκιμή έως</span>
                     <input type="date" id="edTrial" class="inp" style="max-width:220px" oninput="edChanged()"></label>
@@ -356,6 +363,8 @@ const ADDONS = [
 const STATUS = { trial:'Δοκιμή', active:'Ενεργός', paused:'Σε παύση' };
 const SPORT  = { padel:'Padel', tennis:'Τένις', squash:'Squash', pickleball:'Pickleball', beach:'Beach tennis' };
 let clubs = [], filter = 'all', ed = null, edDirty = false;
+const LOCK   = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0v4"/></svg>';
+const UNLOCK = '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><rect x="4" y="11" width="16" height="10" rx="2"/><path d="M8 11V7a4 4 0 0 1 7.5-2"/></svg>';
 const TRASH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
 
 const $ = id => document.getElementById(id);
@@ -468,7 +477,7 @@ function renderList(){
     $('list').innerHTML = list.map(c => {
         const p = cbPlanPrice(c), max = cbTierMax(c.plan_tier), over = c.courts > max;
         const sports = (c.sport || '').split(',').map(s => SPORT[s.trim()] || s.trim()).filter(Boolean).join(', ');
-        return '<div class="club" role="button" tabindex="0" onclick="openEd(\'' + c.id + '\')" onkeydown="if(event.key===\'Enter\')openEd(\'' + c.id + '\')">'
+        return '<div class="club' + (c.plan_status === 'paused' ? ' paused' : '') + '" role="button" tabindex="0" onclick="openEd(\'' + c.id + '\')" onkeydown="if(event.key===\'Enter\')openEd(\'' + c.id + '\')">'
           + '<div style="min-width:0"><div class="nm">' + esc(c.name) + '</div>'
           +   '<div class="sub">' + esc(c.slug) + (sports ? ' · ' + esc(sports) : '') + ' · ' + esc((c.lang || 'el').toUpperCase()) + '</div>'
           +   '<div class="sub">' + esc(c.owner_name || '') + (c.owner_name ? ' · ' : '') + esc(c.owner_email || c.email || '') + '</div></div>'
@@ -482,7 +491,10 @@ function renderList(){
           +   '<div class="stat"><b style="font-size:14px;line-height:1.5">' + ago(c.last_booking) + '</b><span>τελ. κράτηση</span></div>'
           + '</div>'
           + '<div class="acts">'
-          +   '<button type="button" class="ibtn" onclick="event.stopPropagation();openEd(\'' + c.id + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Επεξεργασία</button>'
+          +   '<button type="button" class="ibtn sq" title="Επεξεργασία" aria-label="Επεξεργασία" onclick="event.stopPropagation();openEd(\'' + c.id + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg></button>'
+          +   (c.plan_status === 'paused'
+                ? '<button type="button" class="ibtn unlock" onclick="event.stopPropagation();togglePause(\'' + c.id + '\')">' + UNLOCK + 'Ενεργοποίηση</button>'
+                : '<button type="button" class="ibtn" title="Κλείδωμα συλλόγου" onclick="event.stopPropagation();togglePause(\'' + c.id + '\')">' + LOCK + 'Παύση</button>')
           +   '<button type="button" class="ibtn del" title="Διαγραφή συλλόγου" aria-label="Διαγραφή συλλόγου" onclick="event.stopPropagation();askDelete(\'' + c.id + '\')">' + TRASH + '</button>'
           + '</div></div>';
     }).join('');
@@ -539,6 +551,7 @@ function renderEd(){
     $('edStatus').innerHTML = Object.keys(STATUS).map(s =>
         '<button type="button" class="' + (v.plan_status === s ? 'on' : '') + '" onclick="setEd(\'plan_status\',\'' + s + '\')">' + STATUS[s] + '</button>').join('');
     $('edTrialBox').classList.toggle('hidden', v.plan_status !== 'trial');
+    $('edLockHint').classList.toggle('hidden', v.plan_status !== 'paused');
     const p = cbPlanPrice(v);
     $('edTotal').innerHTML = p.total + '€ <small>/μήνα</small>';
     $('edSave').disabled = !edDirty;
@@ -576,6 +589,21 @@ async function saveEd(){
     }
     cbToast('✓ Αποθηκεύτηκε — ' + c.name);
     closeEd(true);
+    load();
+}
+
+/* ── παύση = κλείδωμα / ενεργοποίηση ── */
+async function togglePause(id){
+    const c = clubs.find(x => x.id === id); if (!c) return;
+    const pausing = c.plan_status !== 'paused';
+    if (!confirm(pausing
+        ? 'Παύση «' + c.name + '»\n\nΟ σύλλογος κλειδώνει: ούτε ο ίδιος ούτε τα μέλη του θα μπορούν να τον χρησιμοποιούν, μέχρι να τον ενεργοποιήσεις ξανά. Τίποτα δεν σβήνεται.'
+        : 'Ενεργοποίηση «' + c.name + '»\n\nΟ σύλλογος ξεκλειδώνει και δουλεύει κανονικά, ως «Ενεργός».')) return;
+    cbLoading(true);
+    const { error } = await sb.rpc('admin_update_club', { p_club: id, p: { plan_status: pausing ? 'paused' : 'active', trial_until: '' } });
+    cbLoading(false);
+    if (error) return cbToast('Δεν άλλαξε: ' + (error.message || ''), 'err');
+    cbToast(pausing ? 'Ο «' + c.name + '» κλειδώθηκε' : 'Ο «' + c.name + '» ενεργοποιήθηκε');
     load();
 }
 
