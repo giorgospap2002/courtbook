@@ -335,8 +335,8 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
         <h4 id="delTitle"></h4>
         <p class="muted small" style="margin:0">Θα σβηστούν οριστικά:</p>
         <ul id="delList"></ul>
-        <p class="small" style="margin:14px 0 6px">Ο λογαριασμός του ιδιοκτήτη μένει. Για επιβεβαίωση γράψε το link του συλλόγου: <b id="delSlug"></b></p>
-        <input id="delInp" class="inp" autocapitalize="off" spellcheck="false" autocomplete="off" oninput="$('delGo').disabled = this.value.trim() !== delTarget.slug">
+        <p class="small" style="margin:14px 0 6px">Ο λογαριασμός του ιδιοκτήτη μένει. Για επιβεβαίωση γράψε από κάτω: <b id="delSlug"></b></p>
+        <input id="delInp" class="inp" autocapitalize="off" spellcheck="false" autocomplete="off" oninput="$('delGo').disabled = delTyped() !== delTarget.slug">
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
             <button type="button" class="btn" onclick="closeDel()">Άκυρο</button>
             <button type="button" class="btn redfill" id="delGo" disabled onclick="doDelete()">Οριστική διαγραφή</button>
@@ -622,9 +622,15 @@ function askDelete(id){
     $('delModal').classList.remove('hidden');
     setTimeout(() => $('delInp').focus(), 50);
 }
+// δέχεται σκέτο «aotegeas» ή ολόκληρο το link «…app.html?club=aotegeas»
+function delTyped(){
+    const s = $('delInp').value.trim().toLowerCase();
+    const m = s.match(/[?&]club=([^&#\s]+)/);
+    return m ? decodeURIComponent(m[1]) : s;
+}
 function closeDel(){ $('delModal').classList.add('hidden'); delTarget = null; }
 async function doDelete(){
-    const c = delTarget; if (!c || $('delInp').value.trim() !== c.slug) return;
+    const c = delTarget; if (!c || delTyped() !== c.slug) return;
     cbLoading(true);
     const { error } = await sb.rpc('admin_delete_club', { p_club: c.id, p_confirm: c.slug });
     cbLoading(false);
