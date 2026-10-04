@@ -702,15 +702,33 @@ function localizeNames(){
     const short={ sun:0, mon:1, tue:2, wed:3, thu:4, fri:5, sat:6 };
     T_DAYS.forEach(d=>{ d[1]=day(short[d[0]],'short').replace('.',''); });
 }
+const clubLang=()=>(club && APP_LANGS.includes(club.lang)) ? club.lang : 'el';
 async function startLang(){
     APP_LANG=pickLang();
     document.documentElement.lang=APP_LANG;
     ['langSel','authLangSel'].forEach(id=>{ const s=document.getElementById(id); if(s) s.value=APP_LANG; });
-    if(APP_LANG==='el') return;
-    const ok=await loadScript('app-i18n.js?v=1');
-    if(!ok || !window.CBI18N){ APP_LANG='el'; document.documentElement.lang='el'; return; }
-    localizeNames();
-    CBI18N.start(APP_LANG);
+    const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
+    const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
+    if(!needUi && !needContent) return;
+    const ok=await loadScript('app-i18n.js?v=2');
+    if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
+    if(needUi) localizeNames();
+    CBI18N.start(APP_LANG, { ui:needUi });
+}
+/* Αυτόματη μετάφραση των κειμένων του συλλόγου (τιμοκατάλογος, έξτρα, γήπεδα,
+   γκρουπ, τουρνουά) μέσω της Edge Function «translate-club». Μόνο στην οθόνη:
+   στη βάση και στις Ρυθμίσεις μένει πάντα ό,τι έγραψε ο σύλλογος.
+   Πρώτα ό,τι έχει κρατηθεί σε αυτή τη συσκευή (άμεσα), μετά φρέσκο. */
+async function translateClubContent(){
+    if(!club || !window.CBI18N || APP_LANG===clubLang()) return;
+    const key='cb_ct:'+club.id+':'+APP_LANG;
+    try{ const c=JSON.parse(localStorage.getItem(key)||'null'); if(c) CBI18N.addContent(c); }catch(e){}
+    try{
+        const { data, error }=await sb.functions.invoke('translate-club',{ body:{ club_id:club.id, target:APP_LANG } });
+        if(error || !data || data.error) return;
+        CBI18N.addContent(data);
+        try{ localStorage.setItem(key, JSON.stringify(data)); }catch(e){}
+    }catch(e){}
 }
 
 /* ══════════════ BOOT ══════════════ */
@@ -1107,6 +1125,7 @@ async function doJoinClub(){
 
 /* ══════════════ ENTER APP ══════════════ */
 async function enterApp(){
+    translateClubContent();   // δεν περιμένουμε — εφαρμόζεται μόλις έρθει
     document.getElementById('authScreen').classList.add('hidden');
     document.getElementById('appScreen').classList.remove('hidden');
     isOwner = club.owner_id === me.id;
