@@ -162,6 +162,21 @@ button.choice.on{background:var(--ink);color:#fff}
 
 .hint .text-brand{color:var(--ink) !important;text-decoration:underline;text-decoration-color:var(--line-2);text-underline-offset:3px;transition:text-decoration-color .2s}
 .hint .text-brand:hover{text-decoration-color:var(--ink)}
+/* τιμές */
+.pchip{display:inline-block;font-style:normal;font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:800;font-size:13px;letter-spacing:.02em;
+  background:var(--brand-soft);color:var(--brand);border-radius:999px;padding:1px 8px;margin-left:6px;vertical-align:1px}
+.choice .pchip{position:absolute;top:14px;right:14px;margin:0}
+.tog .pchip{float:right;margin:1px 0 0 10px}
+button.choice.tier{display:flex;flex-direction:column;align-items:center;gap:2px;padding:18px 10px}
+button.choice.tier .big{font-size:26px;line-height:1}
+.tier-sub{font-family:Inter,sans-serif;font-size:12px;font-weight:500;opacity:.7}
+.tier-price{margin-top:8px;font-size:20px}
+.tier-price small{font-family:Inter,sans-serif;font-size:11px;font-weight:500;opacity:.7}
+.plan-sum{background:#fff;border:1.5px solid var(--line-2);border-radius:18px;padding:6px 18px}
+.plan-sum .row{display:flex;justify-content:space-between;gap:12px;padding:9px 0;font-size:14.5px;border-bottom:1px solid var(--line)}
+.plan-sum .row:last-child{border-bottom:0}
+.plan-sum .tot{font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:800;font-size:20px}
+.price-line{font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:700;font-size:12.5px;letter-spacing:.06em;color:var(--ink)}
 .okbox{background:var(--mine-soft);color:#0b3d24;border-radius:16px;padding:14px 16px;font-size:14px;box-shadow:inset 0 0 0 1px rgba(15,122,70,.18)}
 .okbox .text-brand{color:var(--ink) !important}
     </style>
@@ -276,7 +291,7 @@ button.choice.on{background:var(--ink);color:#fff}
                 <h2 class="qt" data-i18n="q7t">Τι κάνει ο σύλλογος;</h2>
                 <p class="qs" data-i18n="q7s">Μπορείς να το αλλάξεις αργότερα.</p>
                 <div class="qgap space-y-3">
-                    <label class="choice on block p-5" data-choice="clubMode" data-val="full">
+                    <label class="choice on block p-5 pr-20" data-choice="clubMode" data-val="full"><em class="pchip">+15€</em>
                         <span class="flex items-start gap-3.5">
                             <input type="radio" name="clubMode" value="full" checked class="mt-1 w-4 h-4 flex-shrink-0">
                             <span data-i18n="q7a"><b class="block mb-0.5">Κρατήσεις γηπέδων &amp; προπονήσεις</b>
@@ -293,10 +308,12 @@ button.choice.on{background:var(--ink);color:#fff}
                 </div>
                 <p class="lbl mt-8" data-i18n="fExtra">Επιπλέον</p>
                 <div class="toggles">
-                    <label class="tog"><span><b data-i18n="q8t">Κρατάτε μηνιαίες συνδρομές;</b><small data-i18n="q8s">Η γραμματεία τσεκάρει ποιος πλήρωσε κάθε μήνα· το μέλος το βλέπει στο κινητό του.</small></span>
+                    <label class="tog"><span><em class="pchip">+10€</em><b data-i18n="q8t">Κρατάτε μηνιαίες συνδρομές;</b><small data-i18n="q8s">Η γραμματεία τσεκάρει ποιος πλήρωσε κάθε μήνα· το μέλος το βλέπει στο κινητό του.</small></span>
                         <input type="checkbox" id="clubSubs" class="sw"></label>
-                    <label class="tog"><span><b data-i18n="q9t">Θέλεις κωδικούς για τους προπονητές;</b><small data-i18n="q9s">Ο καθένας βλέπει μόνο τα δικά του τμήματα και περνά παρουσίες από το κινητό του.</small></span>
+                    <label class="tog"><span><em class="pchip">+10€</em><b data-i18n="q9t">Θέλεις κωδικούς για τους προπονητές;</b><small data-i18n="q9s">Ο καθένας βλέπει μόνο τα δικά του τμήματα και περνά παρουσίες από το κινητό του.</small></span>
                         <input type="checkbox" id="clubCoaches" class="sw"></label>
+                    <label class="tog"><span><em class="pchip">+15€</em><b data-i18n="qTt">Θα διοργανώνετε τουρνουά;</b><small data-i18n="qTs">Δηλώσεις από τους αθλητές, όμιλοι, πρόγραμμα αγώνων, βαθμολογία και ταμπλό. Ετήσια συνδρομή: 180€ τον χρόνο.</small></span>
+                        <input type="checkbox" id="clubTournaments" class="sw"></label>
                 </div>
             </div>
 
@@ -316,6 +333,20 @@ button.choice.on{background:var(--ink);color:#fff}
                 </div>
             </div>
 
+            <!-- ── πακέτο ── -->
+            <div class="q hidden" data-q="clubPlan">
+                <p class="eyebrow" data-i18n="sec3p">Το πακέτο σου</p>
+                <h2 class="qt" data-i18n="qPt">Πόσα γήπεδα έχετε;</h2>
+                <p class="qs" data-i18n="qPs">Η τιμή εξαρτάται από τα γήπεδα. Αλλάζεις πακέτο όποτε θέλεις.</p>
+                <div class="qgap grid grid-cols-3 gap-3">
+                    <button type="button" class="choice tier on" data-choice="clubTier" data-val="s"><span class="big">1–3</span><span class="tier-sub" data-i18n="courtsW1">γήπεδα</span><span class="tier-price">45€<small data-i18n="perM1">/μήνα</small></span></button>
+                    <button type="button" class="choice tier" data-choice="clubTier" data-val="m"><span class="big">4–8</span><span class="tier-sub" data-i18n="courtsW2">γήπεδα</span><span class="tier-price">60€<small data-i18n="perM2">/μήνα</small></span></button>
+                    <button type="button" class="choice tier" data-choice="clubTier" data-val="l"><span class="big">9+</span><span class="tier-sub" data-i18n="courtsW3">γήπεδα</span><span class="tier-price">80€<small data-i18n="perM3">/μήνα</small></span></button>
+                </div>
+                <div id="planSum" class="plan-sum mt-5"></div>
+                <p class="hint" data-i18n="qPn">Ξεκινάς με δωρεάν δοκιμή, χωρίς κάρτα. Θα επικοινωνήσουμε μαζί σου πριν από οποιαδήποτε χρέωση.</p>
+            </div>
+
             <!-- ── γήπεδα ── -->
             <div class="q hidden" data-q="clubHours">
                 <p class="eyebrow" data-i18n="sec3">Τα γήπεδα</p>
@@ -333,7 +364,8 @@ button.choice.on{background:var(--ink);color:#fff}
                 </div>
                 <p class="lbl mt-8" data-i18n="fCourts">Τα γήπεδα, όπως τα λένε τα μέλη σου</p>
                 <div id="courtsList" class="space-y-2 mb-3"></div>
-                <button type="button" onclick="addCourtRow()" class="add" data-i18n="addcourt">+ Πρόσθεσε γήπεδο</button>
+                <button type="button" id="addCourtBtn" onclick="addCourtRow()" class="add" data-i18n="addcourt">+ Πρόσθεσε γήπεδο</button>
+                <p id="courtLimitHint" class="hint hidden"></p>
             </div>
 
             <div class="q hidden" data-q="durations">
@@ -368,6 +400,7 @@ button.choice.on{background:var(--ink);color:#fff}
             <button type="button" id="nextBtn" onclick="qNext()" class="btn btn-ink flex-1" data-i18n="cont">Συνέχεια →</button>
         </div>
         <p id="counter" class="wrap-q counter text-center mt-2.5"></p>
+        <p id="priceLine" class="wrap-q price-line text-center mt-1 hidden"></p>
     </footer>
 
     </div>
@@ -378,8 +411,8 @@ button.choice.on{background:var(--ink);color:#fff}
 /* ══════════ Πολυγλωσσία (EL προεπιλογή · EN · DE) ══════════
    Η γλώσσα έρχεται από το ?lang= ή από την επιλογή που έκανε ο
    επισκέπτης στην αρχική — ίδιο localStorage, ίδιο domain. */
-const CB_T = {"en": {"warn": "⚠️ Supabase is not configured. Fill in <b>config.js</b> first (see the README).", "home": "← Home", "sec1": "Your account", "sec1b": "Your account", "sec1c": "Your account", "sec1d": "Your account", "q1t": "What's your name?", "q1s": "You will be the club's administrator.", "q2t": "Your email", "q2s": "This is what you'll log in with.", "haveacc": "Already have an account? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Log in</span>", "q3t": "Your phone number", "q3s": "So we can reach you if something comes up.", "q4t": "Choose a password", "q4s": "At least 6 characters.", "sec2": "Your club", "sec2b": "Your club", "sec2c": "Your club", "sec2d": "Your club", "sec2e": "Your club", "sec2f": "Your club", "sec2g": "Your club", "sec2h": "Your club", "sec2i": "Your club", "sec2j": "Your club", "q5t": "What is the club called?", "q5s": "This is what your members will see everywhere.", "yourlink": "Your link:", "slug": "your-club", "q6t": "What do you play?", "q7t": "What does the club do?", "q7s": "You can change this later.", "q7a": "<b class=\"block mb-0.5\">Court bookings &amp; training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Members book courts themselves, with a price list. Training groups run as well.</span>", "q7b": "<b class=\"block mb-0.5\">Training only</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">The courts are taken by training groups. Nobody books a court to play, no prices anywhere.</span>", "q8t": "Do you collect monthly fees?", "q8s": "The office ticks off who paid each month; the member sees it on their phone.", "yes": "Yes", "no": "No", "yes2": "Yes", "no2": "No", "q9t": "Do your coaches need their own login?", "q9s": "Each one sees only their own groups and takes attendance from their phone.", "q10t": "The club's phone number", "q10s": "So members can reach you.", "q11t": "Where are you?", "q11s": "City or address.", "q12t": "Where should notifications go?", "q12s": "Every new booking and every new member sign-up lands here.", "q13t": "When do you open and close?", "q13s": "Everything will happen inside these hours.", "opens": "Opens", "closes": "Closes", "q14t": "Do you have a logo?", "q14s": "Paste the image address. You can also do this later from Settings.", "sec3": "Your courts", "sec3b": "Your courts", "q15t": "What are your courts?", "q15s": "Write the name of each one, as your members call it.", "addcourt": "+ Add court", "q16t": "Durations and prices", "q16s": "How many minutes, what you call it, and what it costs.", "adddur": "+ Add duration", "logint": "Log in", "lemail": "Email", "lpass": "Password", "loginbtn": "Log in", "isnew": "New here? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Sign up</span>", "back": "←", "skip": "Skip", "cont": "Continue →", "_title": "Create your club — CourtBook", "ph1": "John Smith", "ph2": "e.g. Riverside Tennis Club", "ph3": "Manchester", "asT": "Your entire club <em>in one system</em>", "st1": "Your account", "st2": "Your club", "st3": "Your courts", "asF": "No credit card &middot; Ready in minutes &middot; No installation", "lEye": "Welcome back", "fName": "Full name", "fPhone": "Mobile phone", "qA2t": "Your login details", "fEmail": "Email", "fPass": "Password &middot; at least 6 characters", "q6s": "Pick all that apply.", "fExtra": "Extras", "qCt": "Contact details", "qCs": "All optional &mdash; you can change them later in Settings.", "fCPhone": "Club phone", "fCAddr": "City or address", "fCEmail": "Email for notifications &middot; every new booking and sign-up", "fCLogo": "Logo &middot; image address", "qHt": "Hours and courts", "fCourts": "Your courts, as your members call them"}, "de": {"warn": "⚠️ Supabase ist nicht konfiguriert. Fülle zuerst <b>config.js</b> aus (siehe README).", "home": "← Startseite", "sec1": "Dein Konto", "sec1b": "Dein Konto", "sec1c": "Dein Konto", "sec1d": "Dein Konto", "q1t": "Wie heißt du?", "q1s": "Du wirst der Administrator des Clubs sein.", "q2t": "Deine E-Mail", "q2s": "Damit meldest du dich an.", "haveacc": "Schon ein Konto? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Anmelden</span>", "q3t": "Deine Telefonnummer", "q3s": "Damit wir dich erreichen können, falls etwas ist.", "q4t": "Wähle ein Passwort", "q4s": "Mindestens 6 Zeichen.", "sec2": "Dein Club", "sec2b": "Dein Club", "sec2c": "Dein Club", "sec2d": "Dein Club", "sec2e": "Dein Club", "sec2f": "Dein Club", "sec2g": "Dein Club", "sec2h": "Dein Club", "sec2i": "Dein Club", "sec2j": "Dein Club", "q5t": "Wie heißt der Club?", "q5s": "Das sehen deine Mitglieder überall.", "yourlink": "Dein Link:", "slug": "dein-club", "q6t": "Was spielt ihr?", "q7t": "Was macht der Club?", "q7s": "Du kannst das später ändern.", "q7a": "<b class=\"block mb-0.5\">Platzbuchungen &amp; Training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Mitglieder buchen selbst Plätze, mit Preisliste. Trainingsgruppen gibt es ebenfalls.</span>", "q7b": "<b class=\"block mb-0.5\">Nur Training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Die Plätze belegen die Trainingsgruppen. Niemand bucht einen Platz zum Spielen, nirgends Preise.</span>", "q8t": "Erhebt ihr monatliche Beiträge?", "q8s": "Das Sekretariat hakt ab, wer jeden Monat bezahlt hat; das Mitglied sieht es auf dem Handy.", "yes": "Ja", "no": "Nein", "yes2": "Ja", "no2": "Nein", "q9t": "Brauchen deine Trainer einen eigenen Zugang?", "q9s": "Jeder sieht nur seine eigenen Gruppen und trägt die Anwesenheit vom Handy aus ein.", "q10t": "Die Telefonnummer des Clubs", "q10s": "Damit Mitglieder euch erreichen.", "q11t": "Wo seid ihr?", "q11s": "Stadt oder Adresse.", "q12t": "Wohin sollen die Benachrichtigungen?", "q12s": "Hier landet jede neue Buchung und jede neue Mitgliedsanmeldung.", "q13t": "Wann öffnet und schließt ihr?", "q13s": "Innerhalb dieser Zeiten findet alles statt.", "opens": "Öffnet", "closes": "Schließt", "q14t": "Habt ihr ein Logo?", "q14s": "Füge die Bildadresse ein. Das geht auch später in den Einstellungen.", "sec3": "Deine Plätze", "sec3b": "Deine Plätze", "q15t": "Welche Plätze habt ihr?", "q15s": "Schreibe den Namen jedes Platzes, so wie ihn deine Mitglieder nennen.", "addcourt": "+ Platz hinzufügen", "q16t": "Dauern und Preise", "q16s": "Wie viele Minuten, wie ihr es nennt, und was es kostet.", "adddur": "+ Dauer hinzufügen", "logint": "Anmelden", "lemail": "E-Mail", "lpass": "Passwort", "loginbtn": "Anmelden", "isnew": "Neu hier? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Registrieren</span>", "back": "←", "skip": "Überspringen", "cont": "Weiter →", "_title": "Erstelle deinen Club — CourtBook", "ph1": "Max Mustermann", "ph2": "z.B. TC Musterstadt", "ph3": "München", "asT": "Dein ganzer Club <em>in einem System</em>", "st1": "Dein Konto", "st2": "Dein Club", "st3": "Deine Plätze", "asF": "Keine Kreditkarte &middot; In Minuten bereit &middot; Keine Installation", "lEye": "Willkommen zurück", "fName": "Vollständiger Name", "fPhone": "Handynummer", "qA2t": "Deine Zugangsdaten", "fEmail": "E-Mail", "fPass": "Passwort &middot; mindestens 6 Zeichen", "q6s": "Wähle alles Zutreffende.", "fExtra": "Extras", "qCt": "Kontaktdaten", "qCs": "Alles optional &mdash; du kannst es später in den Einstellungen ändern.", "fCPhone": "Telefon des Clubs", "fCAddr": "Stadt oder Adresse", "fCEmail": "E-Mail für Benachrichtigungen &middot; jede neue Buchung und Anmeldung", "fCLogo": "Logo &middot; Bildadresse", "qHt": "Öffnungszeiten und Plätze", "fCourts": "Eure Plätze, so wie eure Mitglieder sie nennen"}};
-const CB_S = {"en": {"Γήπεδο 1": "Court 1", "Γήπεδο 2": "Court 2", "1 ώρα": "1 hour", "1½ ώρα": "1½ hours", "2 ώρες": "2 hours", " (επόμ. μέρα)": " (next day)", "Συνδεδεμένος ως": "Signed in as", "Πήγαινε στο": "Go to", "Αποσύνδεση": "Log out", "Όνομα γηπέδου": "Court name", "λεπτά": "minutes", "ετικέτα": "label", "to-club-sou": "your-club", "Συνέχεια →": "Continue →", "✓ Δημιουργία Club": "✓ Create club", "Ρύθμισε πρώτα το config.js": "Set up config.js first", "Βάλε ονοματεπώνυμο": "Enter your full name", "Μη έγκυρο email": "Invalid email", "Μη έγκυρο τηλέφωνο": "Invalid phone number", "Κωδικός ≥ 6 χαρακτήρες": "Password must be at least 6 characters", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Check your email to confirm, then log in", "Λογαριασμός έτοιμος!": "Account ready!", "Σφάλμα εγγραφής": "Sign-up failed", "Καλώς ήρθες!": "Welcome back!", "Συνδέθηκες!": "Signed in!", "Λάθος email ή κωδικός": "Wrong email or password", "Κάνε πρώτα λογαριασμό": "Create an account first", "Βάλε όνομα club": "Enter a club name", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Add at least 1 court", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Add at least 1 duration/price", "Το club κλείνει πριν ανοίξει": "The club closes before it opens", "🎉 Το club δημιουργήθηκε!": "🎉 Club created!", "Σφάλμα δημιουργίας": "Could not create the club", "Διάλεξε τουλάχιστον ένα άθλημα": "Pick at least one sport"}, "de": {"Γήπεδο 1": "Platz 1", "Γήπεδο 2": "Platz 2", "1 ώρα": "1 Stunde", "1½ ώρα": "1½ Stunden", "2 ώρες": "2 Stunden", " (επόμ. μέρα)": " (nächster Tag)", "Συνδεδεμένος ως": "Angemeldet als", "Πήγαινε στο": "Gehe zu", "Αποσύνδεση": "Abmelden", "Όνομα γηπέδου": "Platzname", "λεπτά": "Minuten", "ετικέτα": "Bezeichnung", "to-club-sou": "dein-club", "Συνέχεια →": "Weiter →", "✓ Δημιουργία Club": "✓ Club erstellen", "Ρύθμισε πρώτα το config.js": "Richte zuerst config.js ein", "Βάλε ονοματεπώνυμο": "Gib deinen vollständigen Namen ein", "Μη έγκυρο email": "Ungültige E-Mail", "Μη έγκυρο τηλέφωνο": "Ungültige Telefonnummer", "Κωδικός ≥ 6 χαρακτήρες": "Passwort mindestens 6 Zeichen", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Bestätige deine E-Mail, dann melde dich an", "Λογαριασμός έτοιμος!": "Konto bereit!", "Σφάλμα εγγραφής": "Registrierung fehlgeschlagen", "Καλώς ήρθες!": "Willkommen zurück!", "Συνδέθηκες!": "Angemeldet!", "Λάθος email ή κωδικός": "Falsche E-Mail oder falsches Passwort", "Κάνε πρώτα λογαριασμό": "Erstelle zuerst ein Konto", "Βάλε όνομα club": "Gib einen Clubnamen ein", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Füge mindestens 1 Platz hinzu", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Füge mindestens 1 Dauer/Preis hinzu", "Το club κλείνει πριν ανοίξει": "Der Club schließt, bevor er öffnet", "🎉 Το club δημιουργήθηκε!": "🎉 Club erstellt!", "Σφάλμα δημιουργίας": "Erstellen fehlgeschlagen", "Διάλεξε τουλάχιστον ένα άθλημα": "Wähle mindestens eine Sportart"}};
+const CB_T = {"en": {"warn": "⚠️ Supabase is not configured. Fill in <b>config.js</b> first (see the README).", "home": "← Home", "sec1": "Your account", "sec1b": "Your account", "sec1c": "Your account", "sec1d": "Your account", "q1t": "What's your name?", "q1s": "You will be the club's administrator.", "q2t": "Your email", "q2s": "This is what you'll log in with.", "haveacc": "Already have an account? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Log in</span>", "q3t": "Your phone number", "q3s": "So we can reach you if something comes up.", "q4t": "Choose a password", "q4s": "At least 6 characters.", "sec2": "Your club", "sec2b": "Your club", "sec2c": "Your club", "sec2d": "Your club", "sec2e": "Your club", "sec2f": "Your club", "sec2g": "Your club", "sec2h": "Your club", "sec2i": "Your club", "sec2j": "Your club", "q5t": "What is the club called?", "q5s": "This is what your members will see everywhere.", "yourlink": "Your link:", "slug": "your-club", "q6t": "What do you play?", "q7t": "What does the club do?", "q7s": "You can change this later.", "q7a": "<b class=\"block mb-0.5\">Court bookings &amp; training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Members book courts themselves, with a price list. Training groups run as well.</span>", "q7b": "<b class=\"block mb-0.5\">Training only</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">The courts are taken by training groups. Nobody books a court to play, no prices anywhere.</span>", "q8t": "Do you collect monthly fees?", "q8s": "The office ticks off who paid each month; the member sees it on their phone.", "yes": "Yes", "no": "No", "yes2": "Yes", "no2": "No", "q9t": "Do your coaches need their own login?", "q9s": "Each one sees only their own groups and takes attendance from their phone.", "q10t": "The club's phone number", "q10s": "So members can reach you.", "q11t": "Where are you?", "q11s": "City or address.", "q12t": "Where should notifications go?", "q12s": "Every new booking and every new member sign-up lands here.", "q13t": "When do you open and close?", "q13s": "Everything will happen inside these hours.", "opens": "Opens", "closes": "Closes", "q14t": "Do you have a logo?", "q14s": "Paste the image address. You can also do this later from Settings.", "sec3": "Your courts", "sec3b": "Your courts", "q15t": "What are your courts?", "q15s": "Write the name of each one, as your members call it.", "addcourt": "+ Add court", "q16t": "Durations and prices", "q16s": "How many minutes, what you call it, and what it costs.", "adddur": "+ Add duration", "logint": "Log in", "lemail": "Email", "lpass": "Password", "loginbtn": "Log in", "isnew": "New here? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Sign up</span>", "back": "←", "skip": "Skip", "cont": "Continue →", "_title": "Create your club — CourtBook", "ph1": "John Smith", "ph2": "e.g. Riverside Tennis Club", "ph3": "Manchester", "asT": "Your entire club <em>in one system</em>", "st1": "Your account", "st2": "Your club", "st3": "Your courts", "asF": "No credit card &middot; Ready in minutes &middot; No installation", "lEye": "Welcome back", "fName": "Full name", "fPhone": "Mobile phone", "qA2t": "Your login details", "fEmail": "Email", "fPass": "Password &middot; at least 6 characters", "q6s": "Pick all that apply.", "fExtra": "Extras", "qCt": "Contact details", "qCs": "All optional &mdash; you can change them later in Settings.", "fCPhone": "Club phone", "fCAddr": "City or address", "fCEmail": "Email for notifications &middot; every new booking and sign-up", "fCLogo": "Logo &middot; image address", "qHt": "Hours and courts", "fCourts": "Your courts, as your members call them", "qTt": "Will you run tournaments?", "qTs": "Entries by the players themselves, groups, match schedule, standings and draws. Yearly plan: 180€ per year.", "sec3p": "Your plan", "qPt": "How many courts do you have?", "qPs": "The price depends on the courts. You can change plan any time.", "courtsW1": "courts", "courtsW2": "courts", "courtsW3": "courts", "perM1": "/month", "perM2": "/month", "perM3": "/month", "qPn": "You start with a free trial, no card needed. We will contact you before any charge."}, "de": {"warn": "⚠️ Supabase ist nicht konfiguriert. Fülle zuerst <b>config.js</b> aus (siehe README).", "home": "← Startseite", "sec1": "Dein Konto", "sec1b": "Dein Konto", "sec1c": "Dein Konto", "sec1d": "Dein Konto", "q1t": "Wie heißt du?", "q1s": "Du wirst der Administrator des Clubs sein.", "q2t": "Deine E-Mail", "q2s": "Damit meldest du dich an.", "haveacc": "Schon ein Konto? <span onclick=\"showLogin()\" class=\"text-brand font-semibold cursor-pointer\">Anmelden</span>", "q3t": "Deine Telefonnummer", "q3s": "Damit wir dich erreichen können, falls etwas ist.", "q4t": "Wähle ein Passwort", "q4s": "Mindestens 6 Zeichen.", "sec2": "Dein Club", "sec2b": "Dein Club", "sec2c": "Dein Club", "sec2d": "Dein Club", "sec2e": "Dein Club", "sec2f": "Dein Club", "sec2g": "Dein Club", "sec2h": "Dein Club", "sec2i": "Dein Club", "sec2j": "Dein Club", "q5t": "Wie heißt der Club?", "q5s": "Das sehen deine Mitglieder überall.", "yourlink": "Dein Link:", "slug": "dein-club", "q6t": "Was spielt ihr?", "q7t": "Was macht der Club?", "q7s": "Du kannst das später ändern.", "q7a": "<b class=\"block mb-0.5\">Platzbuchungen &amp; Training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Mitglieder buchen selbst Plätze, mit Preisliste. Trainingsgruppen gibt es ebenfalls.</span>", "q7b": "<b class=\"block mb-0.5\">Nur Training</b><span class=\"block text-[13px] text-slate-500 leading-relaxed\">Die Plätze belegen die Trainingsgruppen. Niemand bucht einen Platz zum Spielen, nirgends Preise.</span>", "q8t": "Erhebt ihr monatliche Beiträge?", "q8s": "Das Sekretariat hakt ab, wer jeden Monat bezahlt hat; das Mitglied sieht es auf dem Handy.", "yes": "Ja", "no": "Nein", "yes2": "Ja", "no2": "Nein", "q9t": "Brauchen deine Trainer einen eigenen Zugang?", "q9s": "Jeder sieht nur seine eigenen Gruppen und trägt die Anwesenheit vom Handy aus ein.", "q10t": "Die Telefonnummer des Clubs", "q10s": "Damit Mitglieder euch erreichen.", "q11t": "Wo seid ihr?", "q11s": "Stadt oder Adresse.", "q12t": "Wohin sollen die Benachrichtigungen?", "q12s": "Hier landet jede neue Buchung und jede neue Mitgliedsanmeldung.", "q13t": "Wann öffnet und schließt ihr?", "q13s": "Innerhalb dieser Zeiten findet alles statt.", "opens": "Öffnet", "closes": "Schließt", "q14t": "Habt ihr ein Logo?", "q14s": "Füge die Bildadresse ein. Das geht auch später in den Einstellungen.", "sec3": "Deine Plätze", "sec3b": "Deine Plätze", "q15t": "Welche Plätze habt ihr?", "q15s": "Schreibe den Namen jedes Platzes, so wie ihn deine Mitglieder nennen.", "addcourt": "+ Platz hinzufügen", "q16t": "Dauern und Preise", "q16s": "Wie viele Minuten, wie ihr es nennt, und was es kostet.", "adddur": "+ Dauer hinzufügen", "logint": "Anmelden", "lemail": "E-Mail", "lpass": "Passwort", "loginbtn": "Anmelden", "isnew": "Neu hier? <span onclick=\"showRegister()\" class=\"text-brand font-semibold cursor-pointer\">Registrieren</span>", "back": "←", "skip": "Überspringen", "cont": "Weiter →", "_title": "Erstelle deinen Club — CourtBook", "ph1": "Max Mustermann", "ph2": "z.B. TC Musterstadt", "ph3": "München", "asT": "Dein ganzer Club <em>in einem System</em>", "st1": "Dein Konto", "st2": "Dein Club", "st3": "Deine Plätze", "asF": "Keine Kreditkarte &middot; In Minuten bereit &middot; Keine Installation", "lEye": "Willkommen zurück", "fName": "Vollständiger Name", "fPhone": "Handynummer", "qA2t": "Deine Zugangsdaten", "fEmail": "E-Mail", "fPass": "Passwort &middot; mindestens 6 Zeichen", "q6s": "Wähle alles Zutreffende.", "fExtra": "Extras", "qCt": "Kontaktdaten", "qCs": "Alles optional &mdash; du kannst es später in den Einstellungen ändern.", "fCPhone": "Telefon des Clubs", "fCAddr": "Stadt oder Adresse", "fCEmail": "E-Mail für Benachrichtigungen &middot; jede neue Buchung und Anmeldung", "fCLogo": "Logo &middot; Bildadresse", "qHt": "Öffnungszeiten und Plätze", "fCourts": "Eure Plätze, so wie eure Mitglieder sie nennen", "qTt": "Werdet ihr Turniere veranstalten?", "qTs": "Anmeldungen durch die Spieler selbst, Gruppen, Spielplan, Tabelle und Tableaus. Jahresabo: 180€ pro Jahr.", "sec3p": "Dein Paket", "qPt": "Wie viele Plätze habt ihr?", "qPs": "Der Preis hängt von den Plätzen ab. Du kannst das Paket jederzeit wechseln.", "courtsW1": "Plätze", "courtsW2": "Plätze", "courtsW3": "Plätze", "perM1": "/Monat", "perM2": "/Monat", "perM3": "/Monat", "qPn": "Du startest mit einer kostenlosen Testphase, ohne Karte. Vor jeder Abrechnung melden wir uns bei dir."}};
+const CB_S = {"en": {"Γήπεδο 1": "Court 1", "Γήπεδο 2": "Court 2", "1 ώρα": "1 hour", "1½ ώρα": "1½ hours", "2 ώρες": "2 hours", " (επόμ. μέρα)": " (next day)", "Συνδεδεμένος ως": "Signed in as", "Πήγαινε στο": "Go to", "Αποσύνδεση": "Log out", "Όνομα γηπέδου": "Court name", "λεπτά": "minutes", "ετικέτα": "label", "to-club-sou": "your-club", "Συνέχεια →": "Continue →", "✓ Δημιουργία Club": "✓ Create club", "Ρύθμισε πρώτα το config.js": "Set up config.js first", "Βάλε ονοματεπώνυμο": "Enter your full name", "Μη έγκυρο email": "Invalid email", "Μη έγκυρο τηλέφωνο": "Invalid phone number", "Κωδικός ≥ 6 χαρακτήρες": "Password must be at least 6 characters", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Check your email to confirm, then log in", "Λογαριασμός έτοιμος!": "Account ready!", "Σφάλμα εγγραφής": "Sign-up failed", "Καλώς ήρθες!": "Welcome back!", "Συνδέθηκες!": "Signed in!", "Λάθος email ή κωδικός": "Wrong email or password", "Κάνε πρώτα λογαριασμό": "Create an account first", "Βάλε όνομα club": "Enter a club name", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Add at least 1 court", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Add at least 1 duration/price", "Το club κλείνει πριν ανοίξει": "The club closes before it opens", "🎉 Το club δημιουργήθηκε!": "🎉 Club created!", "Σφάλμα δημιουργίας": "Could not create the club", "Διάλεξε τουλάχιστον ένα άθλημα": "Pick at least one sport", "Διαχείριση Club": "Club management", "Κρατήσεις γηπέδων": "Court bookings", "Κωδικοί προπονητών": "Coach accounts", "Συνδρομές μελών": "Member fees", "Τουρνουά": "Tournaments", "Σύνολο": "Total", "/μήνα": "/month", "γήπεδα": "courts", "Πακέτο: ": "Plan: ", "Το πακέτο σου επιτρέπει έως ": "Your plan allows up to ", " γήπεδα": " courts", "Έχεις περισσότερα γήπεδα από όσα επιτρέπει το πακέτο — σβήσε ή άλλαξε πακέτο.": "You have more courts than your plan allows — remove some or change plan."}, "de": {"Γήπεδο 1": "Platz 1", "Γήπεδο 2": "Platz 2", "1 ώρα": "1 Stunde", "1½ ώρα": "1½ Stunden", "2 ώρες": "2 Stunden", " (επόμ. μέρα)": " (nächster Tag)", "Συνδεδεμένος ως": "Angemeldet als", "Πήγαινε στο": "Gehe zu", "Αποσύνδεση": "Abmelden", "Όνομα γηπέδου": "Platzname", "λεπτά": "Minuten", "ετικέτα": "Bezeichnung", "to-club-sou": "dein-club", "Συνέχεια →": "Weiter →", "✓ Δημιουργία Club": "✓ Club erstellen", "Ρύθμισε πρώτα το config.js": "Richte zuerst config.js ein", "Βάλε ονοματεπώνυμο": "Gib deinen vollständigen Namen ein", "Μη έγκυρο email": "Ungültige E-Mail", "Μη έγκυρο τηλέφωνο": "Ungültige Telefonnummer", "Κωδικός ≥ 6 χαρακτήρες": "Passwort mindestens 6 Zeichen", "Έλεγξε το email σου για επιβεβαίωση, μετά κάνε Σύνδεση": "Bestätige deine E-Mail, dann melde dich an", "Λογαριασμός έτοιμος!": "Konto bereit!", "Σφάλμα εγγραφής": "Registrierung fehlgeschlagen", "Καλώς ήρθες!": "Willkommen zurück!", "Συνδέθηκες!": "Angemeldet!", "Λάθος email ή κωδικός": "Falsche E-Mail oder falsches Passwort", "Κάνε πρώτα λογαριασμό": "Erstelle zuerst ein Konto", "Βάλε όνομα club": "Gib einen Clubnamen ein", "Πρόσθεσε τουλάχιστον 1 γήπεδο": "Füge mindestens 1 Platz hinzu", "Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή": "Füge mindestens 1 Dauer/Preis hinzu", "Το club κλείνει πριν ανοίξει": "Der Club schließt, bevor er öffnet", "🎉 Το club δημιουργήθηκε!": "🎉 Club erstellt!", "Σφάλμα δημιουργίας": "Erstellen fehlgeschlagen", "Διάλεξε τουλάχιστον ένα άθλημα": "Wähle mindestens eine Sportart", "Διαχείριση Club": "Clubverwaltung", "Κρατήσεις γηπέδων": "Platzbuchungen", "Κωδικοί προπονητών": "Trainerzugänge", "Συνδρομές μελών": "Mitgliedsbeiträge", "Τουρνουά": "Turniere", "Σύνολο": "Gesamt", "/μήνα": "/Monat", "γήπεδα": "Plätze", "Πακέτο: ": "Paket: ", "Το πακέτο σου επιτρέπει έως ": "Dein Paket erlaubt bis zu ", " γήπεδα": " Plätze", "Έχεις περισσότερα γήπεδα από όσα επιτρέπει το πακέτο — σβήσε ή άλλαξε πακέτο.": "Du hast mehr Plätze, als dein Paket erlaubt — lösche welche oder wechsle das Paket."}};
 let CB_LANG = 'el';
 (function(){
     const q = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
@@ -413,8 +446,10 @@ const QS = [
     { id:'clubMode'   },
     { id:'clubPhone',   check:()=> v('clubPhone') && !cbValidPhone(v('clubPhone')) ? L('Μη έγκυρο τηλέφωνο')
                                  : v('clubEmail') && !cbValidEmail(v('clubEmail')) ? L('Μη έγκυρο email') : null },
+    { id:'clubPlan'   },
     { id:'clubHours',   check:()=> _closeM() <= _openM() ? L('Το club κλείνει πριν ανοίξει')
-                                 : courtVals().length ? null : L('Πρόσθεσε τουλάχιστον 1 γήπεδο') },
+                                 : !courtVals().length ? L('Πρόσθεσε τουλάχιστον 1 γήπεδο')
+                                 : courtVals().length > cbTierMax(_tier) ? L('Το πακέτο σου επιτρέπει έως ') + cbTierMax(_tier) + L(' γήπεδα') : null },
     { id:'durations',   only:()=> _clubMode === 'full', check:()=> durVals().length ? null : L('Πρόσθεσε τουλάχιστον 1 διάρκεια/τιμή') },
 ];
 const activeQs = () => QS.filter(q => (!q.acct || !_account) && (!q.only || q.only()));
@@ -432,8 +467,13 @@ function showQ(i){
     document.getElementById('counter').textContent = (_cur + 1) + ' / ' + list.length;
     document.getElementById('backBtn').classList.toggle('invisible', _cur === 0);
     document.getElementById('skipBtn').classList.toggle('hidden', !q.skip);
+    const pi=list.findIndex(x=>x.id==='clubPlan');
+    const pl=document.getElementById('priceLine');
+    if(pl){ pl.classList.toggle('hidden', pi<0 || _cur<pi); pl.textContent=L('Πακέτο: ')+planNow().total+'€ '+L('/μήνα'); }
+    if(q.id==='clubPlan') renderPlanSum();
+    if(q.id==='clubHours') updateCourtAdd();
     // πλαϊνή λίστα βημάτων: λογαριασμός → club → γήπεδα
-    const sec = q.id.indexOf('owner') === 0 ? 1 : (q.id === 'clubHours' || q.id === 'durations') ? 3 : 2;
+    const sec = q.id.indexOf('owner') === 0 ? 1 : (q.id === 'clubPlan' || q.id === 'clubHours' || q.id === 'durations') ? 3 : 2;
     document.querySelectorAll('.steps li').forEach(li => {
         const s = +li.dataset.s;
         li.classList.toggle('on', s === sec);
@@ -474,7 +514,43 @@ document.addEventListener('click', e => {
     const group = c.dataset.choice, val = c.dataset.val;
     document.querySelectorAll('.choice[data-choice="' + group + '"]').forEach(x => x.classList.toggle('on', x === c));
     if (group === 'clubMode') setClubMode(val);
+    if (group === 'clubTier') { _tier = val; renderPlanSum(); updateCourtAdd(); }
+    refreshPrice();
 });
+['clubSubs','clubCoaches','clubTournaments'].forEach(id => document.addEventListener('change', e => { if (e.target.id === id) refreshPrice(); }));
+
+/* ── Πακέτο & κόστος (τιμές από το cb.js — ίδιες με τη σελίδα) ── */
+var _tier = 's';
+function planNow(){
+    return cbPlanPrice({ plan_tier:_tier, bookings_enabled:_clubMode==='full',
+        coaches_enabled:document.getElementById('clubCoaches').checked,
+        subscriptions_enabled:document.getElementById('clubSubs').checked,
+        tournaments_enabled:document.getElementById('clubTournaments').checked });
+}
+function renderPlanSum(){
+    const el=document.getElementById('planSum'); if(!el) return;
+    const p=planNow(), A=CB_PLANS.addons, row=(t,v)=>`<div class="row"><span>${t}</span><b>${v}€</b></div>`;
+    el.innerHTML = row(L('Διαχείριση Club')+' · '+cbTierLabel(_tier)+' '+L('γήπεδα'), p.base)
+        + (p.on.bookings      ? row(L('Κρατήσεις γηπέδων'),  A.bookings)      : '')
+        + (p.on.coaches       ? row(L('Κωδικοί προπονητών'), A.coaches)       : '')
+        + (p.on.subscriptions ? row(L('Συνδρομές μελών'),    A.subscriptions) : '')
+        + (p.on.tournaments   ? row(L('Τουρνουά'),           A.tournaments)   : '')
+        + `<div class="row"><span class="tot">${L('Σύνολο')}</span><span class="tot">${p.total}€ <small style="font-size:12px;font-weight:500">${L('/μήνα')}</small></span></div>`;
+}
+function refreshPrice(){
+    renderPlanSum();
+    const pl=document.getElementById('priceLine'); if(pl) pl.textContent=L('Πακέτο: ')+planNow().total+'€ '+L('/μήνα');
+}
+// όσα γήπεδα επιτρέπει το πακέτο
+function updateCourtAdd(){
+    const btn=document.getElementById('addCourtBtn'), hint=document.getElementById('courtLimitHint');
+    if(!btn) return;
+    const max=cbTierMax(_tier), n=document.querySelectorAll('#courtsList > div').length;
+    btn.classList.toggle('hidden', n>=max);
+    hint.classList.toggle('hidden', n<max);
+    hint.textContent = n>max ? L('Έχεις περισσότερα γήπεδα από όσα επιτρέπει το πακέτο — σβήσε ή άλλαξε πακέτο.')
+                             : L('Το πακέτο σου επιτρέπει έως ') + max + L(' γήπεδα') + '.';
+}
 /* αθλήματα: επιλέγονται περισσότερα από ένα */
 document.addEventListener('change', e => {
     if (e.target.name === 'sportC') e.target.closest('.choice').classList.toggle('on', e.target.checked);
@@ -579,11 +655,13 @@ function fillHours(){
 function setClubMode(mode){ _clubMode = mode; fillHours(); }
 
 function addCourtRow(val){
+    if (typeof _tier !== 'undefined' && document.querySelectorAll('#courtsList > div').length >= cbTierMax(_tier)) return;
     const row = document.createElement('div');
     row.className = 'flex gap-2';
     row.innerHTML = '<input type="text" value="' + cbEsc(val || '') + '" placeholder="' + L('Όνομα γηπέδου') + '" class="court-inp flex-1 px-4 py-3 border border-slate-200 rounded-2xl text-base bg-white">'
-        + '<button type="button" onclick="this.parentElement.remove()" class="px-3 text-red-400 hover:text-red-600">✕</button>';
+        + '<button type="button" onclick="this.parentElement.remove();updateCourtAdd()" class="px-3 text-red-400 hover:text-red-600">✕</button>';
     document.getElementById('courtsList').appendChild(row);
+    if (typeof updateCourtAdd === 'function') updateCourtAdd();
 }
 function addDurRow(min, label, price){
     const row = document.createElement('div');
@@ -641,20 +719,25 @@ async function finish(){
             // να δουλεύει και πριν τρέξουν τα migrations.
             ...(_clubMode === 'full' ? {} : { bookings_enabled: false }),
             ...(document.getElementById('clubSubs').checked    ? { subscriptions_enabled: true } : {}),
-            ...(document.getElementById('clubCoaches').checked ? { coaches_enabled: true } : {})
+            ...(document.getElementById('clubCoaches').checked ? { coaches_enabled: true } : {}),
+            ...(document.getElementById('clubTournaments').checked ? { tournaments_enabled: true } : {}),
+            // πακέτο: ξεκινά σε δωρεάν δοκιμή· την ενεργοποίηση την κάνει η CourtBook από το Admin Panel
+            plan_tier: _tier, plan_status: 'trial'
         };
         let { data: club, error: cErr } = await sb.from('clubs').insert(row).select().single();
         // αν δεν έχει τρέξει ακόμα το migration των αθλημάτων, το club φτιάχνεται κανονικά χωρίς τη λίστα
         // στήλες που ίσως δεν υπάρχουν ακόμα (πριν τρέξουν τα migrations): το club φτιάχνεται κανονικά χωρίς αυτές
-        for (const col of ['sports', 'lang']) {
-            if (cErr && new RegExp(col).test(cErr.message || '')) {
-                delete row[col];
-                ({ data: club, error: cErr } = await sb.from('clubs').insert(row).select().single());
-            }
+        for (let i = 0; i < 6 && cErr; i++) {
+            const col = ['sports', 'lang', 'plan_tier', 'plan_status', 'tournaments_enabled']
+                .find(c => c in row && (cErr.message || '').includes("'" + c + "'"));
+            if (!col) break;
+            delete row[col];
+            ({ data: club, error: cErr } = await sb.from('clubs').insert(row).select().single());
         }
         if (cErr) throw cErr;
 
-        await sb.from('courts').insert(courts.map((nm,i) => ({ club_id: club.id, name: nm, sort_order: i })));
+        const { error: crErr } = await sb.from('courts').insert(courts.map((nm,i) => ({ club_id: club.id, name: nm, sort_order: i })));
+        if (crErr) console.warn('courts', crErr);
         if (durs.length) await sb.from('durations').insert(durs.map(d => ({ club_id: club.id, ...d })));
 
         cbToast(L('🎉 Το club δημιουργήθηκε!'));

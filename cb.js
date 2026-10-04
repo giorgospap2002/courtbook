@@ -112,3 +112,29 @@ function cbSlugify(s) {
         .replace(/./g, ch => _GR2LAT[ch] !== undefined ? _GR2LAT[ch] : ch)
         .replace(/[^a-z0-9]+/g,'-').replace(/^-+|-+$/g,'').slice(0,40);
 }
+
+/* ── Πακέτα & τιμές (ίδια με τη σελίδα τιμών του court-book.gr) ─────
+   Αλλαγή τιμής = αλλαγή ΜΟΝΟ εδώ (και στο κείμενο της αρχικής σελίδας).
+   s = 1–3 γήπεδα · m = 4–8 · l = 9+. Τα extras αντιστοιχούν στις στήλες
+   bookings_enabled / coaches_enabled / subscriptions_enabled / tournaments_enabled. */
+const CB_PLANS = {
+    tiers:  { s: { max: 3, price: 45 }, m: { max: 8, price: 60 }, l: { max: null, price: 80 } },
+    addons: { bookings: 15, coaches: 10, subscriptions: 10, tournaments: 15 },
+    tournamentsYearly: 180
+};
+function cbTierFor(nCourts) { return nCourts <= 3 ? 's' : nCourts <= 8 ? 'm' : 'l'; }
+function cbTierMax(tier)    { const t = CB_PLANS.tiers[tier]; return t && t.max ? t.max : Infinity; }
+function cbTierLabel(tier)  { return ({ s: '1–3', m: '4–8', l: '9+' })[tier] || '1–3'; }
+/* μηνιαίο κόστος ενός συλλόγου: { total, base, extras:{bookings,coaches,subscriptions,tournaments} } */
+function cbPlanPrice(c) {
+    const t = CB_PLANS.tiers[c.plan_tier] || CB_PLANS.tiers.s, A = CB_PLANS.addons;
+    const on = {
+        bookings:      c.bookings_enabled !== false,
+        coaches:       c.coaches_enabled === true,
+        subscriptions: c.subscriptions_enabled === true,
+        tournaments:   c.tournaments_enabled === true
+    };
+    let total = t.price;
+    Object.keys(on).forEach(k => { if (on[k]) total += A[k]; });
+    return { total, base: t.price, on };
+}

@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="el">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="robots" content="noindex, nofollow">
+    <title>CourtBook Admin</title>
+    <meta name="theme-color" content="#f5f3ee">
+    <link rel="preload" href="fonts/sofia-cond-greek.woff2" as="font" type="font/woff2" crossorigin>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/inter-greek.woff2') format('woff2');unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:'Inter';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/inter-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+@font-face{font-family:'Sofia Sans Condensed';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/sofia-cond-greek.woff2') format('woff2');unicode-range:U+0370-0377,U+037A-037F,U+0384-038A,U+038C,U+038E-03A1,U+03A3-03FF}
+@font-face{font-family:'Sofia Sans Condensed';font-style:normal;font-weight:100 900;font-display:swap;src:url('fonts/sofia-cond-latin.woff2') format('woff2');unicode-range:U+0000-00FF,U+0131,U+0152-0153,U+02BB-02BC,U+02C6,U+02DA,U+02DC,U+0304,U+0308,U+0329,U+2000-206F,U+20AC,U+2122,U+2191,U+2193,U+2212,U+2215,U+FEFF,U+FFFD}
+
+:root{
+  --paper:#f5f3ee; --paper-2:#ece8df; --card:#fff;
+  --ink:#0b0f17; --ink-2:#2d3340; --muted:#6b7080; --faint:#9a9eab;
+  --line:#e3ded3; --line-2:#d3ccbe;
+  --brand:#1f45d6; --brand-soft:#e8edfd;
+  --ball:#d6f250; --ok:#0f7a46; --ok-soft:#e2f5e9;
+  --warn:#9a5b00; --warn-soft:#fdf1d8; --bad:#b42318; --bad-soft:#fde8e6;
+  --cond:'Sofia Sans Condensed',Inter,system-ui,sans-serif;
+}
+*{box-sizing:border-box}
+html{-webkit-text-size-adjust:100%}
+body{margin:0;background:var(--paper);color:var(--ink);font:15px/1.5 Inter,system-ui,sans-serif;-webkit-font-smoothing:antialiased}
+a{color:inherit;text-decoration:none}
+button,input,select,textarea{font:inherit;color:inherit}
+button{cursor:pointer}
+:focus-visible{outline:2.5px solid var(--brand);outline-offset:2px;border-radius:8px}
+.hidden{display:none!important}
+.wrap{max-width:1240px;margin:0 auto;padding:0 20px}
+.cond{font-family:var(--cond);font-weight:800;letter-spacing:-.005em}
+.muted{color:var(--muted)}
+.small{font-size:13px}
+
+/* top bar */
+.top{position:sticky;top:0;z-index:20;background:rgba(245,243,238,.86);backdrop-filter:blur(10px);border-bottom:1px solid var(--line)}
+.top .wrap{display:flex;align-items:center;gap:14px;height:62px}
+.logo{display:flex;align-items:center;gap:10px;font-family:var(--cond);font-weight:800;font-size:21px}
+.logo i{width:30px;height:30px;border-radius:8px;background:var(--ink);display:grid;place-items:center}
+.tag{font-family:var(--cond);font-weight:800;font-size:12px;letter-spacing:.1em;text-transform:uppercase;background:var(--ball);color:#29310a;padding:3px 9px;border-radius:999px}
+.top .me{margin-left:auto;display:flex;align-items:center;gap:12px;font-size:13.5px}
+.btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;border:1.5px solid var(--line-2);background:var(--card);border-radius:999px;padding:8px 16px;font-weight:600;font-size:14px;transition:border-color .15s,background .15s}
+.btn:hover{border-color:var(--ink)}
+.btn.dark{background:var(--ink);border-color:var(--ink);color:#fff}
+.btn.dark:hover{background:#1c2230}
+.btn:disabled{opacity:.45;cursor:not-allowed}
+
+/* login */
+.login{max-width:400px;margin:12vh auto;background:var(--card);border:1px solid var(--line);border-radius:24px;padding:32px;box-shadow:0 30px 60px -40px rgba(11,15,23,.4)}
+.login h1{font-family:var(--cond);font-weight:800;font-size:32px;line-height:1.05;margin:14px 0 6px}
+.field{display:block;margin-top:14px}
+.field span{display:block;font-size:12.5px;font-weight:600;color:var(--ink-2);margin-bottom:6px}
+.inp{width:100%;border:1.5px solid var(--line-2);background:#fff;border-radius:12px;padding:11px 14px;font-size:15px}
+.inp:focus{outline:none;border-color:var(--ink)}
+.err{margin-top:12px;color:var(--bad);font-size:14px}
+
+/* kpis */
+h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin:30px 0 4px}
+.kpis{display:grid;grid-template-columns:repeat(6,1fr);gap:12px;margin-top:20px}
+.kpi{background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 18px}
+.kpi b{display:block;font-family:var(--cond);font-weight:800;font-size:30px;line-height:1.05;margin-top:4px}
+.kpi small{display:block;font-size:12px;color:var(--muted);margin-top:2px}
+.kpi .lab{font-size:12px;font-weight:600;letter-spacing:.04em;text-transform:uppercase;color:var(--muted)}
+.kpi.money{background:var(--ink);border-color:var(--ink);color:#fff}
+.kpi.money .lab,.kpi.money small{color:#b8bdc9}
+
+/* toolbar */
+.bar{display:flex;flex-wrap:wrap;gap:10px;align-items:center;margin:26px 0 14px}
+.bar .inp{max-width:300px;border-radius:999px;padding:9px 16px}
+.seg{display:inline-flex;background:var(--paper-2);border-radius:999px;padding:3px}
+.seg button{border:0;background:transparent;border-radius:999px;padding:6px 13px;font-size:13.5px;font-weight:600;color:var(--ink-2)}
+.seg button.on{background:var(--card);color:var(--ink);box-shadow:0 1px 3px rgba(0,0,0,.12)}
+.seg button{white-space:nowrap}
+.seg button .n{font-weight:500;color:var(--faint);margin-left:4px}
+.bar select.inp{width:auto;max-width:none}
+.bar .grow{flex:1}
+
+/* club rows */
+.list{display:flex;flex-direction:column;gap:10px;padding-bottom:60px}
+.club{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(180px,1.2fr) 150px minmax(260px,1.6fr);gap:18px;align-items:center;
+  background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 20px;cursor:pointer;transition:border-color .15s,box-shadow .2s;text-align:left;width:100%}
+.club:hover{border-color:var(--ink-2);box-shadow:0 14px 30px -24px rgba(11,15,23,.5)}
+.club .nm{font-weight:700;font-size:16px;line-height:1.3}
+.club .sub{font-size:12.5px;color:var(--muted);margin-top:2px;word-break:break-all}
+.price{font-family:var(--cond);font-weight:800;font-size:22px;line-height:1}
+.price small{font-family:Inter;font-weight:500;font-size:11.5px;color:var(--muted)}
+.chips{display:flex;flex-wrap:wrap;gap:4px;margin-top:6px}
+.chip{font-size:11.5px;font-weight:600;padding:2px 8px;border-radius:999px;background:var(--paper-2);color:var(--ink-2)}
+.chip.off{background:transparent;color:var(--faint);text-decoration:line-through;text-decoration-color:var(--line-2)}
+.pill{display:inline-flex;align-items:center;gap:6px;font-size:12.5px;font-weight:700;padding:4px 10px;border-radius:999px}
+.pill::before{content:"";width:7px;height:7px;border-radius:50%;background:currentColor}
+.pill.active{background:var(--ok-soft);color:var(--ok)}
+.pill.trial{background:var(--brand-soft);color:var(--brand)}
+.pill.paused{background:var(--paper-2);color:var(--muted)}
+.pill.expired{background:var(--bad-soft);color:var(--bad)}
+.stats{display:grid;grid-template-columns:repeat(4,1fr);gap:6px}
+.stat b{display:block;font-family:var(--cond);font-weight:800;font-size:19px;line-height:1.1}
+.stat span{font-size:11.5px;color:var(--muted)}
+.stat.over b{color:var(--bad)}
+.empty{text-align:center;padding:50px 0;color:var(--muted)}
+
+/* editor drawer */
+.shade{position:fixed;inset:0;background:rgba(11,15,23,.42);z-index:40;opacity:0;transition:opacity .2s}
+.shade.on{opacity:1}
+.drawer{position:fixed;top:0;right:0;bottom:0;width:min(560px,100%);background:var(--paper);z-index:41;display:flex;flex-direction:column;
+  transform:translateX(100%);transition:transform .25s cubic-bezier(.2,.7,.2,1);box-shadow:-30px 0 60px -30px rgba(0,0,0,.35)}
+.drawer.on{transform:none}
+.dhead{padding:22px 24px 16px;border-bottom:1px solid var(--line);display:flex;gap:12px;align-items:flex-start}
+.dhead h3{font-family:var(--cond);font-weight:800;font-size:28px;line-height:1.05;margin:0}
+.x{margin-left:auto;border:0;background:var(--paper-2);width:36px;height:36px;border-radius:50%;font-size:18px;flex-shrink:0}
+.dbody{flex:1;overflow:auto;padding:18px 24px 24px}
+.links{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
+.links a{font-size:13px;font-weight:600;border:1.5px solid var(--line-2);border-radius:999px;padding:5px 12px;background:#fff}
+.links a:hover{border-color:var(--ink)}
+.sec{margin-top:22px}
+.sec > .lab{font-size:12px;font-weight:700;letter-spacing:.06em;text-transform:uppercase;color:var(--muted);margin-bottom:8px}
+.box{background:var(--card);border:1px solid var(--line);border-radius:16px}
+.tiers{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+.tierb{border:1.5px solid var(--line-2);background:#fff;border-radius:14px;padding:12px 8px;text-align:center}
+.tierb b{display:block;font-family:var(--cond);font-weight:800;font-size:22px;line-height:1}
+.tierb span{font-size:12px;color:var(--muted)}
+.tierb.on{background:var(--ink);border-color:var(--ink);color:#fff}
+.tierb.on span{color:#c9cdd6}
+.warn{margin-top:8px;font-size:13px;color:var(--warn);background:var(--warn-soft);border-radius:10px;padding:8px 12px}
+.tog{display:flex;align-items:center;gap:12px;padding:12px 16px}
+.tog + .tog{border-top:1px solid var(--line)}
+.tog .t{flex:1}
+.tog .t b{display:block;font-weight:600;font-size:14.5px}
+.tog .t small{display:block;color:var(--muted);font-size:12.5px}
+.tog .p{font-family:var(--cond);font-weight:800;font-size:16px;color:var(--ink-2)}
+.sw{appearance:none;-webkit-appearance:none;width:44px;height:26px;border-radius:999px;background:var(--line-2);position:relative;cursor:pointer;transition:background .2s;flex-shrink:0;margin:0}
+.sw::after{content:"";position:absolute;top:3px;left:3px;width:20px;height:20px;border-radius:50%;background:#fff;box-shadow:0 1px 3px rgba(0,0,0,.25);transition:transform .2s}
+.sw:checked{background:var(--ink)}
+.sw:checked::after{transform:translateX(18px)}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.quick{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.quick button{border:1.5px solid var(--line-2);background:#fff;border-radius:999px;padding:4px 11px;font-size:12.5px;font-weight:600}
+.dfoot{border-top:1px solid var(--line);padding:14px 24px;display:flex;align-items:center;gap:12px;background:var(--card)}
+.dfoot .tot{font-family:var(--cond);font-weight:800;font-size:24px}
+.dfoot .tot small{font-family:Inter;font-weight:500;font-size:12px;color:var(--muted)}
+.dfoot .btn{margin-left:auto}
+.mini{display:grid;grid-template-columns:repeat(4,1fr);gap:8px}
+.mini .stat{background:var(--card);border:1px solid var(--line);border-radius:12px;padding:10px 12px}
+
+@media (max-width:1080px){
+  .kpis{grid-template-columns:repeat(3,1fr)}
+  .club{grid-template-columns:1fr 1fr;row-gap:12px}
+}
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .top .me .em{display:none}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  h2.h{font-size:28px}
+  .club{grid-template-columns:1fr;padding:16px}
+  .stats,.mini{grid-template-columns:repeat(4,1fr)}
+  .bar .inp{max-width:none;width:100%}
+  .bar .grow{display:none}
+  .bar .seg{max-width:100%;overflow-x:auto;scrollbar-width:none}
+  .dhead,.dbody,.dfoot{padding-left:16px;padding-right:16px}
+}
+    </style>
+</head>
+<body>
+
+<header class="top">
+    <div class="wrap">
+        <a href="index.html" class="logo"><i><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2.2"><rect x="3" y="3" width="18" height="18" rx="2"/><path d="M12 3v18M3 12h18"/></svg></i>CourtBook</a>
+        <span class="tag">Admin</span>
+        <div class="me hidden" id="meBox">
+            <span class="em muted" id="meEmail"></span>
+            <button class="btn" onclick="logout()">Έξοδος</button>
+        </div>
+    </div>
+</header>
+
+<!-- σύνδεση -->
+<main id="loginView" class="wrap hidden">
+    <form class="login" onsubmit="event.preventDefault();doLogin()">
+        <span class="tag">Admin πλατφόρμας</span>
+        <h1>Όλοι οι σύλλογοι, σε μία σελίδα</h1>
+        <p class="muted small" style="margin:0">Μπες με τον λογαριασμό σου στο CourtBook.</p>
+        <label class="field"><span>Email</span><input id="lgEmail" type="email" class="inp" autocomplete="username" required></label>
+        <label class="field"><span>Κωδικός</span><input id="lgPass" type="password" class="inp" autocomplete="current-password" required></label>
+        <button class="btn dark" style="width:100%;margin-top:18px;padding:12px">Σύνδεση</button>
+        <p id="lgErr" class="err hidden"></p>
+    </form>
+</main>
+
+<!-- χωρίς δικαίωμα / χωρίς migration -->
+<main id="denyView" class="wrap hidden">
+    <div class="login">
+        <span class="tag">Admin πλατφόρμας</span>
+        <h1 id="denyTitle">Δεν έχεις πρόσβαση</h1>
+        <p class="muted" id="denyText" style="margin:0"></p>
+        <button class="btn" style="margin-top:18px" onclick="logout()">Έξοδος</button>
+    </div>
+</main>
+
+<!-- πίνακας -->
+<main id="dashView" class="wrap hidden">
+    <h2 class="h">Σύλλογοι</h2>
+    <p class="muted small" style="margin:0" id="asOf"></p>
+
+    <div class="kpis" id="kpis"></div>
+
+    <div class="bar">
+        <input id="q" class="inp" type="search" placeholder="Αναζήτηση: όνομα, email, τηλέφωνο…" oninput="renderList()">
+        <div class="seg" id="fSeg"></div>
+        <span class="grow"></span>
+        <select id="sortSel" class="inp" onchange="renderList()">
+            <option value="new">Νεότεροι πρώτα</option>
+            <option value="trial">Λήξη δοκιμής</option>
+            <option value="rev">Μηνιαίο ποσό</option>
+            <option value="act">Κρατήσεις 30 ημερών</option>
+            <option value="mem">Μέλη</option>
+            <option value="name">Όνομα</option>
+        </select>
+        <button class="btn" onclick="exportCsv()">CSV</button>
+        <button class="btn" onclick="load()" title="Ανανέωση">
+            <svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M21 12a9 9 0 1 1-2.64-6.36M21 3v6h-6"/></svg>
+        </button>
+    </div>
+
+    <div class="list" id="list"></div>
+</main>
+
+<!-- επεξεργασία συλλόγου -->
+<div class="shade hidden" id="shade" onclick="closeEd()"></div>
+<aside class="drawer hidden" id="drawer" aria-modal="true" role="dialog">
+    <div class="dhead">
+        <div style="min-width:0">
+            <h3 id="edName"></h3>
+            <div class="sub muted small" id="edSub"></div>
+            <div class="links" id="edLinks"></div>
+        </div>
+        <button class="x" onclick="closeEd()" aria-label="Κλείσιμο">✕</button>
+    </div>
+    <div class="dbody">
+        <div class="mini" id="edStats"></div>
+
+        <div class="sec">
+            <div class="lab">Πακέτο</div>
+            <div class="tiers" id="edTiers"></div>
+            <div class="warn hidden" id="edTierWarn"></div>
+        </div>
+
+        <div class="sec">
+            <div class="lab">Extras</div>
+            <div class="box" id="edAddons"></div>
+        </div>
+
+        <div class="sec">
+            <div class="lab">Κατάσταση</div>
+            <div class="seg" id="edStatus"></div>
+            <div id="edTrialBox" style="margin-top:12px">
+                <label class="field" style="margin-top:0"><span>Δωρεάν δοκιμή έως</span>
+                    <input type="date" id="edTrial" class="inp" style="max-width:220px" oninput="edChanged()"></label>
+                <div class="quick">
+                    <button type="button" onclick="addTrial(7)">+7 μέρες</button>
+                    <button type="button" onclick="addTrial(14)">+14 μέρες</button>
+                    <button type="button" onclick="addTrial(30)">+30 μέρες</button>
+                </div>
+            </div>
+        </div>
+
+        <div class="sec row2">
+            <label class="field" style="margin-top:0"><span>Γλώσσα συλλόγου</span>
+                <select id="edLang" class="inp" onchange="edChanged()">
+                    <option value="el">Ελληνικά</option><option value="en">English</option><option value="de">Deutsch</option>
+                </select></label>
+            <div></div>
+        </div>
+
+        <div class="sec">
+            <label class="field" style="margin-top:0"><span>Σημειώσεις χρέωσης (τις βλέπεις μόνο εσύ)</span>
+                <textarea id="edNote" class="inp" rows="3" placeholder="π.χ. Πληρώνει ετήσια με τραπεζική μεταφορά, τουρνουά 180€/χρόνο" oninput="edChanged()"></textarea></label>
+        </div>
+    </div>
+    <div class="dfoot">
+        <div class="tot" id="edTotal"></div>
+        <button class="btn dark" id="edSave" onclick="saveEd()">Αποθήκευση</button>
+    </div>
+</aside>
+
+<script src="config.js"></script>
+<script src="cb.js"></script>
+<script>
+/* ════════════════════════════════════════════════════════════
+   CourtBook — Admin πλατφόρμας
+   Όλα τα δεδομένα έρχονται από τις συναρτήσεις admin_clubs_overview()
+   και admin_update_club() (migration_plans_admin.sql). Αυτές ελέγχουν
+   στη βάση ότι ο χρήστης είναι στον πίνακα platform_admins — η σελίδα
+   μόνη της δεν δίνει καμία πρόσβαση.
+   ════════════════════════════════════════════════════════════ */
+const ADDONS = [
+    { k:'bookings_enabled',      a:'bookings',      c:'Κρατήσεις',  t:'Κρατήσεις γηπέδων',  s:'Χωρίς αυτό ο σύλλογος είναι «μόνο προπονήσεις»' },
+    { k:'coaches_enabled',       a:'coaches',       c:'Προπονητές', t:'Κωδικοί προπονητών', s:'Λογαριασμοί προπονητών, παρουσίες' },
+    { k:'subscriptions_enabled', a:'subscriptions', c:'Συνδρομές',  t:'Συνδρομές μελών',    s:'Μηνιαίες συνδρομές, ποιος πλήρωσε' },
+    { k:'tournaments_enabled',   a:'tournaments',   c:'Τουρνουά',   t:'Τουρνουά',           s:'Ή ' + CB_PLANS.tournamentsYearly + '€ τον χρόνο' }
+];
+const STATUS = { trial:'Δοκιμή', active:'Ενεργός', paused:'Σε παύση' };
+const SPORT  = { padel:'Padel', tennis:'Τένις', squash:'Squash', pickleball:'Pickleball', beach:'Beach tennis' };
+let clubs = [], filter = 'all', ed = null, edDirty = false;
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
+const today = () => { const d = new Date(); d.setHours(0,0,0,0); return d; };
+const daysTo = iso => iso ? Math.round((new Date(iso + 'T00:00:00') - today()) / 864e5) : null;
+const isoPlus = (iso, n) => { const d = iso && daysTo(iso) >= 0 ? new Date(iso + 'T00:00:00') : today(); d.setDate(d.getDate() + n);
+    return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0'); };
+const fmtD = iso => iso ? new Date(iso.length === 10 ? iso + 'T00:00:00' : iso).toLocaleDateString('el-GR', { day:'numeric', month:'short', year:'numeric' }) : '—';
+function ago(ts){
+    if (!ts) return 'ποτέ';
+    const d = Math.floor((today() - new Date(new Date(ts).toDateString())) / 864e5);
+    return d <= 0 ? 'σήμερα' : d === 1 ? 'χθες' : d < 60 ? 'πριν ' + d + ' μέρες' : 'πριν ' + Math.round(d / 30) + ' μήνες';
+}
+// η κατάσταση όπως φαίνεται: δοκιμή που πέρασε η ημερομηνία = «έληξε»
+function stateOf(c){
+    if (c.plan_status === 'trial' && c.trial_until && daysTo(c.trial_until) < 0) return 'expired';
+    return c.plan_status || 'trial';
+}
+function statusPill(c){
+    const st = stateOf(c), d = daysTo(c.trial_until);
+    const txt = st === 'expired' ? 'Η δοκιμή έληξε'
+              : st === 'trial'   ? 'Δοκιμή' + (d != null ? ' · ' + (d === 0 ? 'λήγει σήμερα' : d + (d === 1 ? ' μέρα' : ' μέρες')) : '')
+              : STATUS[st];
+    return '<span class="pill ' + st + '">' + txt + '</span>';
+}
+
+/* ── σύνδεση ── */
+async function boot(){
+    const { data } = await sb.auth.getSession();
+    if (!data.session) return show('loginView');
+    $('meEmail').textContent = data.session.user.email;
+    $('meBox').classList.remove('hidden');
+    load();
+}
+function show(id){ ['loginView','denyView','dashView'].forEach(v => $(v).classList.toggle('hidden', v !== id)); }
+async function doLogin(){
+    $('lgErr').classList.add('hidden');
+    cbLoading(true);
+    const { error } = await sb.auth.signInWithPassword({ email: $('lgEmail').value.trim(), password: $('lgPass').value });
+    cbLoading(false);
+    if (error) { $('lgErr').textContent = 'Λάθος email ή κωδικός.'; $('lgErr').classList.remove('hidden'); return; }
+    boot();
+}
+async function logout(){ await sb.auth.signOut(); location.reload(); }
+
+/* ── δεδομένα ── */
+async function load(){
+    cbLoading(true);
+    const { data, error } = await sb.rpc('admin_clubs_overview');
+    cbLoading(false);
+    if (error) {
+        const m = error.message || '';
+        if (/forbidden/i.test(m)) {
+            $('denyTitle').textContent = 'Δεν έχεις πρόσβαση';
+            $('denyText').textContent = 'Ο λογαριασμός ' + ($('meEmail').textContent || '') + ' δεν είναι admin της πλατφόρμας. Πρόσθεσέ τον στον πίνακα platform_admins (τελευταίο κομμάτι του migration_plans_admin.sql).';
+        } else if (/admin_clubs_overview|schema cache|does not exist/i.test(m)) {
+            $('denyTitle').textContent = 'Λείπει το migration';
+            $('denyText').textContent = 'Τρέξε πρώτα το migration_plans_admin.sql στο Supabase → SQL Editor.';
+        } else {
+            $('denyTitle').textContent = 'Κάτι πήγε στραβά';
+            $('denyText').textContent = m;
+        }
+        return show('denyView');
+    }
+    clubs = data || [];
+    $('asOf').textContent = 'Ενημέρωση: ' + new Date().toLocaleString('el-GR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+    show('dashView');
+    renderKpis(); renderList();
+}
+
+function renderKpis(){
+    const n = s => clubs.filter(c => stateOf(c) === s).length;
+    const sum = (arr, f) => arr.reduce((a, c) => a + f(c), 0);
+    const active = clubs.filter(c => c.plan_status === 'active');
+    const trial  = clubs.filter(c => stateOf(c) === 'trial');
+    const soon   = trial.filter(c => { const d = daysTo(c.trial_until); return d != null && d >= 0 && d <= 7; }).length;
+    const k = (lab, val, sub, cls) => '<div class="kpi ' + (cls || '') + '"><span class="lab">' + lab + '</span><b>' + val + '</b><small>' + sub + '</small></div>';
+    $('kpis').innerHTML =
+        k('Έσοδα / μήνα', sum(active, c => cbPlanPrice(c).total) + '€', active.length + ' ενεργοί σύλλογοι', 'money')
+      + k('Σε δοκιμή', n('trial'), (soon ? soon + ' λήγουν σε 7 μέρες · ' : '') + 'αξία ' + sum(trial, c => cbPlanPrice(c).total) + '€/μήνα')
+      + k('Σύλλογοι', clubs.length, n('expired') + ' έληξαν · ' + n('paused') + ' σε παύση')
+      + k('Γήπεδα', sum(clubs, c => c.courts), 'σε όλους τους συλλόγους')
+      + k('Μέλη', sum(clubs, c => c.members), sum(clubs, c => c.pending) + ' περιμένουν έγκριση')
+      + k('Κρατήσεις', sum(clubs, c => c.bookings_30d), 'τις τελευταίες 30 μέρες');
+
+    const f = [['all','Όλοι',clubs.length],['trial','Δοκιμή',n('trial')],['expired','Έληξαν',n('expired')],['active','Ενεργοί',n('active')],['paused','Σε παύση',n('paused')]];
+    $('fSeg').innerHTML = f.filter(x => x[0] === 'all' || x[2]).map(x =>
+        '<button class="' + (filter === x[0] ? 'on' : '') + '" onclick="filter=\'' + x[0] + '\';renderKpis();renderList()">' + x[1] + '<span class="n">' + x[2] + '</span></button>').join('');
+}
+
+function visible(){
+    const q = $('q').value.trim().toLowerCase();
+    let list = clubs.filter(c => filter === 'all' || stateOf(c) === filter);
+    if (q) list = list.filter(c => [c.name, c.slug, c.owner_email, c.owner_name, c.email, c.phone, c.billing_note].some(v => (v || '').toLowerCase().includes(q)));
+    const by = {
+        new:   (a, b) => new Date(b.created_at) - new Date(a.created_at),
+        trial: (a, b) => (a.plan_status === 'trial' ? daysTo(a.trial_until) ?? 1e6 : 2e6) - (b.plan_status === 'trial' ? daysTo(b.trial_until) ?? 1e6 : 2e6),
+        rev:   (a, b) => cbPlanPrice(b).total - cbPlanPrice(a).total,
+        act:   (a, b) => b.bookings_30d - a.bookings_30d,
+        mem:   (a, b) => b.members - a.members,
+        name:  (a, b) => (a.name || '').localeCompare(b.name || '', 'el')
+    }[$('sortSel').value];
+    return list.sort(by);
+}
+
+function renderList(){
+    const list = visible();
+    if (!list.length) { $('list').innerHTML = '<div class="empty">Κανένας σύλλογος' + ($('q').value ? ' με «' + esc($('q').value) + '»' : '') + '.</div>'; return; }
+    $('list').innerHTML = list.map(c => {
+        const p = cbPlanPrice(c), max = cbTierMax(c.plan_tier), over = c.courts > max;
+        const sports = (c.sport || '').split(',').map(s => SPORT[s.trim()] || s.trim()).filter(Boolean).join(', ');
+        return '<button class="club" onclick="openEd(\'' + c.id + '\')">'
+          + '<div style="min-width:0"><div class="nm">' + esc(c.name) + '</div>'
+          +   '<div class="sub">' + esc(c.slug) + (sports ? ' · ' + esc(sports) : '') + ' · ' + esc((c.lang || 'el').toUpperCase()) + '</div>'
+          +   '<div class="sub">' + esc(c.owner_name || '') + (c.owner_name ? ' · ' : '') + esc(c.owner_email || c.email || '') + '</div></div>'
+          + '<div><div class="price">' + p.total + '€<small> /μήνα · ' + cbTierLabel(c.plan_tier) + ' γήπεδα</small></div>'
+          +   '<div class="chips">' + ADDONS.map(a => '<span class="chip ' + (p.on[a.a] ? '' : 'off') + '">' + a.c + '</span>').join('') + '</div></div>'
+          + '<div>' + statusPill(c) + '<div class="sub" style="margin-top:6px">από ' + fmtD(c.created_at) + '</div></div>'
+          + '<div class="stats">'
+          +   '<div class="stat ' + (over ? 'over' : '') + '"><b>' + c.courts + (max !== Infinity ? '<span class="muted" style="font-size:13px">/' + max + '</span>' : '') + '</b><span>γήπεδα</span></div>'
+          +   '<div class="stat"><b>' + c.members + (c.pending ? '<span style="font-size:13px;color:var(--warn)"> +' + c.pending + '</span>' : '') + '</b><span>μέλη</span></div>'
+          +   '<div class="stat"><b>' + c.bookings_30d + '</b><span>κρατήσεις 30ημ</span></div>'
+          +   '<div class="stat"><b style="font-size:14px;line-height:1.5">' + ago(c.last_booking) + '</b><span>τελ. κράτηση</span></div>'
+          + '</div></button>';
+    }).join('');
+}
+
+/* ── επεξεργασία ── */
+function openEd(id){
+    const c = clubs.find(x => x.id === id); if (!c) return;
+    ed = { id, orig: c, v: {
+        plan_tier: c.plan_tier || 's', plan_status: c.plan_status || 'trial', trial_until: c.trial_until || '',
+        billing_note: c.billing_note || '', lang: c.lang || 'el',
+        bookings_enabled: c.bookings_enabled !== false, coaches_enabled: c.coaches_enabled === true,
+        subscriptions_enabled: c.subscriptions_enabled === true, tournaments_enabled: c.tournaments_enabled === true
+    }};
+    edDirty = false;
+    $('edName').textContent = c.name;
+    $('edSub').textContent = c.slug + ' · από ' + fmtD(c.created_at) + (c.owner_name ? ' · ' + c.owner_name : '');
+    const mail = c.owner_email || c.email;
+    $('edLinks').innerHTML = '<a href="app.html?club=' + encodeURIComponent(c.slug) + '" target="_blank" rel="noopener">Άνοιγμα club ↗</a>'
+        + (mail ? '<a href="mailto:' + esc(mail) + '">' + esc(mail) + '</a>' : '')
+        + (c.phone ? '<a href="tel:' + esc(c.phone.replace(/\s/g,'')) + '">' + esc(c.phone) + '</a>' : '');
+    $('edStats').innerHTML = [[c.courts,'γήπεδα'],[c.members + (c.pending ? ' +' + c.pending : ''),'μέλη'],[c.groups,'τμήματα'],[c.coaches,'προπονητές'],
+        [c.bookings_30d,'κρατήσεις 30ημ'],[c.bookings_total,'κρατήσεις σύνολο'],[ago(c.last_booking),'τελ. κράτηση']]
+        .map(s => '<div class="stat"><b' + (String(s[0]).length > 6 ? ' style="font-size:14px;line-height:1.5"' : '') + '>' + esc(s[0]) + '</b><span>' + s[1] + '</span></div>').join('');
+    $('edTrial').value = ed.v.trial_until;
+    $('edLang').value = ed.v.lang;
+    $('edNote').value = ed.v.billing_note;
+    renderEd();
+    ['shade','drawer'].forEach(x => $(x).classList.remove('hidden'));
+    requestAnimationFrame(() => ['shade','drawer'].forEach(x => $(x).classList.add('on')));
+}
+function closeEd(force){
+    if (!ed) return;
+    if (edDirty && force !== true && !confirm('Κλείσιμο χωρίς αποθήκευση;')) return;
+    ['shade','drawer'].forEach(x => $(x).classList.remove('on'));
+    setTimeout(() => ['shade','drawer'].forEach(x => $(x).classList.add('hidden')), 250);
+    ed = null;
+}
+document.addEventListener('keydown', e => { if (e.key === 'Escape' && ed) closeEd(); });
+
+function renderEd(){
+    const v = ed.v, c = ed.orig, T = CB_PLANS.tiers;
+    $('edTiers').innerHTML = ['s','m','l'].map(t =>
+        '<button type="button" class="tierb ' + (v.plan_tier === t ? 'on' : '') + '" onclick="setEd(\'plan_tier\',\'' + t + '\')"><b>' + cbTierLabel(t) + '</b><span>γήπεδα · ' + T[t].price + '€</span></button>').join('');
+    const max = cbTierMax(v.plan_tier);
+    $('edTierWarn').classList.toggle('hidden', c.courts <= max);
+    $('edTierWarn').textContent = 'Ο σύλλογος έχει ήδη ' + c.courts + ' γήπεδα — το πακέτο ' + cbTierLabel(v.plan_tier)
+        + ' επιτρέπει ' + max + '. Τα υπάρχοντα μένουν, αλλά δεν θα μπορεί να προσθέσει άλλα.';
+    $('edAddons').innerHTML = ADDONS.map(a =>
+        '<label class="tog"><span class="t"><b>' + a.t + '</b><small>' + a.s + '</small></span><span class="p">+' + CB_PLANS.addons[a.a] + '€</span>'
+        + '<input type="checkbox" class="sw" ' + (v[a.k] ? 'checked' : '') + ' onchange="setEd(\'' + a.k + '\',this.checked)"></label>').join('');
+    $('edStatus').innerHTML = Object.keys(STATUS).map(s =>
+        '<button type="button" class="' + (v.plan_status === s ? 'on' : '') + '" onclick="setEd(\'plan_status\',\'' + s + '\')">' + STATUS[s] + '</button>').join('');
+    $('edTrialBox').classList.toggle('hidden', v.plan_status !== 'trial');
+    const p = cbPlanPrice(v);
+    $('edTotal').innerHTML = p.total + '€ <small>/μήνα</small>';
+    $('edSave').disabled = !edDirty;
+}
+function setEd(k, val){
+    ed.v[k] = val;
+    if (k === 'plan_status' && val === 'trial' && !$('edTrial').value) $('edTrial').value = ed.v.trial_until = isoPlus('', 30);
+    edDirty = true; renderEd();
+}
+function edChanged(){
+    ed.v.trial_until = $('edTrial').value; ed.v.lang = $('edLang').value; ed.v.billing_note = $('edNote').value;
+    edDirty = true; $('edSave').disabled = false;
+}
+function addTrial(n){ $('edTrial').value = isoPlus($('edTrial').value, n); edChanged(); }
+
+async function saveEd(){
+    const v = ed.v, c = ed.orig;
+    if (v.bookings_enabled === false && c.bookings_enabled !== false
+        && !confirm('Χωρίς «Κρατήσεις γηπέδων» ο ' + c.name + ' γίνεται σύλλογος «μόνο προπονήσεις» — τα μέλη δεν θα κλείνουν γήπεδο. Συνέχεια;')) return;
+    const body = { ...v, trial_until: v.plan_status === 'trial' ? (v.trial_until || '') : '' };
+    cbLoading(true);
+    const { error } = await sb.rpc('admin_update_club', { p_club: ed.id, p: body });
+    cbLoading(false);
+    if (error) return cbToast('Δεν αποθηκεύτηκε: ' + (error.message || ''), 'err');
+    cbToast('✓ Αποθηκεύτηκε — ' + c.name);
+    closeEd(true);
+    load();
+}
+
+/* ── CSV ── */
+function exportCsv(){
+    const cols = [['Σύλλογος', c => c.name], ['Slug', c => c.slug], ['Ιδιοκτήτης', c => c.owner_name], ['Email', c => c.owner_email || c.email], ['Τηλέφωνο', c => c.phone],
+        ['Πακέτο', c => cbTierLabel(c.plan_tier)], ['Κατάσταση', c => ({ ...STATUS, expired:'Έληξε' })[stateOf(c)]], ['Δοκιμή έως', c => c.trial_until],
+        ['€/μήνα', c => cbPlanPrice(c).total], ...ADDONS.map(a => [a.t, c => cbPlanPrice(c).on[a.a] ? 'ναι' : '']),
+        ['Γήπεδα', c => c.courts], ['Μέλη', c => c.members], ['Τμήματα', c => c.groups], ['Κρατήσεις 30ημ', c => c.bookings_30d],
+        ['Τελ. κράτηση', c => c.last_booking ? c.last_booking.slice(0,10) : ''], ['Από', c => (c.created_at || '').slice(0,10)], ['Σημειώσεις', c => c.billing_note]];
+    const cell = x => { const s = String(x ?? ''); return /[";\n]/.test(s) ? '"' + s.replace(/"/g,'""') + '"' : s; };
+    const csv = '﻿' + [cols.map(c => c[0]).join(';'), ...visible().map(c => cols.map(k => cell(k[1](c))).join(';'))].join('\n');
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(new Blob([csv], { type:'text/csv;charset=utf-8' }));
+    a.download = 'courtbook-clubs-' + new Date().toISOString().slice(0,10) + '.csv';
+    a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+
+boot();
+</script>
+</body>
+</html>

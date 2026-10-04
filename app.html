@@ -61,6 +61,7 @@
         button:active { transform:scale(.97); }
         @keyframes up { from{opacity:0;transform:translateY(12px)} to{opacity:1;transform:translateY(0)} }
         .anim-up { animation: up .22s ease-out both; }
+        .lang-opt.on { background:#2563eb; color:#fff; border-color:#2563eb; }
     </style>
 </head>
 <body class="bg-slate-100 text-slate-800 min-h-screen">
@@ -256,11 +257,30 @@
                     <h2 id="welcomeName" class="font-bold text-sm leading-tight truncate">Παίκτης</h2>
                 </div>
             </div>
-            <div class="flex items-center gap-1.5 sm:gap-2 flex-shrink-0">
-                <span id="adminBadge" class="hidden bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ADMIN</span>
-                <select id="langSel" onchange="setAppLang(this.value)" aria-label="Language" data-noi18n class="lang-sel text-xs text-slate-500 border border-slate-200 pl-1.5 pr-1 py-1.5 rounded-lg bg-white font-semibold"><option value="el">EL</option><option value="en">EN</option><option value="de">DE</option></select>
-                <button onclick="showChangePass()" title="Αλλαγή κωδικού" class="text-xs text-slate-500 border border-slate-200 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium whitespace-nowrap">Κωδικός</button>
-                <button id="logoutBtn" class="text-xs text-slate-500 border border-slate-200 px-2 sm:px-3 py-1.5 rounded-lg hover:bg-slate-50 font-medium whitespace-nowrap">Έξοδος</button>
+            <div class="relative flex-shrink-0">
+                <button id="userMenuBtn" type="button" onclick="toggleUserMenu(event)" aria-haspopup="true" aria-expanded="false" title="Ο λογαριασμός μου"
+                        class="user-btn w-10 h-10 rounded-full border border-slate-200 bg-white flex items-center justify-center text-slate-600 hover:bg-slate-50">
+                    <svg class="w-5 h-5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="8" r="4"/><path d="M4 21c1-4 4-6 8-6s7 2 8 6"/></svg>
+                </button>
+                <div id="userMenu" class="hidden absolute right-0 top-12 w-64 bg-white rounded-2xl shadow-xl border border-slate-100 p-1.5 z-50" role="menu">
+                    <div class="px-3 pt-2.5 pb-3 border-b border-slate-100">
+                        <p id="umName" class="font-bold text-sm truncate"></p>
+                        <p id="umEmail" class="text-[11px] text-slate-400 truncate" data-noi18n></p>
+                        <span id="adminBadge" class="hidden inline-block mt-1.5 bg-indigo-500 text-white text-[10px] px-2 py-0.5 rounded-full font-bold">ADMIN</span>
+                    </div>
+                    <div class="px-3 py-2.5 border-b border-slate-100">
+                        <p class="text-[10px] font-semibold text-slate-400 uppercase mb-1.5">Γλώσσα</p>
+                        <div id="langSeg" class="grid grid-cols-3 gap-1" data-noi18n>
+                            <button type="button" data-l="el" onclick="setAppLang('el')" class="lang-opt py-1.5 rounded-lg text-xs font-bold border border-slate-200">EL</button>
+                            <button type="button" data-l="en" onclick="setAppLang('en')" class="lang-opt py-1.5 rounded-lg text-xs font-bold border border-slate-200">EN</button>
+                            <button type="button" data-l="de" onclick="setAppLang('de')" class="lang-opt py-1.5 rounded-lg text-xs font-bold border border-slate-200">DE</button>
+                        </div>
+                        <select id="langSel" class="hidden" aria-hidden="true" data-noi18n><option value="el">EL</option><option value="en">EN</option><option value="de">DE</option></select>
+                    </div>
+                    <button id="umPlan" type="button" onclick="openMyPlan()" class="um-item hidden w-full text-left px-3 py-2.5 rounded-xl text-sm hover:bg-slate-50" role="menuitem">Το πακέτο μου</button>
+                    <button type="button" onclick="closeUserMenu();showChangePass()" class="um-item w-full text-left px-3 py-2.5 rounded-xl text-sm hover:bg-slate-50" role="menuitem">Αλλαγή κωδικού</button>
+                    <button id="logoutBtn" type="button" class="um-item w-full text-left px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50" role="menuitem">Έξοδος</button>
+                </div>
             </div>
         </div>
         <!-- Οι καρτέλες κυλούν οριζόντια στο κινητό αντί να στριμώχνονται -->
@@ -562,6 +582,19 @@
     </div>
 
     <div id="tab-settings" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <!-- Το πακέτο του συλλόγου (το αλλάζει μόνο η CourtBook, από το Admin Panel) -->
+        <div id="planCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="font-bold">Το πακέτο σου</p>
+                    <p id="planStatus" class="text-[11px] text-slate-500 mt-0.5"></p>
+                </div>
+                <p class="text-right flex-shrink-0"><span id="planTotal" class="text-2xl font-extrabold"></span><span class="text-xs text-slate-400"> /μήνα</span></p>
+            </div>
+            <div id="planLines" class="mt-4 divide-y divide-slate-100"></div>
+            <a id="planUpgrade" href="mailto:info@court-book.gr" class="block w-full mt-4 text-center py-2.5 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50">Αλλαγή πακέτου ή extras</a>
+            <p class="text-[10px] text-slate-400 mt-2 text-center">Γράψε μας τι θέλεις να αλλάξει και το ενεργοποιούμε.</p>
+        </div>
         <!-- Club info -->
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-4">🏷️ Στοιχεία Club</p>
@@ -625,6 +658,7 @@
                 <button id="addCourtBtn" class="text-brand text-sm font-semibold">+ Προσθήκη γηπέδου</button>
                 <button id="saveCourtsBtn" class="ml-auto bg-brand text-white px-4 py-2 rounded-lg text-sm font-bold">Αποθήκευση Γηπέδων</button>
             </div>
+            <p id="courtLimitHint" class="hidden text-[11px] text-amber-700 mt-2"></p>
         </div>
 
         <!-- Pricing -->
@@ -725,6 +759,7 @@ async function startLang(){
     APP_LANG=pickLang();
     document.documentElement.lang=APP_LANG;
     ['langSel','authLangSel'].forEach(id=>{ const s=document.getElementById(id); if(s) s.value=APP_LANG; });
+    document.querySelectorAll('#langSeg button').forEach(b=>b.classList.toggle('on', b.dataset.l===APP_LANG));
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
@@ -946,7 +981,7 @@ function wireAuth(){
     document.getElementById('exportBtn').onclick = exportExcel;
     document.getElementById('copyLink').onclick = () => { navigator.clipboard.writeText(document.getElementById('shareLink').value); cbToast('Αντιγράφηκε!'); };
     document.getElementById('saveInfoBtn').onclick = saveClubInfo;
-    document.getElementById('addCourtBtn').onclick = () => addCourtRow('');
+    document.getElementById('addCourtBtn').onclick = () => { if(!document.getElementById('addCourtBtn').disabled) addCourtRow(''); };
     document.getElementById('saveCourtsBtn').onclick = saveCourts;
     document.getElementById('addDurBtn').onclick = () => addDurRow('','','');
     document.getElementById('saveDursBtn').onclick = saveDurs;
@@ -1150,6 +1185,9 @@ async function enterApp(){
     const prof = await sb.from('profiles').select('name').eq('id', me.id).maybeSingle();
     // Ο ιδιοκτήτης εμφανίζεται ως «Admin» — είναι ρόλος, όχι πρόσωπο
     document.getElementById('welcomeName').textContent = isOwner ? 'Admin' : (prof.data?.name || me.email.split('@')[0]);
+    document.getElementById('umName').textContent = prof.data?.name || me.email.split('@')[0];
+    document.getElementById('umEmail').textContent = me.email || '';
+    if(isOwner && 'plan_tier' in club) document.getElementById('umPlan').classList.remove('hidden');
     if(isOwner){
         document.getElementById('adminBadge').classList.remove('hidden');
         document.getElementById('adminTabBtn').classList.remove('hidden');
@@ -2327,8 +2365,59 @@ async function exportExcel(){
 }
 
 /* ══════════════ SETTINGS (owner) ══════════════ */
+/* ── Πακέτο ── */
+function renderPlanCard(){
+    const card=document.getElementById('planCard'); if(!card) return;
+    if(!isOwner || !('plan_tier' in club)){ card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    const p=cbPlanPrice(club), A=CB_PLANS.addons, max=cbTierMax(club.plan_tier);
+    document.getElementById('planTotal').textContent=p.total+'€';
+    const st=club.plan_status||'active';
+    document.getElementById('planStatus').textContent = st==='trial'
+        ? 'Δωρεάν δοκιμή'+(club.trial_until?' έως '+cbFmtDate(club.trial_until):'')
+        : st==='paused' ? 'Σε παύση' : 'Ενεργό';
+    const line=(label,sub,price,on)=>`<div class="flex items-center justify-between gap-3 py-2">
+        <div class="min-w-0"><p class="text-sm ${on?'font-semibold':'text-slate-400'}">${label}</p>${sub?`<p class="text-[11px] text-slate-400">${sub}</p>`:''}</div>
+        <span class="text-sm flex-shrink-0 ${on?'font-bold':'text-slate-400'}">${on?price+'€':'+'+price+'€'}</span></div>`;
+    document.getElementById('planLines').innerHTML =
+        line('Διαχείριση Club', max===Infinity ? `Απεριόριστα γήπεδα · έχεις ${courts.length}` : `Έως ${max} γήπεδα · έχεις ${courts.length}`, p.base, true)
+      + line('Κρατήσεις γηπέδων', '', A.bookings, p.on.bookings)
+      + line('Κωδικοί προπονητών', '', A.coaches, p.on.coaches)
+      + line('Συνδρομές μελών', '', A.subscriptions, p.on.subscriptions)
+      + line('Τουρνουά', `ή ${CB_PLANS.tournamentsYearly}€ τον χρόνο`, A.tournaments, p.on.tournaments);
+    document.getElementById('planUpgrade').href='mailto:info@court-book.gr?subject='+encodeURIComponent('Αλλαγή πακέτου — '+club.name);
+}
+// όριο γηπέδων του πακέτου: κλειδώνει το «+ Προσθήκη γηπέδου»
+function updateCourtLimitUI(){
+    const btn=document.getElementById('addCourtBtn'), hint=document.getElementById('courtLimitHint');
+    if(!btn || !hint) return;
+    const max=('plan_tier' in club) ? cbTierMax(club.plan_tier) : Infinity;
+    const n=document.querySelectorAll('#setCourts > div').length;
+    const full=n>=max;
+    btn.disabled=full; btn.classList.toggle('opacity-40',full); btn.classList.toggle('cursor-not-allowed',full);
+    hint.classList.toggle('hidden',!full);
+    if(full) hint.textContent=`Το πακέτο σου επιτρέπει έως ${max} γήπεδα. Για περισσότερα: «Αλλαγή πακέτου» πιο πάνω.`;
+}
+function openMyPlan(){
+    closeUserMenu(); switchTab('settings');
+    setTimeout(()=>document.getElementById('planCard')?.scrollIntoView({ behavior:'smooth', block:'start' }),150);
+}
+/* ── Μενού χρήστη ── */
+function toggleUserMenu(e){
+    e.stopPropagation();
+    const m=document.getElementById('userMenu'), open=m.classList.toggle('hidden')===false;
+    document.getElementById('userMenuBtn').setAttribute('aria-expanded', open);
+}
+function closeUserMenu(){
+    document.getElementById('userMenu')?.classList.add('hidden');
+    document.getElementById('userMenuBtn')?.setAttribute('aria-expanded','false');
+}
+document.addEventListener('click', e=>{ if(!e.target.closest('#userMenu,#userMenuBtn')) closeUserMenu(); });
+document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeUserMenu(); });
+
 function renderSettings(){
     if(!isOwner) return;
+    renderPlanCard();
     document.getElementById('setName').value  = club.name || '';
     document.getElementById('setLogo').value  = club.logo_url || '';
     document.getElementById('setEmail').value = club.email || '';
@@ -2360,6 +2449,7 @@ function renderSettings(){
     // courts
     const cw=document.getElementById('setCourts'); cw.innerHTML='';
     courts.forEach(c=>addCourtRow(c.name, c.id));
+    updateCourtLimitUI();
     // durations — scope selector (όλα τα γήπεδα / ανά γήπεδο)
     const scope=document.getElementById('durScope');
     scope.innerHTML = `<option value="">Κοινές τιμές — Όλα τα γήπεδα</option>`
@@ -2405,6 +2495,7 @@ function addCourtRow(name='', id=''){
         <button class="del-court px-3 text-red-400 hover:text-red-600">✕</button>`;
     row.querySelector('.del-court').onclick=()=>delCourt(row);
     wrap.appendChild(row);
+    updateCourtLimitUI();
 }
 async function delCourt(row){
     const id=row.dataset.id;
@@ -2417,6 +2508,7 @@ async function delCourt(row){
         cbToast('Διαγράφηκε');
     }
     row.remove();
+    updateCourtLimitUI();
 }
 async function saveCourts(){
     const rows=[...document.querySelectorAll('#setCourts > div')];
@@ -2428,11 +2520,15 @@ async function saveCourts(){
         for(let i=0;i<rows.length;i++){
             const r=rows[i], nm=names[i], id=r.dataset.id;
             if(id){ await sb.from('courts').update({ name:nm, sort_order:i }).eq('id',id); }
-            else  { const { data }=await sb.from('courts').insert({ club_id:club.id, name:nm, sort_order:i }).select().single(); if(data) r.dataset.id=data.id; }
+            else  { const { data, error }=await sb.from('courts').insert({ club_id:club.id, name:nm, sort_order:i }).select().single(); if(error) throw error; if(data) r.dataset.id=data.id; }
         }
         await reloadClubData();
         cbToast('✓ Τα γήπεδα αποθηκεύτηκαν');
-    }catch(e){ cbToast('Σφάλμα αποθήκευσης','err'); }
+    }catch(e){
+        const lim=/COURT_LIMIT:(\d+)/.exec(e.message||'');
+        cbToast(lim ? `Το πακέτο σου επιτρέπει έως ${lim[1]} γήπεδα` : 'Σφάλμα αποθήκευσης','err');
+        if(lim) await reloadClubData();
+    }
     finally{ cbLoading(false); }
 }
 
