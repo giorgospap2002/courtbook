@@ -1155,9 +1155,11 @@ async function enterApp(){
         document.getElementById('adminTabBtn').classList.remove('hidden');
         document.getElementById('rosterTabBtn').classList.remove('hidden');
         document.getElementById('trainingTabBtn').classList.remove('hidden');
-        // «Αθλητές»: μόνο σε συλλόγους που έχουν γκρουπ προπόνησης
-        sb.from('training_groups').select('id',{ count:'exact', head:true }).eq('club_id',club.id)
-          .then(({ count })=>{ if(count>0) document.getElementById('athletesTabBtn').classList.remove('hidden'); });
+        // «Αθλητές»: μόνο σε συλλόγους με κρατήσεις ΚΑΙ γκρουπ προπόνησης. Σε σύλλογο μόνο
+        // προπονήσεων (π.χ. ΑΟΑΠ) όλοι οι πελάτες είναι αθλητές — οι «Πελάτες» αρκούν.
+        if(bookingsOn)
+            sb.from('training_groups').select('id',{ count:'exact', head:true }).eq('club_id',club.id)
+              .then(({ count })=>{ if(count>0) document.getElementById('athletesTabBtn').classList.remove('hidden'); });
         document.getElementById('settingsTabBtn').classList.remove('hidden');
         document.getElementById('mytrainingsTabBtn').classList.add('hidden'); // ο admin δεν χρειάζεται «Οι Προπονήσεις μου»
     }
