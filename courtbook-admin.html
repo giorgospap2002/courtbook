@@ -81,7 +81,7 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
 
 /* club rows */
 .list{display:flex;flex-direction:column;gap:10px;padding-bottom:60px}
-.club{display:grid;grid-template-columns:minmax(220px,1.6fr) minmax(180px,1.2fr) 150px minmax(260px,1.6fr);gap:18px;align-items:center;
+.club{display:grid;grid-template-columns:minmax(200px,1.6fr) minmax(170px,1.2fr) 150px minmax(250px,1.6fr) auto;gap:18px;align-items:center;
   background:var(--card);border:1px solid var(--line);border-radius:18px;padding:16px 20px;cursor:pointer;transition:border-color .15s,box-shadow .2s;text-align:left;width:100%}
 .club:hover{border-color:var(--ink-2);box-shadow:0 14px 30px -24px rgba(11,15,23,.5)}
 .club .nm{font-weight:700;font-size:16px;line-height:1.3}
@@ -101,6 +101,24 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
 .stat b{display:block;font-family:var(--cond);font-weight:800;font-size:19px;line-height:1.1}
 .stat span{font-size:11.5px;color:var(--muted)}
 .stat.over b{color:var(--bad)}
+.acts{display:flex;gap:6px;justify-content:flex-end}
+.ibtn{display:inline-flex;align-items:center;justify-content:center;gap:6px;height:36px;padding:0 12px;border-radius:999px;border:1.5px solid var(--line-2);background:#fff;font-size:13px;font-weight:600}
+.ibtn:hover{border-color:var(--ink)}
+.ibtn.del{width:36px;padding:0;color:var(--bad)}
+.ibtn.del:hover{border-color:var(--bad);background:var(--bad-soft)}
+.danger{margin-top:30px;border:1.5px solid #f3c7c2;border-radius:16px;padding:16px;background:#fff}
+.danger b{display:block;color:var(--bad)}
+.btn.red{color:var(--bad);border-color:#f3c7c2}
+.btn.red:hover{background:var(--bad);border-color:var(--bad);color:#fff}
+.btn.redfill{background:var(--bad);border-color:var(--bad);color:#fff}
+.modal{position:fixed;inset:0;z-index:60;background:rgba(11,15,23,.5);display:flex;align-items:center;justify-content:center;padding:16px}
+.modal .card{background:var(--paper);border-radius:22px;padding:24px;width:min(460px,100%);box-shadow:0 30px 80px -30px rgba(0,0,0,.5)}
+.modal h4{font-family:var(--cond);font-weight:800;font-size:26px;line-height:1.1;margin:0 0 8px}
+.modal ul{margin:10px 0 0;padding-left:18px;font-size:14px;color:var(--ink-2)}
+.slugrow{display:flex;align-items:center;border:1.5px solid var(--line-2);background:#fff;border-radius:12px;overflow:hidden}
+.slugrow:focus-within{border-color:var(--ink)}
+.slugrow span{padding:0 0 0 12px;color:var(--faint);font-size:13px;white-space:nowrap}
+.slugrow input{border:0;outline:0;padding:11px 12px 11px 2px;flex:1;min-width:0;font-size:15px;background:transparent}
 .empty{text-align:center;padding:50px 0;color:var(--muted)}
 
 /* editor drawer */
@@ -149,6 +167,7 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
 @media (max-width:1080px){
   .kpis{grid-template-columns:repeat(3,1fr)}
   .club{grid-template-columns:1fr 1fr;row-gap:12px}
+  .acts{justify-content:flex-start}
 }
 @media (max-width:640px){
   .wrap{padding:0 16px}
@@ -243,6 +262,18 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
         <div class="mini" id="edStats"></div>
 
         <div class="sec">
+            <div class="lab">Στοιχεία</div>
+            <label class="field" style="margin-top:0"><span>Όνομα συλλόγου</span>
+                <input id="edNm" class="inp" oninput="edChanged()"></label>
+            <label class="field"><span>Link</span>
+                <div class="slugrow"><span>app.html?club=</span><input id="edSlug" autocapitalize="off" spellcheck="false" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'');edChanged()"></div></label>
+            <div class="row2">
+                <label class="field"><span>Email ειδοποιήσεων</span><input id="edMail" type="email" class="inp" oninput="edChanged()"></label>
+                <label class="field"><span>Τηλέφωνο</span><input id="edTel" type="tel" class="inp" oninput="edChanged()"></label>
+            </div>
+        </div>
+
+        <div class="sec">
             <div class="lab">Πακέτο</div>
             <div class="tiers" id="edTiers"></div>
             <div class="warn hidden" id="edTierWarn"></div>
@@ -279,12 +310,32 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
             <label class="field" style="margin-top:0"><span>Σημειώσεις χρέωσης (τις βλέπεις μόνο εσύ)</span>
                 <textarea id="edNote" class="inp" rows="3" placeholder="π.χ. Πληρώνει ετήσια με τραπεζική μεταφορά, τουρνουά 180€/χρόνο" oninput="edChanged()"></textarea></label>
         </div>
+
+        <div class="danger">
+            <b>Διαγραφή συλλόγου</b>
+            <p class="muted small" style="margin:4px 0 12px">Σβήνει τον σύλλογο με όλα του τα δεδομένα: γήπεδα, μέλη, κρατήσεις, τμήματα, τουρνουά. Δεν αναιρείται.</p>
+            <button type="button" class="btn red" onclick="askDelete(ed.id)">Διαγραφή συλλόγου…</button>
+        </div>
     </div>
     <div class="dfoot">
         <div class="tot" id="edTotal"></div>
         <button class="btn dark" id="edSave" onclick="saveEd()">Αποθήκευση</button>
     </div>
 </aside>
+
+<div class="modal hidden" id="delModal" role="dialog" aria-modal="true" onclick="if(event.target===this)closeDel()">
+    <div class="card">
+        <h4 id="delTitle"></h4>
+        <p class="muted small" style="margin:0">Θα σβηστούν οριστικά:</p>
+        <ul id="delList"></ul>
+        <p class="small" style="margin:14px 0 6px">Ο λογαριασμός του ιδιοκτήτη μένει. Για επιβεβαίωση γράψε το link του συλλόγου: <b id="delSlug"></b></p>
+        <input id="delInp" class="inp" autocapitalize="off" spellcheck="false" autocomplete="off" oninput="$('delGo').disabled = this.value.trim() !== delTarget.slug">
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:16px">
+            <button type="button" class="btn" onclick="closeDel()">Άκυρο</button>
+            <button type="button" class="btn redfill" id="delGo" disabled onclick="doDelete()">Οριστική διαγραφή</button>
+        </div>
+    </div>
+</div>
 
 <script src="config.js"></script>
 <script src="cb.js"></script>
@@ -305,6 +356,7 @@ const ADDONS = [
 const STATUS = { trial:'Δοκιμή', active:'Ενεργός', paused:'Σε παύση' };
 const SPORT  = { padel:'Padel', tennis:'Τένις', squash:'Squash', pickleball:'Pickleball', beach:'Beach tennis' };
 let clubs = [], filter = 'all', ed = null, edDirty = false;
+const TRASH = '<svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"><path d="M3 6h18M8 6V4h8v2M19 6l-1 14H6L5 6M10 11v6M14 11v6"/></svg>';
 
 const $ = id => document.getElementById(id);
 const esc = s => String(s ?? '').replace(/[&<>"']/g, c => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' })[c]);
@@ -416,7 +468,7 @@ function renderList(){
     $('list').innerHTML = list.map(c => {
         const p = cbPlanPrice(c), max = cbTierMax(c.plan_tier), over = c.courts > max;
         const sports = (c.sport || '').split(',').map(s => SPORT[s.trim()] || s.trim()).filter(Boolean).join(', ');
-        return '<button class="club" onclick="openEd(\'' + c.id + '\')">'
+        return '<div class="club" role="button" tabindex="0" onclick="openEd(\'' + c.id + '\')" onkeydown="if(event.key===\'Enter\')openEd(\'' + c.id + '\')">'
           + '<div style="min-width:0"><div class="nm">' + esc(c.name) + '</div>'
           +   '<div class="sub">' + esc(c.slug) + (sports ? ' · ' + esc(sports) : '') + ' · ' + esc((c.lang || 'el').toUpperCase()) + '</div>'
           +   '<div class="sub">' + esc(c.owner_name || '') + (c.owner_name ? ' · ' : '') + esc(c.owner_email || c.email || '') + '</div></div>'
@@ -428,7 +480,11 @@ function renderList(){
           +   '<div class="stat"><b>' + c.members + (c.pending ? '<span style="font-size:13px;color:var(--warn)"> +' + c.pending + '</span>' : '') + '</b><span>μέλη</span></div>'
           +   '<div class="stat"><b>' + c.bookings_30d + '</b><span>κρατήσεις 30ημ</span></div>'
           +   '<div class="stat"><b style="font-size:14px;line-height:1.5">' + ago(c.last_booking) + '</b><span>τελ. κράτηση</span></div>'
-          + '</div></button>';
+          + '</div>'
+          + '<div class="acts">'
+          +   '<button type="button" class="ibtn" onclick="event.stopPropagation();openEd(\'' + c.id + '\')"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.1 2.1 0 0 1 3 3L7 19l-4 1 1-4Z"/></svg>Επεξεργασία</button>'
+          +   '<button type="button" class="ibtn del" title="Διαγραφή συλλόγου" aria-label="Διαγραφή συλλόγου" onclick="event.stopPropagation();askDelete(\'' + c.id + '\')">' + TRASH + '</button>'
+          + '</div></div>';
     }).join('');
 }
 
@@ -451,6 +507,8 @@ function openEd(id){
     $('edStats').innerHTML = [[c.courts,'γήπεδα'],[c.members + (c.pending ? ' +' + c.pending : ''),'μέλη'],[c.groups,'τμήματα'],[c.coaches,'προπονητές'],
         [c.bookings_30d,'κρατήσεις 30ημ'],[c.bookings_total,'κρατήσεις σύνολο'],[ago(c.last_booking),'τελ. κράτηση']]
         .map(s => '<div class="stat"><b' + (String(s[0]).length > 6 ? ' style="font-size:14px;line-height:1.5"' : '') + '>' + esc(s[0]) + '</b><span>' + s[1] + '</span></div>').join('');
+    $('edNm').value = c.name || ''; $('edSlug').value = c.slug || '';
+    $('edMail').value = c.email || ''; $('edTel').value = c.phone || '';
     $('edTrial').value = ed.v.trial_until;
     $('edLang').value = ed.v.lang;
     $('edNote').value = ed.v.billing_note;
@@ -465,7 +523,7 @@ function closeEd(force){
     setTimeout(() => ['shade','drawer'].forEach(x => $(x).classList.add('hidden')), 250);
     ed = null;
 }
-document.addEventListener('keydown', e => { if (e.key === 'Escape' && ed) closeEd(); });
+document.addEventListener('keydown', e => { if (e.key !== 'Escape') return; if (delTarget) closeDel(); else if (ed) closeEd(); });
 
 function renderEd(){
     const v = ed.v, c = ed.orig, T = CB_PLANS.tiers;
@@ -491,6 +549,7 @@ function setEd(k, val){
     edDirty = true; renderEd();
 }
 function edChanged(){
+    ed.v.name = $('edNm').value; ed.v.slug = $('edSlug').value; ed.v.email = $('edMail').value; ed.v.phone = $('edTel').value;
     ed.v.trial_until = $('edTrial').value; ed.v.lang = $('edLang').value; ed.v.billing_note = $('edNote').value;
     edDirty = true; $('edSave').disabled = false;
 }
@@ -500,13 +559,54 @@ async function saveEd(){
     const v = ed.v, c = ed.orig;
     if (v.bookings_enabled === false && c.bookings_enabled !== false
         && !confirm('Χωρίς «Κρατήσεις γηπέδων» ο ' + c.name + ' γίνεται σύλλογος «μόνο προπονήσεις» — τα μέλη δεν θα κλείνουν γήπεδο. Συνέχεια;')) return;
+    if (!(v.name ?? c.name).trim()) return cbToast('Βάλε όνομα συλλόγου', 'err');
+    if (v.slug != null && v.slug !== c.slug) {
+        if (!/^[a-z0-9][a-z0-9-]{1,60}$/.test(v.slug)) return cbToast('Το link θέλει τουλάχιστον 2 χαρακτήρες: λατινικά πεζά, αριθμούς ή παύλες', 'err');
+        if (!confirm('Αλλάζει το link του συλλόγου σε «' + v.slug + '». Το παλιό link («' + c.slug + '») που έχουν τα μέλη δεν θα δουλεύει πια. Συνέχεια;')) return;
+    }
     const body = { ...v, trial_until: v.plan_status === 'trial' ? (v.trial_until || '') : '' };
     cbLoading(true);
     const { error } = await sb.rpc('admin_update_club', { p_club: ed.id, p: body });
     cbLoading(false);
-    if (error) return cbToast('Δεν αποθηκεύτηκε: ' + (error.message || ''), 'err');
+    if (error) {
+        const m = error.message || '';
+        return cbToast(/SLUG_TAKEN/.test(m) ? 'Αυτό το link το έχει ήδη άλλος σύλλογος'
+                     : /BAD_SLUG/.test(m)   ? 'Το link: μόνο λατινικά πεζά, αριθμοί και παύλες'
+                     : 'Δεν αποθηκεύτηκε: ' + m, 'err');
+    }
     cbToast('✓ Αποθηκεύτηκε — ' + c.name);
     closeEd(true);
+    load();
+}
+
+/* ── διαγραφή συλλόγου ── */
+let delTarget = null;
+function askDelete(id){
+    const c = clubs.find(x => x.id === id); if (!c) return;
+    delTarget = c;
+    $('delTitle').textContent = 'Διαγραφή: ' + c.name;
+    $('delSlug').textContent = c.slug;
+    const n = (v, one, many) => v + ' ' + (v === 1 ? one : many);
+    $('delList').innerHTML = [n(c.courts,'γήπεδο','γήπεδα'), n(c.members + c.pending,'μέλος','μέλη'), n(c.bookings_total,'κράτηση','κρατήσεις'),
+        n(c.groups,'τμήμα','τμήματα'), n(c.coaches,'προπονητής','προπονητές'), 'τουρνουά, συνδρομές, ιστορικό και ρυθμίσεις']
+        .map(t => '<li>' + esc(t) + '</li>').join('');
+    $('delInp').value = ''; $('delGo').disabled = true;
+    $('delModal').classList.remove('hidden');
+    setTimeout(() => $('delInp').focus(), 50);
+}
+function closeDel(){ $('delModal').classList.add('hidden'); delTarget = null; }
+async function doDelete(){
+    const c = delTarget; if (!c || $('delInp').value.trim() !== c.slug) return;
+    cbLoading(true);
+    const { error } = await sb.rpc('admin_delete_club', { p_club: c.id, p_confirm: c.slug });
+    cbLoading(false);
+    if (error) {
+        const m = error.message || '';
+        return cbToast(/admin_delete_club|schema cache/.test(m) ? 'Τρέξε πρώτα το migration_admin_edit_delete.sql στο Supabase' : 'Δεν σβήστηκε: ' + m, 'err');
+    }
+    closeDel();
+    if (ed && ed.id === c.id) closeEd(true);
+    cbToast('Ο σύλλογος «' + c.name + '» σβήστηκε');
     load();
 }
 
