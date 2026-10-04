@@ -6,6 +6,22 @@
     <title>Κρατήσεις — CourtBook</title>
     <meta name="theme-color" content="#f5f3ee">
     <link rel="preload" href="fonts/sofia-cond-greek.woff2" as="font" type="font/woff2" crossorigin>
+    <script>
+    /* ── Ποιο design ανοίγει ──
+       Όλοι οι σύλλογοι ανοίγουν στο νέο design (app2.html), εκτός από όσους είναι
+       στη λίστα CLASSIC. Τρέχει ΠΡΙΝ φορτωθεί οτιδήποτε άλλο, ώστε να μη χαθεί το
+       #token του email επαναφοράς κωδικού. Με ?classic=1 ανοίγει πάντα το παλιό.
+       Το ίδιο script υπάρχει και στο app2.html (με PAGE='new') και στέλνει πίσω
+       στο παλιό όσους είναι στη λίστα. */
+    (function(){
+        var PAGE='new';
+        var CLASSIC=[];   // π.χ. ['aoap'] για να μείνει ένας σύλλογος στο παλιό
+        var q=new URLSearchParams(location.search), slug=(q.get('club')||'').toLowerCase();
+        var wantNew = q.get('classic')!=='1' && CLASSIC.indexOf(slug)<0;
+        var to = PAGE==='classic' && wantNew ? 'app2.html' : (PAGE==='new' && !wantNew ? 'app.html' : null);
+        if(to) location.replace(to + location.search + location.hash);
+    })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
@@ -117,7 +133,9 @@ span.text-brand,button.text-brand.underline,.text-brand.font-semibold{text-decor
 .club-mark{background:var(--ink)!important;color:var(--ball)!important;font-family:'Sofia Sans Condensed',Inter,sans-serif;font-weight:800;letter-spacing:.02em}
 #hdrLogoFallback.club-mark{font-size:14px;border-radius:11px}
 #authLogoFallback.club-mark{font-size:28px;border-radius:22px;box-shadow:0 0 0 1px rgba(255,255,255,.12),0 20px 40px -18px rgba(0,0,0,.8)}
-.tab-btn{display:inline-flex!important;align-items:center;gap:7px;border:0!important;border-radius:999px;padding:8px 14px!important;margin:6px 0 10px;font-size:13.5px!important;font-weight:550!important;color:var(--muted)}
+.tab-btn.hidden{display:none!important}   /* οι καρτέλες που δεν έχει το club μένουν κρυφές */
+.tab-btn:not(.hidden){display:inline-flex!important}
+.tab-btn{align-items:center;gap:7px;border:0!important;border-radius:999px;padding:8px 14px!important;margin:6px 0 10px;font-size:13.5px!important;font-weight:550!important;color:var(--muted)}
 .tab-btn svg{width:16px;height:16px;flex-shrink:0;opacity:.85}
 .tab-btn:hover{color:var(--ink)!important;background:rgba(11,15,23,.05)}
 .tab-active,.tab-active:hover{background:var(--ink)!important;color:#fff!important;font-weight:600!important}
@@ -142,10 +160,17 @@ span.text-brand,button.text-brand.underline,.text-brand.font-semibold{text-decor
 #priceCards p.font-extrabold{font-size:1.65rem;line-height:1}
 
 /* ── slots ημέρας ── */
+#slots{align-items:start}   /* όταν ανοίγει η φόρμα σε μία ώρα, οι διπλανές δεν τεντώνουν */
 #slots > div{border-radius:16px!important;padding:13px 14px!important}
 #slots .font-bold.text-sm{font-family:'Sofia Sans Condensed',Inter,sans-serif;font-size:18px;font-weight:750;font-variant-numeric:tabular-nums;letter-spacing:0}
 .slot-free{background:#fff;border-color:var(--line)!important;box-shadow:0 1px 0 rgba(11,15,23,.02);cursor:pointer}
 .slot-free:hover{border-color:var(--brand)!important;box-shadow:0 0 0 1px var(--brand),0 12px 24px -18px rgba(31,69,214,.6);transform:translateY(-1px)}
+/* ελεύθερη ώρα: απαλό μπλε κουμπί «διάλεξέ με» — το μαύρο κρατιέται για την τελική επιβεβαίωση */
+.slot-free button{background:var(--brand-soft)!important;color:var(--brand)!important;box-shadow:none!important;border-radius:999px!important;
+  font-weight:650!important;padding-top:7px!important;padding-bottom:7px!important;margin-top:10px!important}
+.slot-free:hover button,.slot-free button:focus-visible{background:var(--brand)!important;color:#fff!important}
+.slot-free:has(button) span.bg-blue-100{display:none}   /* το «Ελεύθερο» περισσεύει όταν υπάρχει κουμπί */
+.slot-free:has(button) > div{margin-bottom:0}
 .slot-pick{background:#fff;border-color:var(--ink)!important;box-shadow:0 0 0 1px var(--ink),0 22px 40px -24px rgba(11,15,23,.5)!important}
 .slot-mine{background:linear-gradient(90deg,var(--mine-soft),#f1faf5);border-color:#b3e2c6!important;box-shadow:inset 3px 0 0 var(--mine)}
 .slot-other{background:var(--paper-2);border-color:var(--paper-2)!important}

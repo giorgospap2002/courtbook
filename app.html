@@ -4,6 +4,22 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Κρατήσεις — CourtBook</title>
+    <script>
+    /* ── Ποιο design ανοίγει ──
+       Όλοι οι σύλλογοι ανοίγουν στο νέο design (app2.html), εκτός από όσους είναι
+       στη λίστα CLASSIC. Τρέχει ΠΡΙΝ φορτωθεί οτιδήποτε άλλο, ώστε να μη χαθεί το
+       #token του email επαναφοράς κωδικού. Με ?classic=1 ανοίγει πάντα το παλιό.
+       Το ίδιο script υπάρχει και στο app2.html (με PAGE='new') και στέλνει πίσω
+       στο παλιό όσους είναι στη λίστα. */
+    (function(){
+        var PAGE='classic';
+        var CLASSIC=[];   // π.χ. ['aoap'] για να μείνει ένας σύλλογος στο παλιό
+        var q=new URLSearchParams(location.search), slug=(q.get('club')||'').toLowerCase();
+        var wantNew = q.get('classic')!=='1' && CLASSIC.indexOf(slug)<0;
+        var to = PAGE==='classic' && wantNew ? 'app2.html' : (PAGE==='new' && !wantNew ? 'app.html' : null);
+        if(to) location.replace(to + location.search + location.hash);
+    })();
+    </script>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@4/dist/email.min.js"></script>
