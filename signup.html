@@ -623,6 +623,8 @@ async function finish(){
             // «sport» = το κύριο άθλημα (με αυτό δουλεύει η εφαρμογή)· «sports» = όλα όσα παίζει ο σύλλογος
             sport:      sports[0] || 'padel',
             sports,
+            // η γλώσσα της εγγραφής γίνεται γλώσσα του συλλόγου (εφαρμογή + emails)
+            lang:       CB_LANG,
             logo_url:   v('clubLogo')    || null,
             phone:      v('clubPhone')   || null,
             email:      v('clubEmail')   || _account.email || null,
@@ -643,9 +645,12 @@ async function finish(){
         };
         let { data: club, error: cErr } = await sb.from('clubs').insert(row).select().single();
         // αν δεν έχει τρέξει ακόμα το migration των αθλημάτων, το club φτιάχνεται κανονικά χωρίς τη λίστα
-        if (cErr && /sports/.test(cErr.message || '')) {
-            delete row.sports;
-            ({ data: club, error: cErr } = await sb.from('clubs').insert(row).select().single());
+        // στήλες που ίσως δεν υπάρχουν ακόμα (πριν τρέξουν τα migrations): το club φτιάχνεται κανονικά χωρίς αυτές
+        for (const col of ['sports', 'lang']) {
+            if (cErr && new RegExp(col).test(cErr.message || '')) {
+                delete row[col];
+                ({ data: club, error: cErr } = await sb.from('clubs').insert(row).select().single());
+            }
         }
         if (cErr) throw cErr;
 
@@ -653,7 +658,7 @@ async function finish(){
         if (durs.length) await sb.from('durations').insert(durs.map(d => ({ club_id: club.id, ...d })));
 
         cbToast(L('🎉 Το club δημιουργήθηκε!'));
-        setTimeout(() => location.href = 'app.html?club=' + encodeURIComponent(slug), 900);
+        setTimeout(() => location.href = 'app.html?club=' + encodeURIComponent(slug) + (CB_LANG !== 'el' ? '&lang=' + CB_LANG : ''), 900);
     } catch(e) {
         cbToast(e.message || L('Σφάλμα δημιουργίας'), 'err');
         document.getElementById('nextBtn').disabled = false;
