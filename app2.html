@@ -801,8 +801,13 @@ hr,.border-t,.border-b{border-color:var(--line)}
                         <span class="text-sm font-semibold">Πληρωμή συνδρομής online</span>
                     </label>
                     <p class="text-[10px] text-slate-400 mt-1 mb-2">Το μέλος πληρώνει τον μήνα από «Οι προπονήσεις μου» και σημειώνεται αυτόματα «Πληρωμένη».</p>
-                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Ποσό συνδρομής ανά μήνα (€)</label>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Βασικό ποσό ανά μήνα (€)</label>
                     <input id="paySubFee" type="number" min="1" step="0.5" placeholder="π.χ. 40" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                    <p class="text-[10px] text-slate-400 mt-1">Ισχύει για όσους δεν έχουν δικό τους πακέτο.</p>
+                    <p class="text-[10px] font-semibold text-slate-400 uppercase mt-3 mb-1">Πακέτα συνδρομής (προαιρετικά)</p>
+                    <p class="text-[10px] text-slate-400 mb-2">π.χ. «Παιδικό» 35€, «Ενηλίκων» 50€, «Αγωνιστικό» 60€. Ποιο έχει ο καθένας το διαλέγεις στους «Πελάτες» — σε κάθε μέλος ή σε όλο ένα γκρουπ.</p>
+                    <div id="subPlanRows" class="space-y-2"></div>
+                    <button type="button" onclick="addSubPlanRow('','')" class="mt-2 text-xs text-brand font-semibold">+ Πακέτο</button>
                 </div>
                 <button onclick="paySaveSettings()" class="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-bold">Αποθήκευση</button>
                 <button onclick="payDisconnect()" class="w-full py-2 text-xs text-red-500 font-semibold">Αποσύνδεση από το Stripe</button>
@@ -1464,6 +1469,7 @@ async function enterApp(){
         await loadTournaments();
     }
     applyClubMode();
+    if(subsOn && isOwner) loadSubPlans();
     if(subsOn && isOwner){
         const bar=document.getElementById('subsBar');
         bar.classList.remove('hidden'); bar.classList.add('flex');
@@ -2294,6 +2300,7 @@ async function loadMyPayments(){
     if(!subsOn || isOwner){ myPaidMonths=new Set(); return; }
     const { data }=await sb.from('member_payments').select('month').eq('club_id',club.id);
     myPaidMonths=new Set((data||[]).map(r=>r.month));
+    if(club.payments_enabled && club.pay_subs){ const { data:fee }=await sb.rpc('my_sub_fee',{ p_club_id:club.id }); mySubFee=fee; }
 }
 
 /* Ακυρωμένες προπονήσεις του αθλητή: πότε χάθηκε, και πότε
@@ -2357,7 +2364,7 @@ async function renderMyTrainings(){
             ? (myPaidMonths.has(k)
                 ? `<span class="text-[11px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">✓ Πληρωμένη</span>`
                 : (subPayOn() && k<=cbToday().slice(0,7)
-                    ? `<button onclick="event.stopPropagation();paySub('${k}')" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-brand text-white">Πληρωμή ${club.sub_fee}€</button>`
+                    ? `<button onclick="event.stopPropagation();paySub('${k}')" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-brand text-white">Πληρωμή ${mySubFee}€</button>`
                     : `<span class="text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Εκκρεμεί</span>`))
             : '';
         const sessions=ms.length ? ms.map(r=>`
@@ -2727,7 +2734,8 @@ async function payCheckout(id){
     return false;
 }
 // online συνδρομή: ενεργή μόνο αν το club το άνοιξε και έβαλε ποσό
-function subPayOn(){ return !!(club && subsOn && club.payments_enabled && club.pay_ready && club.pay_subs && Number(club.sub_fee)>0); }
+let mySubFee=null;   // το ποσό του μέλους (πακέτο του ή βασικό)
+function subPayOn(){ return !!(club && subsOn && club.payments_enabled && club.pay_ready && club.pay_subs && Number(mySubFee)>0); }
 async function paySub(month){
     cbLoading(true);
     const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
@@ -2788,6 +2796,8 @@ function renderPayCard(){
         document.getElementById('paySubsBox').classList.toggle('hidden', !subsOn);
         document.getElementById('paySubs').checked=!!club.pay_subs;
         document.getElementById('paySubFee').value=club.sub_fee!=null?club.sub_fee:'';
+        const spBox=document.getElementById('subPlanRows');
+        if(spBox){ spBox.innerHTML=''; subPlans.forEach(p=>addSubPlanRow(p.name,p.price,p.id)); }
     }
 }
 async function payConnect(){
@@ -2808,6 +2818,8 @@ async function paySaveSettings(){
         upd.pay_subs=document.getElementById('paySubs').checked;
         upd.sub_fee=fee>0?fee:null;
         if(upd.pay_subs && !upd.sub_fee) return cbToast('Βάλε το ποσό της συνδρομής','err');
+        const spErr=await saveSubPlans();
+        if(spErr) return cbToast(spErr,'err');
     }
     const { error }=await sb.from('clubs').update(upd).eq('id',club.id);
     if(error) return cbToast('Σφάλμα αποθήκευσης','err');
@@ -2820,6 +2832,64 @@ async function payDisconnect(){
     cbLoading(false);
     if(r.error) return cbToast('Σφάλμα','err');
     await reloadClubData(); renderPayCard(); cbToast('Αποσυνδέθηκε');
+}
+
+/* ══════════════ ΠΑΚΕΤΑ ΣΥΝΔΡΟΜΗΣ ══════════════
+   Το club ορίζει όνομα + ποσό· κάθε μέλος έχει (ή όχι) ένα πακέτο.
+   Χωρίς πακέτο → βασικό ποσό του club. Ενεργά μόνο με online πληρωμές. */
+let subPlans=[];
+function subPlansOn(){ return !!(isOwner && subsOn && club && club.payments_enabled); }
+async function loadSubPlans(){
+    if(!subPlansOn()){ subPlans=[]; return; }
+    const { data }=await sb.from('sub_plans').select('*').eq('club_id',club.id).order('sort_order');
+    subPlans=data||[];
+}
+function addSubPlanRow(name, price, id){
+    const box=document.getElementById('subPlanRows'); if(!box) return;
+    const row=document.createElement('div');
+    row.className='flex gap-2 items-center'; if(id) row.dataset.id=id;
+    row.innerHTML=`<input class="sp-name flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-lg text-sm" placeholder="Όνομα (π.χ. Παιδικό)" value="${cbEsc(name||'')}">
+        <input class="sp-price w-20 px-2 py-2 border border-slate-200 rounded-lg text-sm" type="number" min="1" step="0.5" placeholder="€" value="${price??''}">
+        <button type="button" onclick="this.parentElement.remove()" class="px-2 text-red-400">✕</button>`;
+    box.appendChild(row);
+}
+async function saveSubPlans(){
+    const rows=[...document.querySelectorAll('#subPlanRows > div')].map((r,i)=>({ id:r.dataset.id||null,
+        name:r.querySelector('.sp-name').value.trim(), price:parseFloat(r.querySelector('.sp-price').value), sort_order:i }));
+    const bad=rows.find(r=>!r.name || !(r.price>0));
+    if(bad) return 'Κάθε πακέτο θέλει όνομα και ποσό';
+    const keep=new Set(rows.filter(r=>r.id).map(r=>r.id));
+    for(const old of subPlans) if(!keep.has(old.id)) await sb.from('sub_plans').delete().eq('id',old.id);
+    for(const r of rows){
+        const row={ club_id:club.id, name:r.name, price:r.price, sort_order:r.sort_order };
+        const { error }= r.id ? await sb.from('sub_plans').update(row).eq('id',r.id) : await sb.from('sub_plans').insert(row);
+        if(error) return 'Σφάλμα αποθήκευσης πακέτων';
+    }
+    await loadSubPlans();
+    return null;
+}
+const planLabel=p=>p?`${p.name} · ${p.price}€`:`Βασικό · ${club.sub_fee!=null?club.sub_fee+'€':'—'}`;
+function planSelect(selected, onchange, extraFirst){
+    return `<select onchange="${onchange}" class="px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+        ${extraFirst||''}<option value="" ${!selected?'selected':''}>${cbEsc(planLabel(null))}</option>
+        ${subPlans.map(p=>`<option value="${p.id}" ${p.id===selected?'selected':''}>${cbEsc(planLabel(p))}</option>`).join('')}</select>`;
+}
+async function setPlayerPlan(pid, planId){
+    const { error }=await sb.from('players').update({ sub_plan_id:planId||null }).eq('id',pid);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    const p=playersFull.find(x=>x.id===pid); if(p) p.sub_plan_id=planId||null;
+    cbToast('✓ Αποθηκεύτηκε');
+}
+async function setGroupPlan(gid, planId){
+    if(planId==='__keep') return;
+    const g=groups.find(x=>x.id===gid); if(!g||!g.memberIds.length) return cbToast('Το γκρουπ δεν έχει μέλη','err');
+    const plan=subPlans.find(p=>p.id===planId);
+    if(!confirm(`Όλα τα μέλη του «${g.name}» (${g.memberIds.length}) → ${planLabel(plan)};`)) return renderGroups();
+    const { error }=await sb.from('players').update({ sub_plan_id:planId||null }).in('id',g.memberIds);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    g.memberIds.forEach(id=>{ const p=playersFull.find(x=>x.id===id); if(p) p.sub_plan_id=planId||null; });
+    cbToast(`✓ ${g.memberIds.length} μέλη → ${planLabel(plan)}`);
+    renderGroups();
 }
 
 function renderPlanCard(){
@@ -2874,7 +2944,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeUserMenu(); 
 
 function renderSettings(){
     if(!isOwner) return;
-    renderPlanCard(); renderPayCard();
+    renderPlanCard(); loadSubPlans().then(renderPayCard);
     document.getElementById('setName').value  = club.name || '';
     document.getElementById('setLogo').value  = club.logo_url || '';
     document.getElementById('setEmail').value = club.email || '';
@@ -5495,6 +5565,7 @@ function playerDetailHtml(id){
         const smLabel=new Date(sm+'-01T12:00:00').toLocaleDateString(cbLocale(),{month:'long',year:'numeric'});
         subBox=`<div class="bg-white rounded-lg p-2 mb-2">
             <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Συνδρομή <span style="text-transform:capitalize">${smLabel}</span></p>
+            ${subPlansOn()?`<div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] text-slate-500">Πακέτο:</span>${planSelect((playersFull.find(x=>x.id===id)||{}).sub_plan_id, `setPlayerPlan('${id}',this.value)`)}</div>`:''}
             ${sd
                 ? `<p class="text-[11px] text-green-700">✓ Πληρώθηκε ${cbFmtDate(sd.paid_date)}${sd.note?' · '+cbEsc(sd.note):''}</p>`
                 : `<p class="text-[11px] text-slate-400">Δεν έχει πληρωθεί</p>`}
@@ -5697,6 +5768,7 @@ function renderGroups(){
                 <button onclick="delGroup('${g.id}')" class="text-red-500 text-[11px] font-semibold border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">Διαγραφή</button>
             </div>
             <div class="flex flex-wrap gap-1.5 mb-2">${chips||'<span class="text-[11px] text-slate-400">Χωρίς μέλη</span>'}</div>
+            ${(subPlansOn() && g.memberIds.length)?`<div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500">Πακέτο συνδρομής για όλο το γκρουπ:</span>${planSelect('__none', `setGroupPlan('${g.id}',this.value)`, '<option value="__keep" selected>— διάλεξε —</option>')}</div>`:''}
             <div class="flex gap-2 mb-3">
                 <select id="am-${g.id}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"><option value="">+ Προσθήκη μέλους…</option>${opts}</select>
                 <button onclick="addMember('${g.id}')" class="bg-brand text-white px-3 rounded-lg text-xs font-bold">OK</button>
