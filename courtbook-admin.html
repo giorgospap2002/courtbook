@@ -358,7 +358,8 @@ const ADDONS = [
     { k:'bookings_enabled',      a:'bookings',      c:'Κρατήσεις',  t:'Κρατήσεις γηπέδων',  s:'Χωρίς αυτό ο σύλλογος είναι «μόνο προπονήσεις»' },
     { k:'coaches_enabled',       a:'coaches',       c:'Προπονητές', t:'Κωδικοί προπονητών', s:'Λογαριασμοί προπονητών, παρουσίες' },
     { k:'subscriptions_enabled', a:'subscriptions', c:'Συνδρομές',  t:'Συνδρομές μελών',    s:'Μηνιαίες συνδρομές, ποιος πλήρωσε' },
-    { k:'tournaments_enabled',   a:'tournaments',   c:'Τουρνουά',   t:'Τουρνουά',           s:'Ή ' + CB_PLANS.tournamentsYearly + '€ τον χρόνο' }
+    { k:'tournaments_enabled',   a:'tournaments',   c:'Τουρνουά',   t:'Τουρνουά',           s:'Ή ' + CB_PLANS.tournamentsYearly + '€ τον χρόνο' },
+    { k:'payments_enabled',      a:'payments',      c:'Πληρωμές',   t:'Online πληρωμές',    s:'Κράτηση με κάρτα, στο Stripe του ίδιου του club' }
 ];
 const STATUS = { trial:'Δοκιμή', active:'Ενεργός', paused:'Σε παύση' };
 const SPORT  = { padel:'Padel', tennis:'Τένις', squash:'Squash', pickleball:'Pickleball', beach:'Beach tennis' };
@@ -431,6 +432,9 @@ async function load(){
         return show('denyView');
     }
     clubs = data || [];
+    // στήλες που δεν επιστρέφει η admin_clubs_overview (online πληρωμές)
+    const { data: pay } = await sb.from('clubs').select('id,payments_enabled,pay_ready,pay_test,pay_mode');
+    (pay || []).forEach(x => { const c = clubs.find(y => y.id === x.id); if (c) Object.assign(c, x); });
     $('asOf').textContent = 'Ενημέρωση: ' + new Date().toLocaleString('el-GR', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
     show('dashView');
     renderKpis(); renderList();
@@ -507,7 +511,8 @@ function openEd(id){
         plan_tier: c.plan_tier || 's', plan_status: c.plan_status || 'trial', trial_until: c.trial_until || '',
         billing_note: c.billing_note || '', lang: c.lang || 'el',
         bookings_enabled: c.bookings_enabled !== false, coaches_enabled: c.coaches_enabled === true,
-        subscriptions_enabled: c.subscriptions_enabled === true, tournaments_enabled: c.tournaments_enabled === true
+        subscriptions_enabled: c.subscriptions_enabled === true, tournaments_enabled: c.tournaments_enabled === true,
+        payments_enabled: c.payments_enabled === true
     }};
     edDirty = false;
     $('edName').textContent = c.name;

@@ -119,7 +119,7 @@ function cbSlugify(s) {
    bookings_enabled / coaches_enabled / subscriptions_enabled / tournaments_enabled. */
 const CB_PLANS = {
     tiers:  { s: { max: 3, price: 45 }, m: { max: 7, price: 60 }, l: { max: null, price: 80 } },
-    addons: { bookings: 15, coaches: 10, subscriptions: 10, tournaments: 15 },
+    addons: { bookings: 15, coaches: 10, subscriptions: 10, tournaments: 15, payments: 10 },
     tournamentsYearly: 180
 };
 function cbTierFor(nCourts) { return nCourts <= 3 ? 's' : nCourts <= 7 ? 'm' : 'l'; }
@@ -132,7 +132,8 @@ function cbPlanPrice(c) {
         bookings:      c.bookings_enabled !== false,
         coaches:       c.coaches_enabled === true,
         subscriptions: c.subscriptions_enabled === true,
-        tournaments:   c.tournaments_enabled === true
+        tournaments:   c.tournaments_enabled === true,
+        payments:      c.payments_enabled === true
     };
     let total = t.price;
     Object.keys(on).forEach(k => { if (on[k]) total += A[k]; });

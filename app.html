@@ -610,6 +610,52 @@
             <a id="planUpgrade" href="mailto:info@court-book.gr" class="block w-full mt-4 text-center py-2.5 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50">Αλλαγή πακέτου ή extras</a>
             <p class="text-[10px] text-slate-400 mt-2 text-center">Γράψε μας τι θέλεις να αλλάξει και το ενεργοποιούμε.</p>
         </div>
+        <!-- Online πληρωμές (extra· κάθε club με το δικό του Stripe) -->
+        <div id="payCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="font-bold">Online πληρωμές</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Τα μέλη πληρώνουν την κράτηση με κάρτα, Apple Pay ή Google Pay. Τα χρήματα πάνε κατευθείαν στον λογαριασμό Stripe του club.</p>
+                </div>
+                <span id="payBadge" class="flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-full"></span>
+            </div>
+            <!-- δεν έχει συνδεθεί -->
+            <div id="payConnectBox" class="mt-4">
+                <ol class="text-xs text-slate-600 space-y-1.5 list-decimal pl-4">
+                    <li>Κάνε δωρεάν λογαριασμό στο <a href="https://dashboard.stripe.com/register" target="_blank" rel="noopener" class="text-brand font-semibold underline">stripe.com</a> με τα στοιχεία του club (ΑΦΜ, IBAN).</li>
+                    <li>Στο Stripe πήγαινε <b>Developers → API keys</b> και πάτα <b>Reveal</b> στο <b>Secret key</b>.</li>
+                    <li>Αντέγραψέ το και επικόλλησέ το εδώ. Για δοκιμή χωρίς πραγματικά χρήματα, χρησιμοποίησε το κλειδί του «Test mode» (ξεκινά με <code>sk_test_</code>).</li>
+                </ol>
+                <input id="payKey" type="password" autocomplete="off" spellcheck="false" placeholder="sk_live_… ή sk_test_…" class="w-full mt-3 px-3 py-2.5 border border-slate-200 rounded-xl text-sm font-mono">
+                <button onclick="payConnect()" class="w-full mt-2 py-2.5 bg-brand text-white rounded-xl text-sm font-bold">Σύνδεση με Stripe</button>
+                <p class="text-[10px] text-slate-400 mt-2">Το κλειδί φυλάσσεται κρυπτογραφημένο και δεν εμφανίζεται ξανά πουθενά.</p>
+            </div>
+            <!-- συνδεδεμένο -->
+            <div id="payReadyBox" class="hidden mt-4 space-y-3">
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Πληρωμή κρατήσεων</label>
+                    <select id="payMode" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                        <option value="optional">Προαιρετική — το μέλος διαλέγει «κάρτα τώρα» ή «στο γήπεδο»</option>
+                        <option value="required">Υποχρεωτική — η κράτηση κλείνει μόνο με πληρωμή</option>
+                        <option value="off">Απενεργοποιημένη — πληρωμή μόνο στο γήπεδο</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Επιστροφή χρημάτων αν ακυρώσει</label>
+                    <select id="payRefund" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                        <option value="0">Πάντα, μέχρι την ώρα της κράτησης</option>
+                        <option value="2">Έως 2 ώρες πριν</option>
+                        <option value="6">Έως 6 ώρες πριν</option>
+                        <option value="12">Έως 12 ώρες πριν</option>
+                        <option value="24">Έως 24 ώρες πριν</option>
+                        <option value="48">Έως 48 ώρες πριν</option>
+                    </select>
+                    <p class="text-[10px] text-slate-400 mt-1">Όταν ακυρώνει η γραμματεία, τα χρήματα επιστρέφονται πάντα.</p>
+                </div>
+                <button onclick="paySaveSettings()" class="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-bold">Αποθήκευση</button>
+                <button onclick="payDisconnect()" class="w-full py-2 text-xs text-red-500 font-semibold">Αποσύνδεση από το Stripe</button>
+            </div>
+        </div>
         <!-- Club info -->
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-4">🏷️ Στοιχεία Club</p>
@@ -1274,6 +1320,7 @@ async function enterApp(){
     await loadDay();
     await loadOpenMatches();
     await handleJoinParam();      // αν άνοιξε με ?join=<id>
+    await handlePayReturn();      // επιστροφή από τη σελίδα πληρωμής (?pb= / ?pbx=)
     startRefresh();
 }
 
@@ -1350,7 +1397,8 @@ async function loadDay(silent){
     try{
         if(isOwner){
             const { data } = await sb.from('bookings').select('*').eq('club_id',club.id).eq('booking_date',date);
-            dayData=(data||[]).map(b=>({ id:b.id, court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.user_id===me.id, name:b.user_name, phone:b.user_phone }));
+            dayData=(data||[]).filter(b=>!(b.pay_status==='pending' && b.pay_until && new Date(b.pay_until)<new Date()))
+                .map(b=>({ id:b.id, court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.user_id===me.id, name:b.user_name, phone:b.user_phone, pay_status:b.pay_status }));
         } else {
             const { data } = await sb.rpc('get_availability',{ p_club_id:club.id, p_date:date });
             dayData=(data||[]).map(b=>({ court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.mine }));
@@ -1388,6 +1436,12 @@ async function loadMine(){
         price:b.price, user_name:b.user_name, guest_players:b.guest_players, mine_direct:b.mine_direct,
         open_spots:b.open_spots||0, co_players:b.co_players||[], note:b.note||''
     }));
+    if(myBookings.length){
+        const { data:pays }=await sb.from('bookings').select('id,pay_status,pay_amount,pay_until').in('id',myBookings.map(b=>b.id)).not('pay_status','is',null);
+        (pays||[]).forEach(p=>{ const b=myBookings.find(x=>x.id===p.id); if(b){ b.pay_status=p.pay_status; b.pay_amount=p.pay_amount; b.pay_until=p.pay_until; } });
+        // κράτηση που δεν πληρώθηκε εγκαίρως: δεν είναι πια δική μου
+        myBookings=myBookings.filter(b=>!(b.pay_status==='pending' && b.pay_until && new Date(b.pay_until)<new Date()));
+    }
 }
 
 /* ══════════════ ΕΝΑΛΛΑΓΗ ΓΗΠΕΔΩΝ ΑΝΑ ΕΒΔΟΜΑΔΑ ══════════════
@@ -1529,6 +1583,8 @@ function renderSlots(){
             card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] ${cov.mine?'bg-green-100 text-green-700':'bg-slate-100 text-slate-500'} px-1.5 py-0.5 rounded-full font-medium">${cov.mine?'Δική μου':'Κλεισμένο'}</span></div>
                 <p class="text-xs font-medium text-slate-600 truncate">${label}</p>
                 <p class="text-[11px] text-slate-400">${(cov.mine||isOwner)?(bookingsOn?`${d.label} · ${d.price}€`:`${cov.duration_min}′`):'&nbsp;'}</p>
+                ${isOwner&&cov.pay_status==='paid'?`<p class="text-[10px] text-green-700 font-bold">✓ Πληρώθηκε online</p>`:''}
+                ${isOwner&&cov.pay_status==='pending'?`<p class="text-[10px] text-amber-700 font-bold">Αναμονή πληρωμής</p>`:''}
                 ${(cov.mine||isOwner)&&cov.id?`<button onclick="doCancel('${cov.id}')" class="w-full mt-2 py-1.5 bg-red-500 text-white text-xs rounded-lg font-semibold hover:bg-red-600 transition">Ακύρωση</button>`:''}`;
         } else {
             // Σε σύλλογο μόνο-προπονήσεων το ελεύθερο slot είναι πληροφορία,
@@ -1581,6 +1637,13 @@ function renderSlots(){
                         </div>
                         <p class="text-[10px] text-slate-400 mt-1">Θα πάρεις link για την ομαδική — και θα φαίνεται στα «Ανοιχτά Ματς».</p>
                     </div>`;
+                // Online πληρωμή (μόνο για μέλη, όχι για τηλεφωνική κράτηση της γραμματείας)
+                const payField = (isOwner || !payActive()) ? '' : payRequired()
+                    ? `<div class="mb-2 p-2 bg-blue-50 rounded-lg"><p class="text-[11px] font-bold text-brand">Πληρωμή online με κάρτα</p><p class="text-[10px] text-slate-500 mt-0.5">Η κράτηση επιβεβαιώνεται μόλις ολοκληρωθεί η πληρωμή.</p></div>`
+                    : `<div class="mb-2 p-2 bg-blue-50 rounded-lg"><label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="payNow" ${pickerPayNow?'checked':''} onchange="pickerPayNow=this.checked" class="w-4 h-4 accent-blue-600">
+                        <span class="text-[11px] font-bold text-brand">Πληρωμή τώρα με κάρτα</span></label>
+                        <p class="text-[10px] text-slate-500 mt-0.5">Αλλιώς πληρώνεις στο γήπεδο.</p></div>`;
                 // Ελεύθερο σχόλιο προς το club (και για τον πελάτη και για τη γραμματεία)
                 const noteField = `
                     <div class="mb-2">
@@ -1594,7 +1657,7 @@ function renderSlots(){
                 const allFit=durationsForCourt(court).every(d=>durationFits(court,time,d.minutes));
                 const hint = allFit ? '' :
                     `<p class="text-[10px] text-amber-600 mt-1.5">Ελεύθερο μέχρι τις ${gap.until} (${gap.minutes}′) — οι μεγαλύτερες διάρκειες δεν χωράνε.</p>`;
-                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
+                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}${payField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
             } else if(!anyDurationFits(court,time)){
                 // Το slot είναι ελεύθερο, αλλά το κενό μέχρι την επόμενη κράτηση
                 // είναι μικρότερο από τη συντομότερη διάρκεια. Μην το προσφέρεις.
@@ -1612,7 +1675,7 @@ function renderSlots(){
     });
 }
 let pickerNote='';   // ελεύθερο σχόλιο της κράτησης που φτιάχνεται
-function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerNote=''; pickerSlot={court,time}; renderSlots(); }
+function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerNote=''; pickerPayNow=true; pickerSlot={court,time}; renderSlots(); }
 
 /* ══════════════ ΑΝΟΙΧΤΑ ΜΑΤΣ ══════════════ */
 let pickerOpenSpots=0;   // πόσους παίκτες ψάχνει η κράτηση που φτιάχνεται
@@ -1849,6 +1912,7 @@ async function doBook(court,time,durMin,price){
     const guests=pickerGuests.slice();
     const openSpots=pickerOpenSpots;
     const note=(document.getElementById('bkNote')?.value ?? pickerNote ?? '').trim();
+    const payNow=!isOwner && payActive() && (payRequired() || (document.getElementById('payNow')?.checked ?? pickerPayNow));
     pickerSlot=null; pickerOpenSpots=0; pickerNote=''; pickerNewName=''; pickerNewPhone=''; cbLoading(true);
     try{
         const { data:ins, error }=await sb.from('bookings').insert({
@@ -1857,7 +1921,8 @@ async function doBook(court,time,durMin,price){
             user_name:uName, user_phone:uPhone, user_email:uEmail,
             guest_players: guests.length?guests:null,
             open_spots: openSpots,
-            note: note||null
+            note: note||null,
+            ...(payNow?{ pay_status:'pending' }:{})
         }).select('id').single();
         if(error) throw error;
         const allPlayerIds=[...new Set([...(bookForId?[bookForId]:[]), ...coPlayerIds])];
@@ -1865,12 +1930,21 @@ async function doBook(court,time,durMin,price){
             await sb.from('booking_players').insert(allPlayerIds.map(pid=>({ booking_id:ins.id, player_id:pid })));
         }
         const end=cbM2T(cbT2M(time)+durMin);
+        if(payNow && ins?.id){
+            // η ώρα κρατήθηκε· η κράτηση ολοκληρώνεται με την πληρωμή
+            if(await payCheckout(ins.id)) return;
+            await loadMine(); await loadDay(true); return;
+        }
         cbToast(`✓ Κράτηση ${time}–${end} (${uName})!`);
         const d=durations.find(x=>x.minutes===durMin)||{label:'',price};
         sendBookingEmail('book', { court, time, end, dur:d, name:uName, phone:uPhone, email:uEmail, date });
         await loadMine(); await loadDay(true);
         if(openSpots>0 && ins?.id){ await loadOpenMatches(); copyMatchLink(ins.id); }
-    }catch(e){ cbToast('Σφάλμα κράτησης','err'); }
+    }catch(e){
+        // η βάση αρνήθηκε: κάποιος άλλος έκλεισε την ίδια ώρα λίγο νωρίτερα
+        if(/SLOT_TAKEN/.test(e?.message||'')){ cbToast('Αυτή η ώρα μόλις κλείστηκε από άλλον — διάλεξε άλλη','err'); await loadDay(true); }
+        else cbToast('Σφάλμα κράτησης','err');
+    }
     finally{ cbLoading(false); _booking=false; }
 }
 
@@ -1901,11 +1975,12 @@ async function sendBookingEmail(type, b){
 }
 
 async function doCancel(id){
+    // πάρε τα στοιχεία πριν τη διαγραφή (για το email και την πληρωμή)
+    const { data:bk }=await sb.from('bookings').select('*').eq('id',id).maybeSingle();
+    if(bk && bk.pay_status) return doCancelPaid(bk);
     if(!confirm('Ακύρωση κράτησης;')) return;
     cbLoading(true);
     try{
-        // πάρε τα στοιχεία πριν τη διαγραφή (για το email)
-        const { data:bk }=await sb.from('bookings').select('*').eq('id',id).maybeSingle();
         const { error }=await sb.from('bookings').delete().eq('id',id);
         if(error) throw error;
         cbToast('Ακυρώθηκε');
@@ -1922,6 +1997,31 @@ async function doCancel(id){
         if(activeTab==='openmatches'){ await loadOpenMatches(); renderOpenMatches(); }
     }catch(e){ cbToast('Σφάλμα ακύρωσης','err'); }
     finally{ cbLoading(false); }
+}
+
+// κράτηση με online πληρωμή: η ακύρωση περνά από τον server (επιστροφή χρημάτων)
+async function doCancelPaid(bk){
+    const amt=bk.pay_amount!=null?bk.pay_amount+'€':'';
+    let msg='Ακύρωση κράτησης;';
+    if(bk.pay_status==='paid') msg = isOwner
+        ? `Ακύρωση κράτησης;\n\nΘα γίνει αυτόματη επιστροφή ${amt} στην κάρτα του πελάτη.`
+        : `Ακύρωση κράτησης;\n\nΑν ακυρώνεις έγκαιρα, τα ${amt} επιστρέφονται αυτόματα στην κάρτα σου.`;
+    if(!confirm(msg)) return;
+    cbLoading(true);
+    let r=await payCall({ action:'cancel', booking_id:bk.id });
+    if(r.error==='NO_REFUND'){
+        cbLoading(false);
+        const h=club.pay_refund_hours??24;
+        if(!confirm(`Η ακύρωση γίνεται λιγότερο από ${h} ώρες πριν, οπότε τα χρήματα δεν επιστρέφονται. Να ακυρωθεί έτσι κι αλλιώς;`)) return;
+        cbLoading(true);
+        r=await payCall({ action:'cancel', booking_id:bk.id, accept_no_refund:true });
+    }
+    cbLoading(false);
+    if(r.error) return cbToast(r.error==='JUST_PAID'?'Η πληρωμή μόλις ολοκληρώθηκε — δοκίμασε ξανά την ακύρωση':(_PAY_ERR[r.error]||'Σφάλμα ακύρωσης'),'err');
+    cbToast(r.refunded ? `Ακυρώθηκε — επιστροφή ${r.refunded}€ στην κάρτα` : 'Ακυρώθηκε');
+    await loadMine(); await loadDay(true);
+    if(activeTab==='admin') await loadAdmin();
+    if(activeTab==='mybookings') renderMine();
 }
 
 /* ══════════════ MY BOOKINGS ══════════════ */
@@ -1976,6 +2076,9 @@ function myCard(b,isPast){
         ${b.guest_players&&b.guest_players.length?`<p class="text-[11px] text-slate-400 mt-0.5">👥 + ${b.guest_players.join(', ')}</p>`:''}
         ${b.co_players&&b.co_players.length?`<p class="text-[11px] text-slate-500 mt-0.5">Παίζουν μαζί: ${b.co_players.join(', ')}</p>`:''}
         ${b.note?`<p class="text-[11px] text-slate-500 mt-1 italic">💬 ${cbEsc(b.note)}</p>`:''}
+        ${b.pay_status==='paid'?`<p class="text-[11px] text-green-700 font-bold mt-1">✓ Πληρώθηκε online${b.pay_amount!=null?' · '+b.pay_amount+'€':''}</p>`:''}
+        ${(!isPast&&b.pay_status==='pending')?`<p class="text-[11px] text-amber-700 font-bold mt-1">Αναμονή πληρωμής — η ώρα κρατιέται για λίγα λεπτά</p>
+            <button onclick="payBooking('${b.id}')" class="mt-1 text-[11px] text-white bg-brand px-2.5 py-1 rounded-lg font-semibold">Ολοκλήρωση πληρωμής</button>`:''}
         ${(!isPast&&b.open_spots>0)?`<p class="text-[11px] text-emerald-700 font-bold mt-1">Ανοιχτό ματς · ψάχνεις ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}</p>
             <div class="flex gap-2 mt-1">
                 <button onclick="copyMatchLink('${b.id}')" class="text-[11px] text-brand border border-brand/30 px-2 py-1 rounded-lg font-semibold hover:bg-blue-50">Αντιγραφή link</button>
@@ -2396,6 +2499,95 @@ async function exportExcel(){
 
 /* ══════════════ SETTINGS (owner) ══════════════ */
 /* ── Πακέτο ── */
+/* ══════════════ ONLINE ΠΛΗΡΩΜΕΣ (Stripe του club) ══════════════
+   Η κράτηση γίνεται «pending» και η ώρα κρατιέται ~30΄ όσο το μέλος
+   πληρώνει στη σελίδα του Stripe. Το ποσό το βγάζει ο server από τον
+   τιμοκατάλογο. Ό,τι δεν πληρωθεί, ελευθερώνεται μόνο του. */
+let pickerPayNow=true;
+function payActive(){ return !!(club && club.payments_enabled && club.pay_ready && ['optional','required'].includes(club.pay_mode)); }
+function payRequired(){ return payActive() && club.pay_mode==='required'; }
+const _PAY_ERR={ KEY_REJECTED:'Το Stripe δεν δέχτηκε το κλειδί — έλεγξε ότι αντέγραψες το Secret key', BAD_KEY:'Αυτό δεν μοιάζει με Secret key του Stripe (ξεκινά με sk_)',
+    NOT_ENABLED:'Οι online πληρωμές δεν είναι ενεργές στο πακέτο σου', EXPIRED:'Ο χρόνος για την πληρωμή έληξε — κάνε ξανά την κράτηση',
+    NO_PRICE:'Δεν βρέθηκε τιμή για αυτή τη διάρκεια', NOT_READY:'Οι online πληρωμές δεν είναι διαθέσιμες αυτή τη στιγμή', CLUB_PAUSED:'Ο σύλλογος είναι σε παύση' };
+async function payCall(body){
+    const { data, error }=await sb.functions.invoke('stripe-pay',{ body });
+    if(error){
+        let code='SERVER';
+        try{ code=(await error.context.json()).error||code; }catch(e){}
+        return { error:code };
+    }
+    return data||{};
+}
+async function payCheckout(id){
+    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const r=await payCall({ action:'checkout', booking_id:id, return_url:ret });
+    if(r.url){ location.href=r.url; return true; }
+    if(r.status==='paid'){ cbToast('✓ Η κράτηση έχει ήδη πληρωθεί'); return true; }
+    cbToast(_PAY_ERR[r.error]||'Η πληρωμή δεν ξεκίνησε — δοκίμασε ξανά','err');
+    return false;
+}
+async function payBooking(id){ cbLoading(true); try{ await payCheckout(id); } finally{ cbLoading(false); } }
+// επιστροφή από τη σελίδα του Stripe
+async function handlePayReturn(){
+    const q=new URLSearchParams(location.search), ok=q.get('pb'), back=q.get('pbx');
+    if(!ok && !back) return;
+    history.replaceState({},'',location.pathname+'?club='+club.slug);
+    if(back){
+        cbToast('Η πληρωμή δεν ολοκληρώθηκε — η ώρα κρατιέται για λίγα λεπτά. Ολοκλήρωσέ την από «Οι Κρατήσεις μου».','err');
+        switchTab('mybookings'); return;
+    }
+    cbLoading(true);
+    let st='pending';
+    for(let i=0;i<4 && st==='pending';i++){
+        const r=await payCall({ action:'confirm', booking_id:ok }); st=r.status||'pending';
+        if(st==='pending') await new Promise(res=>setTimeout(res,1500));
+    }
+    cbLoading(false);
+    await loadMine(); await loadDay(true);
+    if(st==='paid') cbToast('✓ Η πληρωμή ολοκληρώθηκε — η κράτηση είναι δική σου!');
+    else cbToast('Η πληρωμή επεξεργάζεται — θα επιβεβαιωθεί σε λίγα λεπτά');
+    switchTab('mybookings');
+}
+function renderPayCard(){
+    const card=document.getElementById('payCard'); if(!card) return;
+    if(!isOwner || !club.payments_enabled){ card.classList.add('hidden'); return; }
+    card.classList.remove('hidden');
+    const badge=document.getElementById('payBadge');
+    const ready=!!club.pay_ready;
+    badge.textContent = !ready ? 'Δεν έχει συνδεθεί' : club.pay_test ? 'Δοκιμαστικό (test)' : (club.pay_mode==='off' ? 'Ανενεργό' : 'Ενεργό');
+    badge.className='flex-shrink-0 text-[10px] font-bold px-2 py-1 rounded-full '+(!ready?'bg-slate-100 text-slate-500':club.pay_test?'bg-amber-100 text-amber-700':club.pay_mode==='off'?'bg-slate-100 text-slate-500':'bg-green-100 text-green-700');
+    document.getElementById('payConnectBox').classList.toggle('hidden', ready);
+    document.getElementById('payReadyBox').classList.toggle('hidden', !ready);
+    if(ready){
+        document.getElementById('payMode').value=club.pay_mode||'optional';
+        document.getElementById('payRefund').value=String(club.pay_refund_hours??24);
+    }
+}
+async function payConnect(){
+    const key=document.getElementById('payKey').value.trim();
+    if(!key) return cbToast('Επικόλλησε το Secret key από το Stripe','err');
+    cbLoading(true);
+    const r=await payCall({ action:'connect', club_id:club.id, key });
+    cbLoading(false);
+    if(r.error) return cbToast(_PAY_ERR[r.error]||'Η σύνδεση απέτυχε','err');
+    document.getElementById('payKey').value='';
+    await reloadClubData(); renderPayCard();
+    cbToast(r.test ? '✓ Συνδέθηκε σε δοκιμαστική λειτουργία (test)' : '✓ Συνδέθηκε'+(r.name?' — '+r.name:''));
+}
+async function paySaveSettings(){
+    const { error }=await sb.from('clubs').update({ pay_mode:document.getElementById('payMode').value, pay_refund_hours:parseInt(document.getElementById('payRefund').value) }).eq('id',club.id);
+    if(error) return cbToast('Σφάλμα αποθήκευσης','err');
+    await reloadClubData(); renderPayCard(); cbToast('✓ Αποθηκεύτηκε');
+}
+async function payDisconnect(){
+    if(!confirm('Αποσύνδεση από το Stripe; Οι νέες κρατήσεις θα πληρώνονται μόνο στο γήπεδο. Όσες έχουν ήδη πληρωθεί δεν επηρεάζονται.')) return;
+    cbLoading(true);
+    const r=await payCall({ action:'disconnect', club_id:club.id });
+    cbLoading(false);
+    if(r.error) return cbToast('Σφάλμα','err');
+    await reloadClubData(); renderPayCard(); cbToast('Αποσυνδέθηκε');
+}
+
 function renderPlanCard(){
     const card=document.getElementById('planCard'); if(!card) return;
     if(!isOwner || !('plan_tier' in club)){ card.classList.add('hidden'); return; }
@@ -2414,7 +2606,8 @@ function renderPlanCard(){
       + line('Κρατήσεις γηπέδων', '', A.bookings, p.on.bookings)
       + line('Κωδικοί προπονητών', '', A.coaches, p.on.coaches)
       + line('Συνδρομές μελών', '', A.subscriptions, p.on.subscriptions)
-      + line('Τουρνουά', `ή ${CB_PLANS.tournamentsYearly}€ τον χρόνο`, A.tournaments, p.on.tournaments);
+      + line('Τουρνουά', `ή ${CB_PLANS.tournamentsYearly}€ τον χρόνο`, A.tournaments, p.on.tournaments)
+      + line('Online πληρωμές', 'Τα μέλη πληρώνουν την κράτηση με κάρτα', A.payments, p.on.payments);
     document.getElementById('planUpgrade').href='mailto:info@court-book.gr?subject='+encodeURIComponent('Αλλαγή πακέτου — '+club.name);
 }
 // όριο γηπέδων του πακέτου: κλειδώνει το «+ Προσθήκη γηπέδου»
@@ -2447,7 +2640,7 @@ document.addEventListener('keydown', e=>{ if(e.key==='Escape') closeUserMenu(); 
 
 function renderSettings(){
     if(!isOwner) return;
-    renderPlanCard();
+    renderPlanCard(); renderPayCard();
     document.getElementById('setName').value  = club.name || '';
     document.getElementById('setLogo').value  = club.logo_url || '';
     document.getElementById('setEmail').value = club.email || '';
