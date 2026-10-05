@@ -453,6 +453,7 @@ hr,.border-t,.border-b{border-color:var(--line)}
             <button id="myScheduleTabBtn" data-tab="myschedule" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17M8 14h3M8 17h6"/></svg>Το πρόγραμμά μου</button>
             <button id="attendanceTabBtn" data-tab="attendance" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.2l2.8 2.8L16.5 9"/></svg>Παρουσίες</button>
             <button id="trainingTabBtn" data-tab="training" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20l6-6"/><ellipse cx="14.5" cy="9.5" rx="5" ry="6" transform="rotate(45 14.5 9.5)"/><circle cx="6" cy="6" r="1.6"/></svg>Προπονήσεις</button>
+            <button id="clinicsTabBtn" data-tab="clinics" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">Clinics</button>
             <button id="tournamentsTabBtn" data-tab="tournaments" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 4h8v5a4 4 0 0 1-8 0zM8 6H5a3 3 0 0 0 3 4M16 6h3a3 3 0 0 1-3 4M12 13v4M8.5 20.5h7M10 17h4l.5 3.5h-5z"/></svg>Τουρνουά</button>
             <button id="settingsTabBtn" data-tab="settings" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 0 0 .3 1.8l.1.1a2 2 0 1 1-2.8 2.8l-.1-.1a1.7 1.7 0 0 0-1.8-.3 1.7 1.7 0 0 0-1 1.5V21a2 2 0 1 1-4 0v-.1a1.7 1.7 0 0 0-1.1-1.5 1.7 1.7 0 0 0-1.8.3l-.1.1a2 2 0 1 1-2.8-2.8l.1-.1a1.7 1.7 0 0 0 .3-1.8 1.7 1.7 0 0 0-1.5-1H3a2 2 0 1 1 0-4h.1a1.7 1.7 0 0 0 1.5-1.1 1.7 1.7 0 0 0-.3-1.8l-.1-.1a2 2 0 1 1 2.8-2.8l.1.1a1.7 1.7 0 0 0 1.8.3H9a1.7 1.7 0 0 0 1-1.5V3a2 2 0 1 1 4 0v.1a1.7 1.7 0 0 0 1 1.5 1.7 1.7 0 0 0 1.8-.3l.1-.1a2 2 0 1 1 2.8 2.8l-.1.1a1.7 1.7 0 0 0-.3 1.8V9a1.7 1.7 0 0 0 1.5 1H21a2 2 0 1 1 0 4h-.1a1.7 1.7 0 0 0-1.5 1z"/></svg>Ρυθμίσεις</button>
         </div>
@@ -728,6 +729,18 @@ hr,.border-t,.border-b{border-color:var(--line)}
 
     <!-- SETTINGS -->
     <!-- ══════════ ΤΟΥΡΝΟΥΑ ══════════ -->
+    <div id="tab-clinics" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between mb-1">
+                <p class="font-bold">Clinics</p>
+                <button id="addClinicBtn" onclick="openClinicForm()" class="text-brand text-sm font-semibold hidden">+ Νέο clinic</button>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-4">Ανοιχτές προπονήσεις με περιορισμένες θέσεις. Κλείνεις θέση από εδώ — ή από το link που σου έστειλε ο σύλλογος.</p>
+            <div id="clinicForm" class="hidden mb-4"></div>
+            <div id="clinicList" class="space-y-3"></div>
+        </div>
+    </div>
+
     <div id="tab-tournaments" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-1">
@@ -794,6 +807,14 @@ hr,.border-t,.border-b{border-color:var(--line)}
                         <option value="48">Έως 48 ώρες πριν</option>
                     </select>
                     <p class="text-[10px] text-slate-400 mt-1">Όταν ακυρώνει η γραμματεία, τα χρήματα επιστρέφονται πάντα.</p>
+                </div>
+                <div id="payClinicBox" class="hidden">
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Πληρωμή θέσης στα Clinics</label>
+                    <select id="payClinic" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                        <option value="required">Υποχρεωτικά online — η θέση κρατιέται μόνο με πληρωμή</option>
+                        <option value="optional">Επιλογή του μέλους — online ή στο γήπεδο</option>
+                        <option value="off">Στο γήπεδο</option>
+                    </select>
                 </div>
                 <div id="paySubsBox" class="hidden p-3 bg-slate-50 rounded-xl">
                     <label class="flex items-center gap-2 cursor-pointer">
@@ -936,6 +957,7 @@ let _tOpen=new Set();   // ποια τουρνουά/κατηγορίες είν
 // προπονητές με δικό τους κωδικό. Ξεκινά κλειστό.
 let coachesOn=false;
 let isCoach=false, myCoach=null, coaches=[];
+let clinicsOn=false, clinicsData=[], clinicEntries=[];
 let activeTab='booking', pickerSlot=null, dayData=[], myBookings=[], _refresh=null, _busy=false;
 
 /* ══════════════ ΓΛΩΣΣΑ (EL · EN · DE) ══════════════
@@ -1033,6 +1055,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     coachesOn  = club.coaches_enabled === undefined ? !bookingsOn
                                                    : club.coaches_enabled === true;
     tournamentsOn = club.tournaments_enabled === true;
+    clinicsOn = club.clinics_enabled === true;
 
     const [cRes, dRes, eRes] = await Promise.all([
         sb.from('courts').select('*').eq('club_id', club.id).order('sort_order'),
@@ -1468,6 +1491,10 @@ async function enterApp(){
         await loadMyPlayer();
         await loadTournaments();
     }
+    if(clinicsOn){
+        document.getElementById('clinicsTabBtn').classList.remove('hidden');
+        if(isOwner) document.getElementById('addClinicBtn').classList.remove('hidden');
+    }
     applyClubMode();
     if(subsOn && isOwner) loadSubPlans();
     if(subsOn && isOwner){
@@ -1496,6 +1523,7 @@ async function enterApp(){
     await loadOpenMatches();
     await handleJoinParam();      // αν άνοιξε με ?join=<id>
     await handlePayReturn();      // επιστροφή από τη σελίδα πληρωμής (?pb= / ?pbx=)
+    await handleClinicParam();    // ?clinic=<id> (link από WhatsApp) / ?pc=<θέση> (επιστροφή από πληρωμή)
     startRefresh();
 }
 
@@ -1562,6 +1590,7 @@ function switchTab(tab){
     if(tab==='myschedule') renderMySchedule();
     if(tab==='attendance') renderCoachAttendance();
     if(tab==='tournaments') renderTournaments();
+    if(tab==='clinics') renderClinics();
     if(tab==='settings') renderSettings();
 }
 
@@ -1594,7 +1623,9 @@ async function loadDay(silent){
         // έκτακτες προπονήσεις & ιδιαίτερα μαθήματα μόνο γι' αυτή την ημερομηνία
         trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>{
             const oCoach=o.coach||o.training_groups?.coach||'';
-            const label = o.client_name
+            const label = o.clinic_id
+                ? 'Clinic: '+o.client_name+(o.coach?(' / '+o.coach):'')
+                : o.client_name
                 ? 'Ιδιαίτερο: '+o.client_name+(o.coach?(' / '+o.coach):'')
                 : (o.training_groups?.name||'Προπόνηση')+(oCoach?(' · '+oCoach):'')+(o.makeup_for?' (αναπλήρωση)':' (έκτακτη)');
             dayData.push({ court_id:o.court_id, start_time:o.start_time, duration_min:o.duration_min, mine:false, training:true, group_name:label, override_id:o.id });
@@ -2794,6 +2825,8 @@ function renderPayCard(){
         document.getElementById('payMode').value=club.pay_mode||'optional';
         document.getElementById('payRefund').value=String(club.pay_refund_hours??24);
         document.getElementById('paySubsBox').classList.toggle('hidden', !subsOn);
+        document.getElementById('payClinicBox').classList.toggle('hidden', !clinicsOn);
+        document.getElementById('payClinic').value=club.clinic_pay||'required';
         document.getElementById('paySubs').checked=!!club.pay_subs;
         document.getElementById('paySubFee').value=club.sub_fee!=null?club.sub_fee:'';
         const spBox=document.getElementById('subPlanRows');
@@ -2813,6 +2846,7 @@ async function payConnect(){
 }
 async function paySaveSettings(){
     const upd={ pay_mode:document.getElementById('payMode').value, pay_refund_hours:parseInt(document.getElementById('payRefund').value) };
+    if(clinicsOn) upd.clinic_pay=document.getElementById('payClinic').value;
     if(subsOn){
         const fee=parseFloat(document.getElementById('paySubFee').value);
         upd.pay_subs=document.getElementById('paySubs').checked;
@@ -2832,6 +2866,218 @@ async function payDisconnect(){
     cbLoading(false);
     if(r.error) return cbToast('Σφάλμα','err');
     await reloadClubData(); renderPayCard(); cbToast('Αποσυνδέθηκε');
+}
+
+/* ══════════════ CLINICS ══════════════
+   Ανοιχτές προπονήσεις: η γραμματεία ορίζει προπονητή, ώρα, γήπεδο, θέσεις
+   και τιμή· το μέλος κλείνει θέση (και πληρώνει, αν το θέλει ο σύλλογος).
+   Οι θέσεις μετριούνται στη βάση (join_clinic) — δεν γεμίζει παραπάνω. */
+const _CL_ERR={ FULL:'Το clinic γέμισε', ALREADY:'Έχεις ήδη θέση', PAST:'Το clinic έχει ήδη ξεκινήσει',
+    NOT_MEMBER:'Πρέπει πρώτα να γραφτείς στο club', NOT_OPEN:'Το clinic δεν είναι διαθέσιμο', AUTH:'Κάνε πρώτα είσοδο', CLUB_PAUSED:'Ο σύλλογος είναι σε παύση' };
+const clinicLink=id=>location.origin+location.pathname+'?club='+encodeURIComponent(club.slug)+'&clinic='+id;
+function clinicPayOn(){ return !!(club.payments_enabled && club.pay_ready && (club.clinic_pay||'required')!=='off'); }
+async function loadClinics(){
+    const { data }=await sb.rpc('list_clinics',{ p_club_id:club.id });
+    clinicsData=data||[];
+    clinicEntries=[];
+    if((isOwner||isCoach) && clinicsData.length){
+        const { data:en }=await sb.from('clinic_entries').select('*').in('clinic_id',clinicsData.map(c=>c.id)).neq('status','cancelled').order('created_at');
+        clinicEntries=(en||[]).filter(e=>e.status==='confirmed' || (e.pay_until && new Date(e.pay_until)>new Date()));
+    }
+}
+async function renderClinics(){
+    const box=document.getElementById('clinicList'); if(!box) return;
+    if(!clinicsData.length) box.innerHTML='<p class="text-slate-400 text-sm">Φόρτωση…</p>';
+    await loadClinics();
+    if(!clinicsData.length){ box.innerHTML=`<p class="text-slate-400 text-sm py-3 text-center">${isOwner?'Δεν έχεις δημοσιεύσει clinic ακόμα — πάτα «+ Νέο clinic».':'Δεν υπάρχουν clinics αυτή τη στιγμή.'}</p>`; return; }
+    const now=new Date();
+    // ακυρωμένα: τα βλέπει η γραμματεία και όποιος είχε θέση — όχι όλα τα μέλη
+    const shown=clinicsData.filter(c=>c.status!=='cancelled' || isOwner || c.my_entry);
+    if(!shown.length){ box.innerHTML='<p class="text-slate-400 text-sm py-3 text-center">Δεν υπάρχουν clinics αυτή τη στιγμή.</p>'; return; }
+    box.innerHTML=shown.map(c=>{
+        const end=cbM2T(cbT2M(c.start_time)+c.duration_min);
+        const past=new Date(c.the_date+'T'+c.start_time+':00')<now;
+        const full=c.taken>=c.capacity, cancelled=c.status==='cancelled';
+        const pct=Math.min(100,Math.round(c.taken/c.capacity*100));
+        let action='';
+        if(cancelled) action=`<span class="text-xs font-bold text-red-500">Ακυρώθηκε</span>`;
+        else if(c.my_entry){
+            action = c.my_status==='pending'
+                ? `<button onclick="clinicPay('${c.my_entry}')" class="px-3 py-2 bg-brand text-white rounded-xl text-xs font-bold">Ολοκλήρωση πληρωμής</button>
+                   <button onclick="leaveClinic('${c.id}')" class="px-3 py-2 text-red-500 border border-red-200 rounded-xl text-xs font-semibold">Ακύρωση</button>`
+                : `<span class="text-xs font-bold text-green-700">✓ Έχεις θέση${c.my_pay==='paid'?' · πληρώθηκε online':''}</span>
+                   ${past?'':`<button onclick="leaveClinic('${c.id}')" class="px-3 py-2 text-red-500 border border-red-200 rounded-xl text-xs font-semibold">Ακύρωση</button>`}`;
+        }
+        else if(past) action=`<span class="text-xs text-slate-400">Ολοκληρώθηκε</span>`;
+        else if(full) action=`<span class="text-xs font-bold text-slate-500">Πλήρες</span>`;
+        else if(!isOwner && !isCoach) action=`<button onclick="joinClinic('${c.id}')" class="px-4 py-2 bg-brand text-white rounded-xl text-sm font-bold">Κράτηση θέσης${Number(c.price)>0?' · '+c.price+'€':''}</button>`;
+        const people=(isOwner||isCoach)?clinicEntries.filter(e=>e.clinic_id===c.id):[];
+        const peopleHtml=(isOwner||isCoach)?`<div class="mt-3 pt-3 border-t border-slate-100">
+            <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Συμμετέχοντες (${people.length}/${c.capacity})</p>
+            ${people.length?people.map(e=>`<div class="flex items-center justify-between gap-2 py-1 text-xs">
+                <span class="truncate">${cbEsc(e.name)}${e.phone?` · <a href="tel:${cbEsc(e.phone)}" class="text-brand">${cbEsc(e.phone)}</a>`:''}</span>
+                <span class="flex-shrink-0 text-[10px] font-bold ${e.pay_status==='paid'?'text-green-700':e.status==='pending'?'text-amber-700':'text-slate-400'}">${e.pay_status==='paid'?'✓ Πληρώθηκε':e.status==='pending'?'Πληρώνει τώρα':'Στο γήπεδο'}</span>
+                ${isOwner?`<button onclick="removeClinicEntry('${e.id}')" class="text-red-400 text-[11px] flex-shrink-0">✕</button>`:''}</div>`).join('')
+              :'<p class="text-[11px] text-slate-400">Κανείς ακόμα</p>'}
+            ${isOwner&&!cancelled&&!past?`<button onclick="cancelClinic('${c.id}')" class="mt-2 text-[11px] text-red-500 font-semibold">Ακύρωση clinic${people.some(e=>e.pay_status==='paid')?' (επιστροφή χρημάτων σε όλους)':''}</button>`:''}
+        </div>`:'';
+        return `<div id="clinic-${c.id}" class="border border-slate-200 rounded-2xl p-4 ${cancelled||past?'opacity-60':''}">
+            <div class="flex items-start justify-between gap-3">
+                <div class="min-w-0">
+                    <p class="font-bold">${cbEsc(c.title)}${c.level?` <span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full align-middle">${cbEsc(c.level)}</span>`:''}</p>
+                    <p class="text-xs text-slate-500 mt-0.5">${cbFmtDate(c.the_date)} · ${c.start_time}–${end}${c.court_name?' · '+cbEsc(c.court_name):''}</p>
+                    ${c.coach?`<p class="text-xs text-slate-500">Προπονητής: ${cbEsc(c.coach)}</p>`:''}
+                    ${c.note?`<p class="text-[11px] text-slate-500 mt-1 italic">${cbEsc(c.note)}</p>`:''}
+                </div>
+                <p class="text-right flex-shrink-0"><span class="text-lg font-extrabold">${Number(c.price)>0?c.price+'€':'Δωρεάν'}</span><br><span class="text-[10px] text-slate-400">ανά άτομο</span></p>
+            </div>
+            <div class="mt-3"><div class="h-1.5 bg-slate-100 rounded-full overflow-hidden"><div class="h-full ${full?'bg-amber-500':'bg-brand'}" style="width:${pct}%"></div></div>
+                <p class="text-[11px] text-slate-500 mt-1">${c.taken}/${c.capacity} θέσεις${full?' · πλήρες':' · '+(c.capacity-c.taken)+' ελεύθερες'}</p></div>
+            <div class="flex flex-wrap items-center gap-2 mt-3">${action}
+                ${cancelled?'':`<button onclick="copyClinicLink('${c.id}')" class="ml-auto px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold">Αντιγραφή link</button>`}</div>
+            ${peopleHtml}
+        </div>`;
+    }).join('');
+}
+function copyClinicLink(id){
+    const c=clinicsData.find(x=>x.id===id); const url=clinicLink(id);
+    const text=c?`${c.title} · ${cbFmtDate(c.the_date)} ${c.start_time}${c.coach?' · '+c.coach:''}\n${url}`:url;
+    try{ navigator.clipboard.writeText(text); cbToast('Το link αντιγράφηκε — επικόλλησέ το στο WhatsApp'); }
+    catch(e){ prompt('Αντέγραψε το link:', url); }
+}
+async function joinClinic(id){
+    const c=clinicsData.find(x=>x.id===id); if(!c) return;
+    let wantPay=false;
+    if(Number(c.price)>0 && clinicPayOn() && club.clinic_pay==='optional')
+        wantPay=confirm(`Θέση στο «${c.title}» · ${c.price}€\n\nΠληρωμή τώρα με κάρτα;\n(Άκυρο = πληρώνεις στο γήπεδο)`);
+    cbLoading(true);
+    const { data, error }=await sb.rpc('join_clinic',{ p_clinic:id, p_pay:wantPay });
+    if(error || !data || data.error){ cbLoading(false); cbToast(_CL_ERR[data&&data.error]||'Δεν έγινε η κράτηση θέσης','err'); return renderClinics(); }
+    if(data.pay){ const ok=await clinicPay(data.entry, true); if(ok) return; }
+    cbLoading(false);
+    cbToast('✓ Έκλεισες θέση στο «'+c.title+'»');
+    renderClinics();
+}
+async function clinicPay(entryId, keepLoading){
+    if(!keepLoading) cbLoading(true);
+    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const r=await payCall({ action:'clinic_checkout', entry_id:entryId, return_url:ret });
+    if(r.url){ location.href=r.url; return true; }
+    cbLoading(false);
+    if(r.status==='paid'){ cbToast('✓ Έχει ήδη πληρωθεί'); renderClinics(); return true; }
+    cbToast(_PAY_ERR[r.error]||'Η πληρωμή δεν ξεκίνησε — δοκίμασε ξανά','err');
+    renderClinics(); return false;
+}
+async function leaveClinic(id){
+    const c=clinicsData.find(x=>x.id===id); if(!c) return;
+    if(c.my_pay==='paid' || c.my_status==='pending'){
+        if(!confirm(c.my_pay==='paid'?`Ακύρωση της θέσης σου;\n\nΑν ακυρώνεις έγκαιρα, τα ${c.price}€ επιστρέφονται αυτόματα στην κάρτα σου.`:'Ακύρωση της θέσης σου;')) return;
+        cbLoading(true);
+        let r=await payCall({ action:'clinic_cancel', entry_id:c.my_entry });
+        if(r.error==='NO_REFUND'){
+            cbLoading(false);
+            if(!confirm(`Η ακύρωση γίνεται λιγότερο από ${club.pay_refund_hours??24} ώρες πριν, οπότε τα χρήματα δεν επιστρέφονται. Να ακυρωθεί έτσι κι αλλιώς;`)) return;
+            cbLoading(true); r=await payCall({ action:'clinic_cancel', entry_id:c.my_entry, accept_no_refund:true });
+        }
+        cbLoading(false);
+        if(r.error) return cbToast(_PAY_ERR[r.error]||'Σφάλμα ακύρωσης','err');
+        cbToast(r.refunded?`Ακυρώθηκε — επιστροφή ${r.refunded}€ στην κάρτα`:'Ακυρώθηκε');
+        return renderClinics();
+    }
+    if(!confirm('Ακύρωση της θέσης σου;')) return;
+    const { data }=await sb.rpc('leave_clinic',{ p_clinic:id });
+    cbToast(data==='ok'?'Ακυρώθηκε':'Σφάλμα', data==='ok'?'ok':'err');
+    renderClinics();
+}
+async function removeClinicEntry(entryId){
+    const e=clinicEntries.find(x=>x.id===entryId); if(!e) return;
+    if(e.pay_status==='paid' || e.status==='pending'){
+        if(!confirm(`Αφαίρεση του/της ${e.name};${e.pay_status==='paid'?`\n\nΘα γίνει επιστροφή ${e.pay_amount}€ στην κάρτα του.`:''}`)) return;
+        cbLoading(true); const r=await payCall({ action:'clinic_cancel', entry_id:entryId }); cbLoading(false);
+        if(r.error) return cbToast(_PAY_ERR[r.error]||'Σφάλμα','err');
+    } else {
+        if(!confirm(`Αφαίρεση του/της ${e.name};`)) return;
+        const { error }=await sb.from('clinic_entries').update({ status:'cancelled' }).eq('id',entryId);
+        if(error) return cbToast('Σφάλμα','err');
+    }
+    cbToast('Αφαιρέθηκε'); renderClinics();
+}
+async function cancelClinic(id){
+    const c=clinicsData.find(x=>x.id===id); if(!c) return;
+    const n=clinicEntries.filter(e=>e.clinic_id===id).length;
+    if(!confirm(`Ακύρωση του «${c.title}» (${cbFmtDate(c.the_date)} ${c.start_time});\n\n${n?n+' άτομα θα χάσουν τη θέση τους· όσοι πλήρωσαν παίρνουν αυτόματα πίσω τα χρήματα. ':''}Το γήπεδο ελευθερώνεται.`)) return;
+    cbLoading(true);
+    const r=await payCall({ action:'clinic_cancel_all', clinic_id:id });
+    cbLoading(false);
+    if(r.error) return cbToast('Σφάλμα ακύρωσης','err');
+    cbToast(r.refunded?`Ακυρώθηκε — επιστροφή ${r.refunded}€ συνολικά`:'Το clinic ακυρώθηκε');
+    await loadTrainingSchedule(); renderClinics();
+}
+function openClinicForm(){
+    const f=document.getElementById('clinicForm');
+    if(!f.classList.contains('hidden')){ f.classList.add('hidden'); return; }
+    const timeOpts=trainingTimeOptions().map(x=>`<option value="${x}">${x}</option>`).join('');
+    const courtOpts=courts.map(c=>`<option value="${c.id}">${cbEsc(c.name)}</option>`).join('');
+    const coachField=(coachesOn&&coaches.length)
+        ? `<select id="clCoach" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"><option value="">— χωρίς —</option>${coaches.map(c=>`<option value="${c.id}">${cbEsc(c.name)}</option>`).join('')}</select>`
+        : `<input id="clCoachName" placeholder="Όνομα προπονητή" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">`;
+    const inp='w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm', lbl='text-[10px] font-semibold text-slate-400 uppercase block mb-1';
+    f.innerHTML=`<div class="border-2 border-brand rounded-2xl p-4 space-y-3">
+        <div><label class="${lbl}">Τίτλος</label><input id="clTitle" class="${inp}" placeholder="π.χ. Advanced Clinic, Ladies Morning, Kids Camp"></div>
+        <div class="grid grid-cols-2 gap-3">
+            <div><label class="${lbl}">Επίπεδο</label><input id="clLevel" list="clLevels" class="${inp}" placeholder="π.χ. Advanced"><datalist id="clLevels"><option value="Beginner"><option value="Intermediate"><option value="Advanced"><option value="Όλα τα επίπεδα"></datalist></div>
+            <div><label class="${lbl}">Προπονητής</label>${coachField}</div>
+            <div><label class="${lbl}">Ημερομηνία</label><input id="clDate" type="date" min="${cbToday()}" class="${inp}"></div>
+            <div><label class="${lbl}">Ώρα</label><select id="clTime" class="${inp} bg-white">${timeOpts}</select></div>
+            <div><label class="${lbl}">Διάρκεια</label><select id="clDur" class="${inp} bg-white"><option value="60">1 ώρα</option><option value="90">1½ ώρα</option><option value="120">2 ώρες</option><option value="180">3 ώρες</option></select></div>
+            <div><label class="${lbl}">Γήπεδο</label><select id="clCourt" class="${inp} bg-white">${courtOpts}</select></div>
+            <div><label class="${lbl}">Θέσεις</label><input id="clCap" type="number" min="1" max="100" value="4" class="${inp}"></div>
+            <div><label class="${lbl}">Τιμή ανά άτομο (€)</label><input id="clPrice" type="number" min="0" step="0.5" value="20" class="${inp}"></div>
+        </div>
+        <div><label class="${lbl}">Σημείωση (προαιρετικό)</label><input id="clNote" class="${inp}" placeholder="π.χ. Φέρτε δική σας ρακέτα· μπαλάκια από το club"></div>
+        <div class="flex gap-2"><button onclick="document.getElementById('clinicForm').classList.add('hidden')" class="px-4 py-2.5 rounded-xl text-sm font-bold bg-slate-100 text-slate-600">Άκυρο</button>
+            <button onclick="saveClinic()" class="flex-1 py-2.5 bg-brand text-white rounded-xl text-sm font-bold">Δημοσίευση</button></div>
+    </div>`;
+    f.classList.remove('hidden');
+    document.getElementById('clTitle').focus();
+}
+async function saveClinic(){
+    const v=id=>(document.getElementById(id)?.value||'').trim();
+    const title=v('clTitle'), the_date=v('clDate'), start_time=v('clTime'), court_id=v('clCourt');
+    const duration_min=parseInt(v('clDur'))||60, capacity=parseInt(v('clCap')), price=parseFloat(v('clPrice')||'0');
+    if(!title) return cbToast('Βάλε τίτλο','err');
+    if(!the_date||!start_time||!court_id) return cbToast('Συμπλήρωσε ημερομηνία, ώρα και γήπεδο','err');
+    if(!(capacity>=1)) return cbToast('Οι θέσεις πρέπει να είναι τουλάχιστον 1','err');
+    if(isNaN(price)||price<0) return cbToast('Μη έγκυρη τιμή','err');
+    let coach=v('clCoachName')||null, coach_id=null;
+    const cs=document.getElementById('clCoach');
+    if(cs && cs.value){ coach_id=cs.value; coach=(coaches.find(c=>c.id===coach_id)||{}).name||null; }
+    if(!await confirmFreeCourt(court_id, the_date, start_time, duration_min)) return;
+    cbLoading(true);
+    const { data:c, error }=await sb.from('clinics').insert({ club_id:club.id, title, level:v('clLevel')||null, coach, coach_id, court_id,
+        the_date, start_time, duration_min, capacity, price, note:v('clNote')||null }).select().single();
+    if(error){ cbLoading(false); return cbToast('Δεν δημοσιεύτηκε','err'); }
+    // το γήπεδο κλείνει για την ώρα του clinic
+    await sb.from('training_overrides').insert({ club_id:club.id, court_id, the_date, start_time, duration_min, kind:'extra', coach, client_name:title, clinic_id:c.id });
+    cbLoading(false);
+    document.getElementById('clinicForm').classList.add('hidden');
+    cbToast('✓ Δημοσιεύτηκε — στείλε το link στο WhatsApp');
+    await loadTrainingSchedule(); renderClinics();
+}
+// ?clinic=<id>: άνοιξε την καρτέλα και δείξε το clinic · ?pc=<θέση>: επιστροφή από πληρωμή
+async function handleClinicParam(){
+    if(!clinicsOn) return;
+    const q=new URLSearchParams(location.search), cid=q.get('clinic'), pc=q.get('pc');
+    if(!cid && !pc) return;
+    history.replaceState({},'',location.pathname+'?club='+club.slug);
+    if(pc){
+        cbLoading(true); let st='pending';
+        for(let i=0;i<4 && st==='pending';i++){ const r=await payCall({ action:'clinic_confirm', entry_id:pc }); st=r.status||'pending'; if(st==='pending') await new Promise(res=>setTimeout(res,1500)); }
+        cbLoading(false);
+        cbToast(st==='paid'?'✓ Η πληρωμή ολοκληρώθηκε — η θέση είναι δική σου!':'Η πληρωμή επεξεργάζεται — θα επιβεβαιωθεί σε λίγα λεπτά');
+    }
+    switchTab('clinics');
+    if(cid) setTimeout(()=>{ const el=document.getElementById('clinic-'+cid); if(el){ el.scrollIntoView({block:'center'}); el.classList.add('ring-2','ring-brand'); } }, 700);
 }
 
 /* ══════════════ ΠΑΚΕΤΑ ΣΥΝΔΡΟΜΗΣ ══════════════
@@ -2911,7 +3157,8 @@ function renderPlanCard(){
       + line('Κωδικοί προπονητών', '', A.coaches, p.on.coaches)
       + line('Συνδρομές μελών', '', A.subscriptions, p.on.subscriptions)
       + line('Τουρνουά', `ή ${CB_PLANS.tournamentsYearly}€ τον χρόνο`, A.tournaments, p.on.tournaments)
-      + line('Online πληρωμές', 'Τα μέλη πληρώνουν την κράτηση με κάρτα', A.payments, p.on.payments);
+      + line('Online πληρωμές', 'Τα μέλη πληρώνουν την κράτηση με κάρτα', A.payments, p.on.payments)
+      + line('Clinics', 'Ανοιχτές προπονήσεις με θέσεις και πληρωμή', A.clinics, p.on.clinics);
     document.getElementById('planUpgrade').href='mailto:info@court-book.gr?subject='+encodeURIComponent('Αλλαγή πακέτου — '+club.name);
 }
 // όριο γηπέδων του πακέτου: κλειδώνει το «+ Προσθήκη γηπέδου»
