@@ -795,6 +795,15 @@ hr,.border-t,.border-b{border-color:var(--line)}
                     </select>
                     <p class="text-[10px] text-slate-400 mt-1">Όταν ακυρώνει η γραμματεία, τα χρήματα επιστρέφονται πάντα.</p>
                 </div>
+                <div id="paySubsBox" class="hidden p-3 bg-slate-50 rounded-xl">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" id="paySubs" class="w-4 h-4 accent-blue-600">
+                        <span class="text-sm font-semibold">Πληρωμή συνδρομής online</span>
+                    </label>
+                    <p class="text-[10px] text-slate-400 mt-1 mb-2">Το μέλος πληρώνει τον μήνα από «Οι προπονήσεις μου» και σημειώνεται αυτόματα «Πληρωμένη».</p>
+                    <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Ποσό συνδρομής ανά μήνα (€)</label>
+                    <input id="paySubFee" type="number" min="1" step="0.5" placeholder="π.χ. 40" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+                </div>
                 <button onclick="paySaveSettings()" class="w-full py-2.5 bg-brand text-white rounded-xl text-sm font-bold">Αποθήκευση</button>
                 <button onclick="payDisconnect()" class="w-full py-2 text-xs text-red-500 font-semibold">Αποσύνδεση από το Stripe</button>
             </div>
@@ -1545,7 +1554,7 @@ async function loadDay(silent){
         if(isOwner){
             const { data } = await sb.from('bookings').select('*').eq('club_id',club.id).eq('booking_date',date);
             dayData=(data||[]).filter(b=>!(b.pay_status==='pending' && b.pay_until && new Date(b.pay_until)<new Date()))
-                .map(b=>({ id:b.id, court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.user_id===me.id, name:b.user_name, phone:b.user_phone, pay_status:b.pay_status }));
+                .map(b=>({ id:b.id, court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.user_id===me.id, name:b.user_name, phone:b.user_phone, pay_status:b.pay_status, extras:b.extras }));
         } else {
             const { data } = await sb.rpc('get_availability',{ p_club_id:club.id, p_date:date });
             dayData=(data||[]).map(b=>({ court_id:b.court_id, start_time:b.start_time, duration_min:b.duration_min, mine:b.mine }));
@@ -1584,8 +1593,8 @@ async function loadMine(){
         open_spots:b.open_spots||0, co_players:b.co_players||[], note:b.note||''
     }));
     if(myBookings.length){
-        const { data:pays }=await sb.from('bookings').select('id,pay_status,pay_amount,pay_until').in('id',myBookings.map(b=>b.id)).not('pay_status','is',null);
-        (pays||[]).forEach(p=>{ const b=myBookings.find(x=>x.id===p.id); if(b){ b.pay_status=p.pay_status; b.pay_amount=p.pay_amount; b.pay_until=p.pay_until; } });
+        const { data:pays }=await sb.from('bookings').select('id,pay_status,pay_amount,pay_until,extras').in('id',myBookings.map(b=>b.id)).or('pay_status.not.is.null,extras.not.is.null');
+        (pays||[]).forEach(p=>{ const b=myBookings.find(x=>x.id===p.id); if(b){ b.pay_status=p.pay_status; b.pay_amount=p.pay_amount; b.pay_until=p.pay_until; b.extras=p.extras; } });
         // κράτηση που δεν πληρώθηκε εγκαίρως: δεν είναι πια δική μου
         myBookings=myBookings.filter(b=>!(b.pay_status==='pending' && b.pay_until && new Date(b.pay_until)<new Date()));
     }
@@ -1730,6 +1739,7 @@ function renderSlots(){
             card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] ${cov.mine?'bg-green-100 text-green-700':'bg-slate-100 text-slate-500'} px-1.5 py-0.5 rounded-full font-medium">${cov.mine?'Δική μου':'Κλεισμένο'}</span></div>
                 <p class="text-xs font-medium text-slate-600 truncate">${label}</p>
                 <p class="text-[11px] text-slate-400">${(cov.mine||isOwner)?(bookingsOn?`${d.label} · ${d.price}€`:`${cov.duration_min}′`):'&nbsp;'}</p>
+                ${isOwner&&cov.extras&&cov.extras.length?`<p class="text-[10px] text-slate-500 truncate">+ ${cbEsc(extrasText(cov.extras))}</p>`:''}
                 ${isOwner&&cov.pay_status==='paid'?`<p class="text-[10px] text-green-700 font-bold">✓ Πληρώθηκε online</p>`:''}
                 ${isOwner&&cov.pay_status==='pending'?`<p class="text-[10px] text-amber-700 font-bold">Αναμονή πληρωμής</p>`:''}
                 ${(cov.mine||isOwner)&&cov.id?`<button onclick="doCancel('${cov.id}')" class="w-full mt-2 py-1.5 bg-red-500 text-white text-xs rounded-lg font-semibold hover:bg-red-600 transition">Ακύρωση</button>`:''}`;
@@ -1742,6 +1752,8 @@ function renderSlots(){
                 card.innerHTML=`<div class="flex items-center justify-between"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full font-medium">Ελεύθερο</span></div>`;
             } else if(isPick){
                 card.classList.add('slot-pick');
+                // με online πληρωμή η κάρτα έχει περισσότερα πεδία → όλο το πλάτος
+                if(!isOwner && payActive()) card.style.gridColumn='1 / -1';
                 const btns=durationsForCourt(court).map(d=>{
                     const fits=durationFits(court,time,d.minutes);
                     return fits
@@ -1791,6 +1803,17 @@ function renderSlots(){
                         <input type="checkbox" id="payNow" ${pickerPayNow?'checked':''} onchange="pickerPayNow=this.checked" class="w-4 h-4 accent-blue-600">
                         <span class="text-[11px] font-bold text-brand">Πληρωμή τώρα με κάρτα</span></label>
                         <p class="text-[10px] text-slate-500 mt-0.5">Αλλιώς πληρώνεις στο γήπεδο.</p></div>`;
+                // Extras (μπαλάκια, ρακέτα…): πληρώνονται μαζί με το γήπεδο
+                const exField = (isOwner || !payActive() || !extras.length) ? '' : `
+                    <div class="mb-2 p-2 bg-slate-50 rounded-lg">
+                        <p class="text-[10px] text-slate-400 font-bold mb-1">Extras (προαιρετικά) <span id="exTotal" class="text-brand">${extrasTotal()?'+'+extrasTotal()+'€':''}</span></p>
+                        ${extras.map(e=>`<div class="flex items-center gap-2 py-1">
+                            <span class="flex-1 text-[11px] text-slate-600">${cbEsc(e.label)} · ${e.price}€</span>
+                            <button type="button" onclick="exQty('${e.id}',-1)" class="w-6 h-6 rounded-full border border-slate-300 text-xs font-bold">−</button>
+                            <span id="exq-${e.id}" class="w-4 text-center text-xs font-bold">${pickerExtras[e.id]||0}</span>
+                            <button type="button" onclick="exQty('${e.id}',1)" class="w-6 h-6 rounded-full border border-slate-300 text-xs font-bold">+</button>
+                        </div>`).join('')}
+                    </div>`;
                 // Ελεύθερο σχόλιο προς το club (και για τον πελάτη και για τη γραμματεία)
                 const noteField = `
                     <div class="mb-2">
@@ -1804,7 +1827,7 @@ function renderSlots(){
                 const allFit=durationsForCourt(court).every(d=>durationFits(court,time,d.minutes));
                 const hint = allFit ? '' :
                     `<p class="text-[10px] text-amber-600 mt-1.5">Ελεύθερο μέχρι τις ${gap.until} (${gap.minutes}′) — οι μεγαλύτερες διάρκειες δεν χωράνε.</p>`;
-                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}${payField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
+                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}${exField}${payField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
             } else if(!anyDurationFits(court,time)){
                 // Το slot είναι ελεύθερο, αλλά το κενό μέχρι την επόμενη κράτηση
                 // είναι μικρότερο από τη συντομότερη διάρκεια. Μην το προσφέρεις.
@@ -1822,7 +1845,7 @@ function renderSlots(){
     });
 }
 let pickerNote='';   // ελεύθερο σχόλιο της κράτησης που φτιάχνεται
-function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerNote=''; pickerPayNow=true; pickerSlot={court,time}; renderSlots(); }
+function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerNote=''; pickerPayNow=true; pickerExtras={}; pickerSlot={court,time}; renderSlots(); }
 
 /* ══════════════ ΑΝΟΙΧΤΑ ΜΑΤΣ ══════════════ */
 let pickerOpenSpots=0;   // πόσους παίκτες ψάχνει η κράτηση που φτιάχνεται
@@ -2060,6 +2083,8 @@ async function doBook(court,time,durMin,price){
     const openSpots=pickerOpenSpots;
     const note=(document.getElementById('bkNote')?.value ?? pickerNote ?? '').trim();
     const payNow=!isOwner && payActive() && (payRequired() || (document.getElementById('payNow')?.checked ?? pickerPayNow));
+    const exList=(!isOwner && payActive()) ? Object.entries(pickerExtras).map(([id,qty])=>({ id, qty })) : [];
+    pickerExtras={};
     pickerSlot=null; pickerOpenSpots=0; pickerNote=''; pickerNewName=''; pickerNewPhone=''; cbLoading(true);
     try{
         const { data:ins, error }=await sb.from('bookings').insert({
@@ -2069,7 +2094,8 @@ async function doBook(court,time,durMin,price){
             guest_players: guests.length?guests:null,
             open_spots: openSpots,
             note: note||null,
-            ...(payNow?{ pay_status:'pending' }:{})
+            ...(payNow?{ pay_status:'pending' }:{}),
+            ...(exList.length?{ extras:exList }:{})
         }).select('id').single();
         if(error) throw error;
         const allPlayerIds=[...new Set([...(bookForId?[bookForId]:[]), ...coPlayerIds])];
@@ -2223,6 +2249,7 @@ function myCard(b,isPast){
         ${b.guest_players&&b.guest_players.length?`<p class="text-[11px] text-slate-400 mt-0.5">+ ${b.guest_players.join(', ')}</p>`:''}
         ${b.co_players&&b.co_players.length?`<p class="text-[11px] text-slate-500 mt-0.5">Παίζουν μαζί: ${b.co_players.join(', ')}</p>`:''}
         ${b.note?`<p class="text-[11px] text-slate-500 mt-1 italic">${cbEsc(b.note)}</p>`:''}
+        ${(b.extras&&b.extras.length)?`<p class="text-[11px] text-slate-500 mt-0.5">+ ${cbEsc(extrasText(b.extras))}</p>`:''}
         ${b.pay_status==='paid'?`<p class="text-[11px] text-green-700 font-bold mt-1">✓ Πληρώθηκε online${b.pay_amount!=null?' · '+b.pay_amount+'€':''}</p>`:''}
         ${(!isPast&&b.pay_status==='pending')?`<p class="text-[11px] text-amber-700 font-bold mt-1">Αναμονή πληρωμής — η ώρα κρατιέται για λίγα λεπτά</p>
             <button onclick="payBooking('${b.id}')" class="mt-1 text-[11px] text-white bg-brand px-2.5 py-1 rounded-lg font-semibold">Ολοκλήρωση πληρωμής</button>`:''}
@@ -2316,7 +2343,9 @@ async function renderMyTrainings(){
         const sub=subsOn
             ? (myPaidMonths.has(k)
                 ? `<span class="text-[11px] font-bold px-2 py-1 rounded-full bg-green-100 text-green-700">✓ Πληρωμένη</span>`
-                : `<span class="text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Εκκρεμεί</span>`)
+                : (subPayOn() && k<=cbToday().slice(0,7)
+                    ? `<button onclick="event.stopPropagation();paySub('${k}')" class="text-[11px] font-bold px-2.5 py-1 rounded-full bg-brand text-white">Πληρωμή ${club.sub_fee}€</button>`
+                    : `<span class="text-[11px] font-bold px-2 py-1 rounded-full bg-amber-50 text-amber-600 border border-amber-200">Εκκρεμεί</span>`))
             : '';
         const sessions=ms.length ? ms.map(r=>`
             <div class="flex items-center justify-between p-3.5 ${r.present?'bg-green-50 border border-green-100':'bg-slate-50 opacity-70'} rounded-xl mb-2">
@@ -2651,6 +2680,17 @@ async function exportExcel(){
    πληρώνει στη σελίδα του Stripe. Το ποσό το βγάζει ο server από τον
    τιμοκατάλογο. Ό,τι δεν πληρωθεί, ελευθερώνεται μόνο του. */
 let pickerPayNow=true;
+let pickerExtras={};   // { extra_id: ποσότητα } — μόνο σε clubs με online πληρωμές
+function exQty(id, d){
+    const q=Math.max(0, Math.min(10, (pickerExtras[id]||0)+d));
+    if(q) pickerExtras[id]=q; else delete pickerExtras[id];
+    const el=document.getElementById('exq-'+id); if(el) el.textContent=q;
+    const tot=document.getElementById('exTotal'); if(tot) tot.textContent=extrasTotal()?'+'+extrasTotal()+'€':'';
+}
+function extrasTotal(){ return Math.round(Object.entries(pickerExtras).reduce((a,[id,q])=>{ const e=extras.find(x=>x.id===id); return a+(e?Number(e.price)*q:0); },0)*100)/100; }
+function extrasText(list){
+    return (list||[]).map(x=>{ const e=extras.find(y=>y.id===x.id); return e?`${e.label}${x.qty>1?' ×'+x.qty:''}`:''; }).filter(Boolean).join(', ');
+}
 function payActive(){ return !!(club && club.payments_enabled && club.pay_ready && ['optional','required'].includes(club.pay_mode)); }
 function payRequired(){ return payActive() && club.pay_mode==='required'; }
 const _PAY_ERR={ KEY_REJECTED:'Το Stripe δεν δέχτηκε το κλειδί — έλεγξε ότι αντέγραψες το Secret key', BAD_KEY:'Αυτό δεν μοιάζει με Secret key του Stripe (ξεκινά με sk_)',
@@ -2673,10 +2713,34 @@ async function payCheckout(id){
     cbToast(_PAY_ERR[r.error]||'Η πληρωμή δεν ξεκίνησε — δοκίμασε ξανά','err');
     return false;
 }
+// online συνδρομή: ενεργή μόνο αν το club το άνοιξε και έβαλε ποσό
+function subPayOn(){ return !!(club && subsOn && club.payments_enabled && club.pay_ready && club.pay_subs && Number(club.sub_fee)>0); }
+async function paySub(month){
+    cbLoading(true);
+    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const r=await payCall({ action:'sub_checkout', club_id:club.id, month, return_url:ret });
+    if(r.url){ location.href=r.url; return; }
+    cbLoading(false);
+    if(r.status==='paid'){ cbToast('✓ Ο μήνας είναι ήδη πληρωμένος'); return renderMyTrainings && renderMyTrainings(); }
+    cbToast(_PAY_ERR[r.error]||'Η πληρωμή δεν ξεκίνησε — δοκίμασε ξανά','err');
+}
 async function payBooking(id){ cbLoading(true); try{ await payCheckout(id); } finally{ cbLoading(false); } }
 // επιστροφή από τη σελίδα του Stripe
 async function handlePayReturn(){
-    const q=new URLSearchParams(location.search), ok=q.get('pb'), back=q.get('pbx');
+    const q=new URLSearchParams(location.search), ok=q.get('pb'), back=q.get('pbx'), sub=q.get('ps');
+    if(sub){
+        history.replaceState({},'',location.pathname+'?club='+club.slug);
+        cbLoading(true);
+        let st='pending';
+        for(let i=0;i<4 && st==='pending';i++){
+            const r=await payCall({ action:'sub_confirm', order_id:sub }); st=r.status||'pending';
+            if(st==='pending') await new Promise(res=>setTimeout(res,1500));
+        }
+        cbLoading(false);
+        cbToast(st==='paid' ? '✓ Η συνδρομή πληρώθηκε — ευχαριστούμε!' : 'Η πληρωμή επεξεργάζεται — θα επιβεβαιωθεί σε λίγα λεπτά');
+        if(document.querySelector('[data-tab="mytrainings"]')) switchTab('mytrainings');
+        return;
+    }
     if(!ok && !back) return;
     history.replaceState({},'',location.pathname+'?club='+club.slug);
     if(back){
@@ -2708,6 +2772,9 @@ function renderPayCard(){
     if(ready){
         document.getElementById('payMode').value=club.pay_mode||'optional';
         document.getElementById('payRefund').value=String(club.pay_refund_hours??24);
+        document.getElementById('paySubsBox').classList.toggle('hidden', !subsOn);
+        document.getElementById('paySubs').checked=!!club.pay_subs;
+        document.getElementById('paySubFee').value=club.sub_fee!=null?club.sub_fee:'';
     }
 }
 async function payConnect(){
@@ -2722,7 +2789,14 @@ async function payConnect(){
     cbToast(r.test ? '✓ Συνδέθηκε σε δοκιμαστική λειτουργία (test)' : '✓ Συνδέθηκε'+(r.name?' — '+r.name:''));
 }
 async function paySaveSettings(){
-    const { error }=await sb.from('clubs').update({ pay_mode:document.getElementById('payMode').value, pay_refund_hours:parseInt(document.getElementById('payRefund').value) }).eq('id',club.id);
+    const upd={ pay_mode:document.getElementById('payMode').value, pay_refund_hours:parseInt(document.getElementById('payRefund').value) };
+    if(subsOn){
+        const fee=parseFloat(document.getElementById('paySubFee').value);
+        upd.pay_subs=document.getElementById('paySubs').checked;
+        upd.sub_fee=fee>0?fee:null;
+        if(upd.pay_subs && !upd.sub_fee) return cbToast('Βάλε το ποσό της συνδρομής','err');
+    }
+    const { error }=await sb.from('clubs').update(upd).eq('id',club.id);
     if(error) return cbToast('Σφάλμα αποθήκευσης','err');
     await reloadClubData(); renderPayCard(); cbToast('✓ Αποθηκεύτηκε');
 }
