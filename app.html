@@ -1267,6 +1267,11 @@ async function enterApp(){
     document.getElementById('authScreen').classList.add('hidden');
     document.getElementById('appScreen').classList.remove('hidden');
     isOwner = club.owner_id === me.id;
+    // Σύλλογος μόνο προπονήσεων: οι καρτέλες εξαρτώνται από τον ρόλο (μέλος /
+    // προπονητής / γραμματεία) — κρύβονται μέχρι να ξέρουμε ποιος μπήκε,
+    // αλλιώς φαίνονταν για λίγο οι καρτέλες κρατήσεων.
+    const tabBar=document.querySelector('.tab-btn')?.parentElement;
+    if(!bookingsOn && tabBar) tabBar.style.visibility='hidden';
     const prof = await sb.from('profiles').select('name').eq('id', me.id).maybeSingle();
     // Ο ιδιοκτήτης εμφανίζεται ως «Admin» — είναι ρόλος, όχι πρόσωπο
     document.getElementById('welcomeName').textContent = isOwner ? 'Admin' : (prof.data?.name || me.email.split('@')[0]);
@@ -1297,6 +1302,13 @@ async function enterApp(){
         // γραμματεία (playersFull), απλώς βλέπει λιγότερα λόγω RLS.
         await loadPlayersFull(); await loadGroups();
     }
+    // Σύλλογος μόνο προπονήσεων: ο ρόλος είναι πια γνωστός → σωστές καρτέλες
+    // αμέσως, πριν φορτώσουν τουρνουά κ.λπ. (αλλιώς φαινόταν για λίγο το ημερολόγιο γηπέδων)
+    if(!bookingsOn){
+        applyClubMode();
+        switchTab(isCoach ? 'booking' : (!isOwner ? 'mytrainings' : 'booking'));
+        if(tabBar) tabBar.style.visibility='';
+    }
     // Τα τουρνουά τα βλέπουν όλοι — ο ιδιοκτήτης τα διαχειρίζεται,
     // τα μέλη διαβάζουν πρόγραμμα και βαθμολογία.
     if(tournamentsOn){
@@ -1323,6 +1335,7 @@ async function enterApp(){
     // προπονήσεων η ίδια καρτέλα ΕΙΝΑΙ το πρόγραμμα, οπότε μένει ως έχει.
     switchTab(isCoach && bookingsOn ? 'myschedule'
             : (!bookingsOn && !isOwner && !isCoach) ? 'mytrainings' : 'booking');
+    if(tabBar) tabBar.style.visibility='';
     await loadRoster();
     await loadTrainingSchedule();
     await loadMine();
