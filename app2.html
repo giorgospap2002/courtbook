@@ -683,14 +683,14 @@ hr,.border-t,.border-b{border-color:var(--line)}
                         <input id="xtDate" type="date" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm">
                         <select id="xtTime" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
                         <select id="xtDur" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
-                        <input id="xtCoach" placeholder="Προπονητής (προαιρετικό)" class="col-span-8 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                        <input id="xtCoach" list="coachNames" placeholder="Προπονητής (προαιρετικό)" class="col-span-8 px-2 py-2 border border-slate-200 rounded-lg text-sm">
                         <button id="addXtrainBtn" class="col-span-4 bg-purple-600 text-white rounded-lg text-sm font-bold py-2">Προσθήκη</button>
                     </div>
 
                     <p class="text-[11px] font-bold text-slate-500 uppercase mb-1 mt-5">Ιδιαίτερο μάθημα</p>
                     <p class="text-[11px] text-slate-400 mb-2">Ένας προπονητής με έναν πελάτη. Κλείνει το γήπεδο μόνο εκείνη τη μέρα.</p>
                     <div class="grid grid-cols-12 gap-2 mb-2">
-                        <input id="lsCoach" placeholder="Προπονητής" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                        <input id="lsCoach" list="coachNames" placeholder="Προπονητής" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm"><datalist id="coachNames"></datalist>
                         <input id="lsClient" placeholder="Πελάτης" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm">
                         <input id="lsDate" type="date" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm">
                         <select id="lsTime" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
@@ -717,7 +717,7 @@ hr,.border-t,.border-b{border-color:var(--line)}
             <div id="myScheduleList"></div>
         </div>
         <div id="myLessonsCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
-            <p class="font-bold mb-1">Clinics & ιδιαίτερα</p>
+            <p class="font-bold mb-1">Clinics, ιδιαίτερα & έκτακτες</p>
             <p class="text-[11px] text-slate-400 mb-4">Οι επόμενες 30 μέρες, με τη σειρά.</p>
             <div id="myLessonsList"></div>
         </div>
@@ -1481,7 +1481,7 @@ async function enterApp(){
         // Ο προπονητής δεν είναι αθλητής: δεν του χρειάζονται οι δικές του παρουσίες.
         document.getElementById('mytrainingsTabBtn').classList.add('hidden');
         document.getElementById('myScheduleTabBtn').classList.remove('hidden');
-        document.getElementById('attendanceTabBtn').classList.remove('hidden');
+        if(coachesOn) document.getElementById('attendanceTabBtn').classList.remove('hidden');
         // «loadRoster()» φορτώνει άλλη μεταβλητή (roster, για αναζήτηση
         // πελάτη) — ο προπονητής χρειάζεται τα ίδια δεδομένα με τη
         // γραμματεία (playersFull), απλώς βλέπει λιγότερα λόγω RLS.
@@ -1503,7 +1503,7 @@ async function enterApp(){
     }
     if(clinicsOn){
         document.getElementById('clinicsTabBtn').classList.remove('hidden');
-        if(isOwner) document.getElementById('addClinicBtn').classList.remove('hidden');
+        if(isOwner){ document.getElementById('addClinicBtn').classList.remove('hidden'); loadCoaches(); }
     }
     applyClubMode();
     if(subsOn && isOwner) loadSubPlans();
@@ -3029,7 +3029,7 @@ function openClinicForm(){
     if(!f.classList.contains('hidden')){ f.classList.add('hidden'); return; }
     const timeOpts=trainingTimeOptions().map(x=>`<option value="${x}">${x}</option>`).join('');
     const courtOpts=courts.map(c=>`<option value="${c.id}">${cbEsc(c.name)}</option>`).join('');
-    const coachField=(coachesOn&&coaches.length)
+    const coachField=coaches.length
         ? `<select id="clCoach" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"><option value="">— χωρίς —</option>${coaches.map(c=>`<option value="${c.id}">${cbEsc(c.name)}</option>`).join('')}</select>`
         : `<input id="clCoachName" placeholder="Όνομα προπονητή" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">`;
     const inp='w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm', lbl='text-[10px] font-semibold text-slate-400 uppercase block mb-1';
@@ -3064,12 +3064,13 @@ async function saveClinic(){
     const cs=document.getElementById('clCoach');
     if(cs && cs.value){ coach_id=cs.value; coach=(coaches.find(c=>c.id===coach_id)||{}).name||null; }
     if(!await confirmFreeCourt(court_id, the_date, start_time, duration_min)) return;
+    if(!await coachBusyOk(coach_id, the_date, start_time, duration_min)) return;
     cbLoading(true);
     const { data:c, error }=await sb.from('clinics').insert({ club_id:club.id, title, level:v('clLevel')||null, coach, coach_id, court_id,
         the_date, start_time, duration_min, capacity, price, note:v('clNote')||null }).select().single();
     if(error){ cbLoading(false); return cbToast('Δεν δημοσιεύτηκε','err'); }
     // το γήπεδο κλείνει για την ώρα του clinic
-    await sb.from('training_overrides').insert({ club_id:club.id, court_id, the_date, start_time, duration_min, kind:'extra', coach, client_name:title, clinic_id:c.id });
+    await sb.from('training_overrides').insert({ club_id:club.id, court_id, the_date, start_time, duration_min, kind:'extra', coach, client_name:title, clinic_id:c.id, ...(coach_id?{coach_id}:{}) });
     cbLoading(false);
     document.getElementById('clinicForm').classList.add('hidden');
     cbToast('✓ Δημοσιεύτηκε — στείλε το link στο WhatsApp');
@@ -3151,6 +3152,9 @@ async function renderLessonsOwner(){
                 <p class="font-semibold text-sm truncate">${cbEsc(k.name)}</p>
                 <label class="flex items-center gap-1.5 text-[11px] text-slate-500 flex-shrink-0"><input type="checkbox" id="lson-${k.id}" ${k.lessons_online!==false?'checked':''} class="accent-[var(--brand,#16a34a)]"> Δέχεται κρατήσεις</label>
             </div>
+            <div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500 flex-shrink-0">Email</span>
+                <input id="lsem-${k.id}" type="email" value="${cbEsc(k.email||'')}" placeholder="το email εγγραφής του" class="flex-1 min-w-0 px-2 py-1.5 border border-slate-200 rounded-lg text-sm"></div>
+            ${k.email?'':'<p class="text-[10px] text-amber-700 -mt-1 mb-2">Χωρίς email ο προπονητής δεν βλέπει το πρόγραμμά του.</p>'}
             <div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500">Τιμή ανά ώρα (€)</span>
                 <input id="lspr-${k.id}" type="number" min="0" step="0.5" value="${k.lesson_price??''}" placeholder="π.χ. 40" class="w-24 px-2 py-1.5 border border-slate-200 rounded-lg text-sm"></div>
             <p class="text-[10px] font-semibold text-slate-400 uppercase mb-1">Ελεύθερες ώρες για ιδιαίτερα</p>
@@ -3179,6 +3183,7 @@ async function renderLessonsOwner(){
         <div class="space-y-2">${coachHtml||'<p class="text-[11px] text-slate-400">Δεν υπάρχει προπονητής ακόμα — πρόσθεσε έναν:</p>'}</div>
         <div class="flex gap-2 mt-2">
             <input id="lsNewCoach" placeholder="Όνομα προπονητή" class="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-sm">
+            <input id="lsNewEmail" type="email" placeholder="Email (προαιρετικό)" class="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-sm">
             <button onclick="addLessonCoach()" class="px-3 py-2 border border-slate-200 rounded-xl text-xs font-semibold">+ Προπονητής</button>
         </div>
         <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Κλεισμένα ιδιαίτερα</p>
@@ -3193,27 +3198,31 @@ async function setLessonsOnline(on){
 async function addLessonCoach(){
     const name=document.getElementById('lsNewCoach').value.trim();
     if(!name) return cbToast('Βάλε όνομα','err');
-    const { error }=await sb.from('coaches').insert({ club_id:club.id, name });
-    if(error) return cbToast('Σφάλμα','err');
+    const email=document.getElementById('lsNewEmail').value.trim().toLowerCase()||null;
+    if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return cbToast('Μη έγκυρο email','err');
+    const { error }=await sb.from('coaches').insert({ club_id:club.id, name, email });
+    if(error) return cbToast(error.code==='23505'?'Υπάρχει ήδη με αυτό το email':'Σφάλμα','err');
     cbToast('✓ Προστέθηκε');
-    if(coachesOn) await loadCoaches();
+    await loadCoaches();
     renderLessonsOwner();
 }
 async function saveLessonCoach(id){
     const price=parseFloat(document.getElementById('lspr-'+id).value);
     const on=document.getElementById('lson-'+id).checked;
+    const email=document.getElementById('lsem-'+id).value.trim().toLowerCase()||null;
+    if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return cbToast('Μη έγκυρο email','err');
     const rows=[...document.querySelectorAll('#lsav-'+id+' .ls-av')].map(r=>({ club_id:club.id, coach_id:id,
         weekday:parseInt(r.querySelector('.ls-wd').value), start_time:r.querySelector('.ls-s').value, end_time:r.querySelector('.ls-e').value }));
     if(rows.some(r=>cbT2M(r.end_time)-cbT2M(r.start_time)<60)) return cbToast('Κάθε διάστημα θέλει τουλάχιστον 1 ώρα','err');
     if(on && rows.length && !(price>0)) return cbToast('Βάλε τιμή ανά ώρα','err');
     cbLoading(true);
-    const { error }=await sb.from('coaches').update({ lesson_price:isNaN(price)?null:price, lessons_online:on }).eq('id',id);
+    const { error }=await sb.from('coaches').update({ lesson_price:isNaN(price)?null:price, lessons_online:on, email }).eq('id',id);
     if(!error) await sb.from('coach_availability').delete().eq('coach_id',id);
     const { error:e2 }= (!error && rows.length) ? await sb.from('coach_availability').insert(rows) : { error:null };
     cbLoading(false);
-    if(error||e2) return cbToast('Δεν αποθηκεύτηκε','err');
+    if(error||e2) return cbToast(error?.code==='23505'?'Υπάρχει ήδη με αυτό το email':'Δεν αποθηκεύτηκε','err');
     cbToast('✓ Αποθηκεύτηκε');
-    renderLessonsOwner();
+    await loadCoaches(); renderLessonsOwner();
 }
 
 /* ── μέλος: διάλεξε προπονητή → μέρα → διάρκεια → ώρα ── */
@@ -3331,14 +3340,19 @@ async function handleLessonParam(){
 async function renderMyLessons(){
     const el=document.getElementById('myLessonsList'); if(!el || !myCoach) return;
     const to=new Date(cbToday()+'T12:00:00'); to.setDate(to.getDate()+30);
-    const [c,l]=await Promise.all([
+    const gids=myCoachGroups().map(g=>g.id);
+    const [c,l,o]=await Promise.all([
         sb.from('clinics').select('*').eq('coach_id',myCoach.id).eq('status','open').gte('the_date',cbToday()).lte('the_date',cbDateStr(to)),
-        sb.from('lessons').select('*').eq('coach_id',myCoach.id).neq('status','cancelled').gte('the_date',cbToday()).lte('the_date',cbDateStr(to))
+        sb.from('lessons').select('*').eq('coach_id',myCoach.id).neq('status','cancelled').gte('the_date',cbToday()).lte('the_date',cbDateStr(to)),
+        sb.from('training_overrides').select('*, training_groups(name)').eq('kind','extra').is('lesson_id',null).is('clinic_id',null)
+          .or(`coach_id.eq.${myCoach.id}${gids.length?`,group_id.in.(${gids.join(',')})`:''}`).gte('the_date',cbToday()).lte('the_date',cbDateStr(to))
     ]);
     const items=[
         ...(c.data||[]).map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id, title:'Clinic: '+x.title, sub:x.level||'', cls:'bg-blue-50 border-blue-100' })),
         ...(l.data||[]).filter(x=>x.status==='confirmed' || (x.pay_until && new Date(x.pay_until)>new Date()))
-            .map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id, title:'Ιδιαίτερο: '+x.name, sub:x.phone||'', tel:x.phone, cls:'bg-green-50 border-green-100' }))
+            .map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id, title:'Ιδιαίτερο: '+x.name, sub:x.phone||'', tel:x.phone, cls:'bg-green-50 border-green-100' })),
+        ...(o.data||[]).map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id,
+            title:x.client_name?'Ιδιαίτερο: '+x.client_name:'Έκτακτη: '+(x.training_groups?.name||''), sub:'', cls:x.client_name?'bg-green-50 border-green-100':'bg-purple-50 border-purple-100' }))
     ].sort((a,b)=>a.d.localeCompare(b.d) || a.t.localeCompare(b.t));
     const card=document.getElementById('myLessonsCard');
     if(card) card.classList.toggle('hidden', !items.length);
@@ -3753,7 +3767,18 @@ function trainingTimeOptions(){
     for(let mins=clubOpenMin(); mins<clubCloseMin(); mins+=30) out.push(cbM2T(mins));
     return out;
 }
+// όνομα προπονητή στο πρόγραμμα → ο λογαριασμός του (μόνο σε clubs με Clinics)
+const coachIdByName=n=>{ if(!clinicsOn) return null; const k=String(n||'').trim().toLowerCase();
+    return (coaches.find(c=>c.name.trim().toLowerCase()===k)||{}).id||null; };
+async function coachBusyOk(coach_id, the_date, start_time, duration_min){
+    if(!coach_id) return true;
+    const s=cbT2M(start_time);
+    const { data }=await sb.rpc('coach_busy',{ p_coach:coach_id, p_date:the_date, s, e:s+duration_min });
+    return !data || confirm('Ο προπονητής έχει ήδη προπόνηση, clinic ή ιδιαίτερο εκείνη την ώρα. Να μπει έτσι κι αλλιώς;');
+}
 function renderTschedule(){
+    const dl=document.getElementById('coachNames');
+    if(dl) dl.innerHTML=clinicsOn?coaches.map(c=>`<option value="${cbEsc(c.name)}">`).join(''):'';
     const gSel=document.getElementById('tsGroup'), cSel=document.getElementById('tsCourt'),
           dSel=document.getElementById('tsDay'), durSel=document.getElementById('tsDur');
     gSel.innerHTML=groups.length?groups.map(g=>`<option value="${g.id}">${g.name}</option>`).join(''):`<option value="">— φτιάξε γκρουπ πρώτα —</option>`;
@@ -4109,7 +4134,9 @@ async function addXtrain(){
     if(!group_id) return cbToast('Φτιάξε πρώτα γκρουπ','err');
     if(!court_id||!the_date||!start_time||!duration_min) return cbToast('Συμπλήρωσε όλα τα πεδία','err');
     if(!await confirmFreeCourt(court_id, the_date, start_time, duration_min)) return;
-    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, group_id, court_id, the_date, start_time, duration_min, kind:'extra', coach:coach||null });
+    const coach_id=coachIdByName(coach);
+    if(!await coachBusyOk(coach_id, the_date, start_time, duration_min)) return;
+    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, group_id, court_id, the_date, start_time, duration_min, kind:'extra', coach:coach||null, ...(coach_id?{coach_id}:{}) });
     if(error) return cbToast('Σφάλμα','err');
     document.getElementById('xtDate').value=''; document.getElementById('xtTime').value=''; document.getElementById('xtCoach').value='';
     cbToast('Προστέθηκε έκτακτη');
@@ -4126,7 +4153,9 @@ async function addLesson(){
     if(!client) return cbToast('Βάλε όνομα πελάτη','err');
     if(!court_id||!the_date||!start_time||!duration_min) return cbToast('Συμπλήρωσε όλα τα πεδία','err');
     if(!await confirmFreeCourt(court_id, the_date, start_time, duration_min)) return;
-    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, court_id, the_date, start_time, duration_min, kind:'extra', coach:coach||null, client_name:client });
+    const coach_id=coachIdByName(coach);
+    if(!await coachBusyOk(coach_id, the_date, start_time, duration_min)) return;
+    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, court_id, the_date, start_time, duration_min, kind:'extra', coach:coach||null, client_name:client, ...(coach_id?{coach_id}:{}) });
     if(error) return cbToast('Σφάλμα','err');
     document.getElementById('lsCoach').value=''; document.getElementById('lsClient').value='';
     document.getElementById('lsDate').value=''; document.getElementById('lsTime').selectedIndex=0;
@@ -5723,7 +5752,7 @@ function renderTournaments(){
 
 /* ══════════════ ΠΡΟΠΟΝΗΤΕΣ ══════════════ */
 async function loadCoaches(){
-    if(!coachesOn) { coaches=[]; return; }
+    if(!coachesOn && !clinicsOn) { coaches=[]; return; }
     const { data }=await sb.from('coaches').select('*').eq('club_id',club.id).order('name');
     coaches=data||[];
 }
@@ -5732,7 +5761,7 @@ async function loadCoaches(){
 // οποίο έκανε εγγραφή ο προπονητής, και η βάση δένει τα δικαιώματα εκεί.
 async function detectCoach(){
     isCoach=false; myCoach=null;
-    if(!coachesOn || isOwner || !me?.email) return;
+    if((!coachesOn && !clinicsOn) || isOwner || !me?.email) return;
     const { data }=await sb.from('coaches').select('*')
         .eq('club_id',club.id).ilike('email',me.email).maybeSingle();
     if(data){ isCoach=true; myCoach=data; }
