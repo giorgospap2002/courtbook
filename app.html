@@ -1708,7 +1708,15 @@ function renderSlots(){
                             </select>
                             <span class="text-[11px] text-slate-500">παίκτες</span>
                         </div>
-                        <p class="text-[10px] text-slate-400 mt-1">Θα πάρεις link για την ομαδική — και θα φαίνεται στα «Ανοιχτά Ματς».</p>
+                        ${payActive()?`<div id="opMore" class="${pickerOpenSpots>0?'':'hidden'} mt-2 space-y-1.5">
+                            <p class="text-[10px] font-bold text-slate-500">Ποιος το βλέπει</p>
+                            <label class="flex items-center gap-2 text-[11px]"><input type="radio" name="opVis" ${!pickerPrivate?'checked':''} onchange="pickerPrivate=false;opHint()" class="accent-emerald-600"> Όλα τα μέλη — φαίνεται στα «Ανοιχτά Ματς»</label>
+                            <label class="flex items-center gap-2 text-[11px]"><input type="radio" name="opVis" ${pickerPrivate?'checked':''} onchange="pickerPrivate=true;opHint()" class="accent-emerald-600"> Ιδιωτικό — μόνο όποιος έχει το link</label>
+                            <p class="text-[10px] font-bold text-slate-500 pt-1">Πληρωμή γηπέδου</p>
+                            <label class="flex items-center gap-2 text-[11px]"><input type="radio" name="opPay" ${!pickerSplit?'checked':''} onchange="pickerSplit=false;opHint()" class="accent-emerald-600"> Πληρώνω εγώ όλο το γήπεδο</label>
+                            <label class="flex items-center gap-2 text-[11px]"><input type="radio" name="opPay" ${pickerSplit?'checked':''} onchange="pickerSplit=true;opHint()" class="accent-emerald-600"> Ο καθένας πληρώνει το μερίδιό του</label>
+                        </div>`:''}
+                        <p id="opHint" class="text-[10px] text-slate-400 mt-1">${opHintText()}</p>
                     </div>`;
                 // Online πληρωμή (μόνο για μέλη, όχι για τηλεφωνική κράτηση της γραμματείας)
                 const payField = (isOwner || !payActive()) ? '' : payRequired()
@@ -1759,7 +1767,7 @@ function renderSlots(){
     });
 }
 let pickerNote='';   // ελεύθερο σχόλιο της κράτησης που φτιάχνεται
-function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerNote=''; pickerPayNow=true; pickerExtras={}; pickerSlot={court,time}; renderSlots(); }
+function openPicker(court,time){ if(!bookingsOn) return; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerPrivate=false; pickerSplit=false; pickerNote=''; pickerPayNow=true; pickerExtras={}; pickerSlot={court,time}; renderSlots(); }
 
 /* ══════════════ ΑΝΟΙΧΤΑ ΜΑΤΣ ══════════════ */
 let pickerOpenSpots=0;   // πόσους παίκτες ψάχνει η κράτηση που φτιάχνεται
@@ -1769,7 +1777,19 @@ function opToggle(on){
     pickerOpenSpots = on ? 1 : 0;
     const box=document.getElementById('opCountBox');
     if(box) box.classList.toggle('hidden', !on);
+    const more=document.getElementById('opMore');
+    if(more) more.classList.toggle('hidden', !on);
+    opHint();
 }
+// ιδιωτικό ματς / μοιρασμένη πληρωμή (μόνο σε clubs με online πληρωμές)
+let pickerPrivate=false, pickerSplit=false;
+function opHintText(){
+    if(!payActive()) return 'Θα πάρεις link για την ομαδική — και θα φαίνεται στα «Ανοιχτά Ματς».';
+    const vis = pickerPrivate ? 'Θα πάρεις link για τους φίλους σου — δεν φαίνεται στα «Ανοιχτά Ματς».'
+                              : 'Θα πάρεις link για την ομαδική — και θα φαίνεται στα «Ανοιχτά Ματς».';
+    return pickerSplit ? vis+' Πληρώνεις τώρα μόνο το μερίδιό σου· κάθε φίλος πληρώνει το δικό του όταν μπαίνει. Αν 2 ώρες πριν δεν έχουν πληρώσει όλοι, το ματς ακυρώνεται και όλοι παίρνουν πίσω τα χρήματα.' : vis;
+}
+function opHint(){ const el=document.getElementById('opHint'); if(el) el.textContent=opHintText(); }
 
 function matchLink(id){ return location.origin + location.pathname + '?club=' + club.slug + '&join=' + id; }
 
@@ -1831,14 +1851,24 @@ const _JOIN_MSG={
     past:'Το ματς έχει περάσει',
     not_member:'Πρέπει να είσαι εγγεγραμμένο μέλος του club',
     already_in:'Είσαι ήδη σε αυτό το ματς',
-    full:'Το ματς συμπληρώθηκε'
+    full:'Το ματς συμπληρώθηκε',
+    not_ready:'Ο διοργανωτής δεν έχει ολοκληρώσει ακόμα την πληρωμή του',
+    closed:'Οι θέσεις έκλεισαν — το ματς είναι σε λιγότερο από 2 ώρες'
 };
+async function sharePay(id){
+    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const r=await payCall({ action:'share_checkout', booking_id:id, return_url:ret });
+    if(r.url){ location.href=r.url; return true; }
+    if(r.status==='paid'){ cbToast('✓ Έχει ήδη πληρωθεί'); return false; }
+    cbToast(_PAY_ERR[r.error]||'Η πληρωμή δεν ξεκίνησε — δοκίμασε ξανά','err'); return false;
+}
 
 async function doJoinMatch(id){
     cbLoading(true);
     try{
         const { data, error }=await sb.rpc('join_open_match',{ p_booking_id:id });
         if(error) throw error;
+        if(data==='pay'){ if(await sharePay(id)) return; await Promise.all([loadMine(), loadOpenMatches()]); renderOpenMatches(); renderMine(); return; }
         if(data!=='ok') return cbToast(_JOIN_MSG[data]||'Δεν έγινε','err');
         cbToast('Μπήκες στο ματς — είναι στις κρατήσεις σου');
         await Promise.all([loadMine(), loadOpenMatches()]);
@@ -1851,7 +1881,14 @@ async function doLeaveMatch(id){
     if(!confirm('Αποχώρηση από το ματς;')) return;
     cbLoading(true);
     try{
-        const { data, error }=await sb.rpc('leave_open_match',{ p_booking_id:id });
+        let { data, error }=await sb.rpc('leave_open_match',{ p_booking_id:id });
+        if(data==='use_pay' || /USE_PAY/.test(error?.message||'')){
+            // μοιρασμένο ματς: ο server επιστρέφει το μερίδιο (αν φεύγεις έγκαιρα)
+            const r=await payCall({ action:'share_cancel', booking_id:id });
+            if(r.error) return cbToast(r.error==='LOCKED'?'Το ματς είναι σε λιγότερο από 2 ώρες — μίλα με τη γραμματεία':(_PAY_ERR[r.error]||'Δεν έγινε'),'err');
+            cbToast(r.refunded?`Αποχώρησες — επιστροφή ${r.refunded}€ στην κάρτα`:'Αποχώρησες από το ματς');
+            await Promise.all([loadMine(), loadOpenMatches()]); renderOpenMatches(); renderMine(); return;
+        }
         if(error) throw error;
         if(data!=='ok') return cbToast(_JOIN_MSG[data]||'Δεν έγινε','err');
         cbToast('Αποχώρησες από το ματς');
@@ -1887,7 +1924,9 @@ async function handleJoinParam(){
     if(m.spots_left<=0)return cbToast('Το ματς συμπληρώθηκε','err');
     const lvlTxt = (m.organizer_level!=null && m.organizer_level!=='') ? ` (επίπεδο ${m.organizer_level})` : '';
     const telTxt = m.organizer_phone ? `\nΤηλέφωνο: ${m.organizer_phone}` : '';
-    const ok=confirm(`Ματς του ${m.organizer}${lvlTxt}\n\n${cbFmtDate(m.booking_date)} · ${m.start_time}–${end}\n${m.court_name} · ${m.club_name}${telTxt}\n\nΨάχνει ${m.spots_left} ακόμα. Θέλεις να μπεις;`);
+    const { data:pi }=await sb.rpc('match_pay_info',{ p_booking_id:id });
+    const payTxt=(pi&&pi.split&&pi.share) ? `\n\nΤο μερίδιό σου: ${pi.share}€ — πληρώνεις με κάρτα για να κρατηθεί η θέση. Αν 2 ώρες πριν δεν έχουν πληρώσει όλοι, το ματς ακυρώνεται και παίρνεις πίσω τα χρήματα.` : '';
+    const ok=confirm(`Ματς του ${m.organizer}${lvlTxt}\n\n${cbFmtDate(m.booking_date)} · ${m.start_time}–${end}\n${m.court_name} · ${m.club_name}${telTxt}\n\nΨάχνει ${m.spots_left} ακόμα. Θέλεις να μπεις;${payTxt}`);
     if(ok) await doJoinMatch(id);
 }
 
@@ -1996,10 +2035,12 @@ async function doBook(court,time,durMin,price){
     const guests=pickerGuests.slice();
     const openSpots=pickerOpenSpots;
     const note=(document.getElementById('bkNote')?.value ?? pickerNote ?? '').trim();
-    const payNow=!isOwner && payActive() && (payRequired() || (document.getElementById('payNow')?.checked ?? pickerPayNow));
+    const split=!isOwner && payActive() && openSpots>0 && pickerSplit;
+    const priv=!isOwner && payActive() && openSpots>0 && pickerPrivate;
+    const payNow=split || (!isOwner && payActive() && (payRequired() || (document.getElementById('payNow')?.checked ?? pickerPayNow)));
     const exList=(!isOwner && payActive()) ? Object.entries(pickerExtras).map(([id,qty])=>({ id, qty })) : [];
     pickerExtras={};
-    pickerSlot=null; pickerOpenSpots=0; pickerNote=''; pickerNewName=''; pickerNewPhone=''; cbLoading(true);
+    pickerSlot=null; pickerOpenSpots=0; pickerPrivate=false; pickerSplit=false; pickerNote=''; pickerNewName=''; pickerNewPhone=''; cbLoading(true);
     try{
         const { data:ins, error }=await sb.from('bookings').insert({
             club_id:club.id, court_id:court, user_id:me.id,
@@ -2009,6 +2050,8 @@ async function doBook(court,time,durMin,price){
             open_spots: openSpots,
             note: note||null,
             ...(payNow?{ pay_status:'pending' }:{}),
+            ...(priv?{ match_private:true }:{}),
+            ...(split?{ split_pay:true, players_total:1+coPlayerIds.length+guests.length+openSpots }:{}),
             ...(exList.length?{ extras:exList }:{})
         }).select('id').single();
         if(error) throw error;
@@ -2643,7 +2686,22 @@ async function paySub(month){
 async function payBooking(id){ cbLoading(true); try{ await payCheckout(id); } finally{ cbLoading(false); } }
 // επιστροφή από τη σελίδα του Stripe
 async function handlePayReturn(){
-    const q=new URLSearchParams(location.search), ok=q.get('pb'), back=q.get('pbx'), sub=q.get('ps');
+    const q=new URLSearchParams(location.search), ok=q.get('pb'), back=q.get('pbx'), sub=q.get('ps'), shOk=q.get('pms'), shBack=q.get('pmx');
+    if(shOk || shBack){
+        history.replaceState({},'',location.pathname+'?club='+club.slug);
+        cbLoading(true);
+        if(shOk){
+            let st='pending';
+            for(let i=0;i<4 && st==='pending';i++){ const r=await payCall({ action:'share_confirm', booking_id:shOk }); st=r.status||'pending'; if(st==='pending') await new Promise(res=>setTimeout(res,1500)); }
+            cbToast(st==='paid'?'✓ Πλήρωσες το μερίδιό σου — είσαι μέσα στο ματς!':'Η πληρωμή επεξεργάζεται — θα επιβεβαιωθεί σε λίγα λεπτά');
+        } else {
+            const r=await payCall({ action:'share_cancel', booking_id:shBack });   // δεν πλήρωσε → η θέση ξανανοίγει
+            cbToast(r.error==='JUST_PAID'?'✓ Πλήρωσες το μερίδιό σου — είσαι μέσα στο ματς!':'Η πληρωμή ακυρώθηκε — δεν μπήκες στο ματς','err');
+        }
+        cbLoading(false);
+        await Promise.all([loadMine(), loadOpenMatches()]);
+        switchTab('openmatches'); return;
+    }
     if(sub){
         history.replaceState({},'',location.pathname+'?club='+club.slug);
         cbLoading(true);
@@ -2674,6 +2732,9 @@ async function handlePayReturn(){
     if(st==='paid') cbToast('✓ Η πληρωμή ολοκληρώθηκε — η κράτηση είναι δική σου!');
     else cbToast('Η πληρωμή επεξεργάζεται — θα επιβεβαιωθεί σε λίγα λεπτά');
     switchTab('mybookings');
+    // ανοιχτό ματς: δώσε αμέσως το link για τους φίλους
+    const mb=(myBookings||[]).find(x=>x.id===ok);
+    if(st==='paid' && mb && mb.open_spots>0){ await loadOpenMatches(); copyMatchLink(ok); }
 }
 function renderPayCard(){
     const card=document.getElementById('payCard'); if(!card) return;
