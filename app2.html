@@ -1658,6 +1658,11 @@ async function loadMine(){
         (pays||[]).forEach(p=>{ const b=myBookings.find(x=>x.id===p.id); if(b){ b.pay_status=p.pay_status; b.pay_amount=p.pay_amount; b.pay_until=p.pay_until; b.extras=p.extras; } });
         // κράτηση που δεν πληρώθηκε εγκαίρως: δεν είναι πια δική μου
         myBookings=myBookings.filter(b=>!(b.pay_status==='pending' && b.pay_until && new Date(b.pay_until)<new Date()));
+        // μοιρασμένα / ιδιωτικά ματς: πόσοι πλήρωσαν, το δικό μου μερίδιο
+        if(payActive()){
+            const { data:sp }=await sb.rpc('match_pay_summary',{ p_ids:myBookings.map(b=>b.id) });
+            (sp||[]).forEach(s=>{ const b=myBookings.find(x=>x.id===s.booking_id); if(b) b.split=s; });
+        }
     }
 }
 
@@ -2331,6 +2336,14 @@ function bookingEnded(b){
     return end < new Date();
 }
 
+// μοιρασμένο ματς (μέλος): «πλήρωσαν 2/4» + το δικό μου μερίδιο
+function mySplitLine(b){
+    const s=b.split; if(!s || !s.split) return '';
+    const full=s.paid>=s.total;
+    const mine = s.my_pay==='paid' ? `<span class="text-green-700">✓ Πλήρωσες το μερίδιό σου (${s.share}€)</span>`
+               : s.my_pay==='pending' ? `<button onclick="sharePay('${b.id}')" class="text-[11px] text-white bg-brand px-2.5 py-1 rounded-lg font-semibold">Πλήρωσε το μερίδιό σου · ${s.share}€</button>` : '';
+    return `<p class="text-[11px] font-bold mt-1 ${full?'text-green-700':'text-amber-700'}">Πλήρωσαν ${s.paid}/${s.total}${full?' — το ματς είναι πληρωμένο':' · αν 2 ώρες πριν δεν πληρώσουν όλοι, ακυρώνεται με επιστροφή χρημάτων'}</p>${mine?`<div class="mt-1">${mine}</div>`:''}`;
+}
 function renderMine(){
     renderLoyaltyBanner();
     const list=document.getElementById('myList'); const today=cbToday();
@@ -2357,7 +2370,8 @@ function myCard(b,isPast){
         ${b.pay_status==='paid'?`<p class="text-[11px] text-green-700 font-bold mt-1">✓ Πληρώθηκε online${b.pay_amount!=null?' · '+b.pay_amount+'€':''}</p>`:''}
         ${(!isPast&&b.pay_status==='pending')?`<p class="text-[11px] text-amber-700 font-bold mt-1">Αναμονή πληρωμής — η ώρα κρατιέται για λίγα λεπτά</p>
             <button onclick="payBooking('${b.id}')" class="mt-1 text-[11px] text-white bg-brand px-2.5 py-1 rounded-lg font-semibold">Ολοκλήρωση πληρωμής</button>`:''}
-        ${(!isPast&&b.open_spots>0)?`<p class="text-[11px] text-emerald-700 font-bold mt-1">Ανοιχτό ματς · ψάχνεις ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}</p>
+        ${(!isPast&&b.split)?mySplitLine(b):''}
+        ${(!isPast&&b.open_spots>0)?`<p class="text-[11px] text-emerald-700 font-bold mt-1">Ανοιχτό ματς · ψάχνεις ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}${b.split?.is_private?' · ιδιωτικό':''}</p>
             <div class="flex gap-2 mt-1">
                 <button onclick="copyMatchLink('${b.id}')" class="text-[11px] text-brand border border-brand/30 px-2 py-1 rounded-lg font-semibold hover:bg-blue-50">Αντιγραφή link</button>
                 ${b.mine_direct!==false?`<button onclick="closeMatch('${b.id}')" class="text-[11px] text-slate-500 border border-slate-200 px-2 py-1 rounded-lg font-semibold hover:bg-slate-50">Κλείσε το ματς</button>`:''}
@@ -2482,7 +2496,7 @@ let _allBookings=[];
 async function loadAdmin(){
     if(!isOwner) return;
     const { data }=await sb.from('bookings')
-        .select('*, courts(name), booking_players(players(name,phone))')
+        .select('*, courts(name), booking_players(pay_status,pay_amount,players(name,phone))')
         .eq('club_id',club.id).order('booking_date');
     _allBookings=data||[];
     renderAdmin();
@@ -2497,7 +2511,8 @@ function bookingPlayers(b){
     const digits=s=>(s||'').replace(/\D/g,'').slice(-10);
     const orgName=norm(b.user_name), orgPhone=digits(b.user_phone);
     const isOrganizer=p=>(orgPhone && digits(p.phone)===orgPhone) || (orgName && norm(p.name)===orgName);
-    const reg=(b.booking_players||[]).map(x=>x.players).filter(Boolean).filter(p=>!isOrganizer(p));
+    const reg=(b.booking_players||[]).filter(x=>x.pay_status!=='expired')
+        .map(x=>x.players && { ...x.players, pay:x.pay_status, payAmt:x.pay_amount }).filter(Boolean).filter(p=>!isOrganizer(p));
     const guests=(b.guest_players||[]).map(n=>({name:n,phone:null,guest:true}));
     return [...reg,...guests];
 }
@@ -2611,6 +2626,14 @@ function renderAdminDay(){
     const rows=_allBookings.filter(b=>b.booking_date===date).sort((a,b)=>a.start_time.localeCompare(b.start_time));
     document.getElementById('adminDayList').innerHTML=rows.length?rows.map(b=>adminCard(b,false)).join(''):`<p class="text-center text-slate-400 text-sm py-6">Καμία κράτηση αυτή την ημέρα</p>`;
 }
+// μοιρασμένο ματς (γραμματεία): πόσοι πλήρωσαν το μερίδιό τους
+function splitPaidLine(b){
+    if(!b.split_pay || !b.players_total) return '';
+    const sh=(b.booking_players||[]).filter(x=>x.pay_status==='pending'||x.pay_status==='paid');
+    const paid=(b.pay_status==='paid' ? b.players_total-(b.open_spots||0)-sh.length : 0) + sh.filter(x=>x.pay_status==='paid').length;
+    const full=paid>=b.players_total;
+    return `<p class="text-[11px] font-bold ${full?'text-green-700':'text-amber-700'}">Πλήρωσαν ${paid}/${b.players_total}${b.share_amount?` · ${b.share_amount}€ ο καθένας`:''}${full?'':' · ακυρώνεται 2 ώρες πριν αν δεν πληρώσουν όλοι'}</p>`;
+}
 function adminCard(b,showDate){
     const d=durations.find(x=>x.minutes===b.duration_min)||{label:b.duration_min+'′'};
     const price=b.price!=null?b.price:(d.price||'');
@@ -2629,11 +2652,11 @@ function adminCard(b,showDate){
                 ${players.length ? players.map(p=>`
                 <div class="flex items-center justify-between text-[11px] bg-white rounded-lg px-2 py-1.5">
                     <span>${cbEsc(p.name)}</span>
-                    <span class="text-slate-400">${p.guest?'χωρίς λογαριασμό':(p.phone?cbEsc(p.phone):'μέλος')}</span>
+                    <span class="text-slate-400">${p.guest?'χωρίς λογαριασμό':(p.phone?cbEsc(p.phone):'μέλος')}${p.pay==='paid'?` · <b class="text-green-700">✓ ${p.payAmt}€</b>`:p.pay==='pending'?' · <b class="text-amber-700">πληρώνει τώρα</b>':''}</span>
                 </div>`).join('')
                 : `<p class="text-[11px] text-slate-400 px-2 py-1">Δεν έχουν δηλωθεί συμπαίκτες</p>`}
             </div>
-            ${b.open_spots>0?`<p class="text-[11px] text-emerald-700 font-semibold mt-2">Ανοιχτό ματς · ψάχνει ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}</p>`:''}
+            ${b.open_spots>0?`<p class="text-[11px] text-emerald-700 font-semibold mt-2">Ανοιχτό ματς · ψάχνει ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}${b.match_private?' · ιδιωτικό':''}</p>`:''}
             ${b.note?`<p class="text-[11px] text-amber-700 bg-amber-50 border border-amber-100 rounded-lg px-2 py-1 mt-2 whitespace-pre-wrap">${cbEsc(b.note)}</p>`:''}
         </div>`;
     return `<div class="p-3.5 bg-slate-50 rounded-xl border mb-2">
@@ -2645,6 +2668,7 @@ function adminCard(b,showDate){
                     ${showDate?`<p class="text-[11px] text-indigo-500 font-medium">${cbFmtDate(b.booking_date)}</p>`:''}
                     <p class="text-[11px] text-slate-400">${b.courts?.name||''} · ${b.start_time}–${end} · ${d.label}${bookingsOn?` · ${price}€`:''}</p>
                     <p class="text-[11px] text-slate-400">${players.length?`${players.length+1} παίκτες`:'μόνος'} · <span class="text-brand font-semibold">${open?'λιγότερα':'λεπτομέρειες'}</span></p>
+                    ${splitPaidLine(b)}
                 </div>
             </div>
             <button onclick="event.stopPropagation();doCancel('${b.id}')" class="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 font-medium flex-shrink-0">Ακύρωση</button>
