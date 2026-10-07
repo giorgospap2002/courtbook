@@ -5970,10 +5970,10 @@ function renderPlayers(){
         : (list.length ? list.map(p=>memberRow(p,nowKey)).join('')
                        : `<p class="text-slate-400 text-sm py-2">Κανένα μέλος με αυτά τα κριτήρια.</p>`);
     if(subsOn && isOwner){
-        const m=subMonthValue();
-        const n=members.filter(p=>payments.has(p.id+'|'+m)).length;
+        const m=subMonthValue(), payers=members.filter(paysSub);
+        const n=payers.filter(p=>payments.has(p.id+'|'+m)).length;
         const c=document.getElementById('subsCount');
-        if(c) c.textContent=`${n} από ${members.length} πλήρωσαν`;
+        if(c) c.textContent=`${n} από ${payers.length} πλήρωσαν`;
     }
     // ο αριθμός στον τίτλο: «12» ή «3 από 12» όταν υπάρχει φίλτρο
     const cEl=document.getElementById('playersCount');
@@ -5983,12 +5983,14 @@ function renderPlayers(){
         : '';
 }
 
+// συνδρομή πληρώνουν οι αθλητές των γκρουπ· σε club μόνο-προπονήσεων όλοι οι πελάτες είναι αθλητές
+function paysSub(p){ return !bookingsOn || groups.some(g=>(g.memberIds||[]).includes(p.id)); }
 function memberRow(p,nowKey){
     const a=playerActivity[p.id]||{games:[],trains:[]};
     const gM=a.games.filter(x=>x.date.slice(0,7)===nowKey).length;
     const tM=a.trains.filter(x=>x.date.slice(0,7)===nowKey).length;
     // Συνδρομή του μήνα που έχει επιλέξει η γραμματεία στη μπάρα από πάνω
-    const subM=subsOn&&isOwner?subMonthValue():null;
+    const subM=subsOn&&isOwner&&paysSub(p)?subMonthValue():null;
     const paid=subM?payments.has(p.id+'|'+subM):false;
     const payBtn=subM
         ? `<button onclick="event.stopPropagation();togglePayment('${p.id}')" title="Συνδρομή ${subM}"
