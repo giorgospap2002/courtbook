@@ -519,9 +519,9 @@ hr,.border-t,.border-b{border-color:var(--line)}
             <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">Κατέβασε</button>
         </div>
         <div class="grid grid-cols-3 gap-3 anim-up">
-            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-brand" id="statToday">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σήμερα</p></div>
-            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-indigo-500" id="statWeek">0</p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Επόμενες 7μ.</p></div>
-            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p id="statTotalLbl" class="text-[10px] text-slate-400 mt-0.5 font-medium">Αυτόν τον μήνα</p></div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-brand" id="statToday">0</p><p id="statTodayTr" class="text-[10px] text-purple-500 font-semibold"></p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σήμερα</p></div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-indigo-500" id="statWeek">0</p><p id="statWeekTr" class="text-[10px] text-purple-500 font-semibold"></p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Επόμενες 7μ.</p></div>
+            <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p id="statTotalTr" class="text-[10px] text-purple-500 font-semibold"></p><p id="statTotalLbl" class="text-[10px] text-slate-400 mt-0.5 font-medium">Αυτόν τον μήνα</p></div>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-4">
@@ -534,6 +534,13 @@ hr,.border-t,.border-b{border-color:var(--line)}
             <div id="upFilters" class="hidden gap-2 mb-3">
                 <select id="upCourt" onchange="renderAdminTrainings()" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
                 <select id="upCoach" onchange="renderAdminTrainings()" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
+            </div>
+            <div id="upBkFilters" class="hidden flex-wrap gap-2 mb-3">
+                <select id="upBkDay" onchange="renderAdmin()" class="flex-1 min-w-[8rem] px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
+                <select id="upBkCourt" onchange="renderAdmin()" class="flex-1 min-w-[8rem] px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"></select>
+                <select id="upBkType" onchange="renderAdmin()" class="flex-1 min-w-[8rem] px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+                    <option value="">Κρατήσεις και προπονήσεις</option><option value="b">Μόνο κρατήσεις</option><option value="t">Μόνο προπονήσεις</option>
+                </select>
             </div>
             <div id="adminUpcoming"></div>
         </div>
@@ -2353,7 +2360,17 @@ function renderMine(){
     // η μέρα — αλλιώς το παιχνίδι των 19:00 έδειχνε επερχόμενο στις 23:00.
     const up=sorted.filter(b=>!bookingEnded(b)), past=sorted.filter(b=>bookingEnded(b));
     let html='';
-    if(up.length){ html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Επερχόμενες (${up.length})</p>`+up.map(b=>myCard(b,false)).join(''); }
+    if(up.length){
+        html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mb-2">Επερχόμενες (${up.length})</p>`;
+        if(up.length<=8) html+=up.map(b=>myCard(b,false)).join('');
+        else {
+            // πολλές (π.χ. τηλεφωνικές της γραμματείας): ανά μέρα, ανοιχτή η πρώτη
+            const days=[...new Set(up.map(b=>b.booking_date))];
+            if(![..._openDays].some(k=>k.startsWith('my:'))) _openDays.add('my:'+days[0]);
+            html+=days.map(d=>{ const b=up.filter(x=>x.booking_date===d);
+                return dayBlock('my', d, cbFmtDate(d), b.length, _openDays.has('my:'+d) ? b.map(x=>myCard(x,false)).join('') : ''); }).join('');
+        }
+    }
     if(past.length){ html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mt-5 mb-2">Ιστορικό</p>`+past.slice(-10).reverse().map(b=>myCard(b,true)).join(''); }
     list.innerHTML=html;
 }
@@ -2530,9 +2547,9 @@ function trainingItemsOnDate(date){
     }));
     trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>out.push({
         date, start_time:o.start_time, duration_min:o.duration_min, court_id:o.court_id,
-        title:(o.client_name ? 'Ιδιαίτερο: '+o.client_name : (o.training_groups?.name||'Προπόνηση')),
+        title:(o.clinic_id ? 'Clinic: '+o.client_name : o.client_name ? 'Ιδιαίτερο: '+o.client_name : (o.training_groups?.name||'Προπόνηση')),
         coach:(o.coach||o.training_groups?.coach||''),
-        kind:(o.makeup_for?'αναπλήρωση':'έκτακτη')
+        kind:(o.clinic_id?'clinic':o.lesson_id?'online':o.makeup_for?'αναπλήρωση':'έκτακτη')
     }));
     return out.sort((a,b)=>a.start_time.localeCompare(b.start_time));
 }
@@ -2578,9 +2595,36 @@ function renderAdmin(){
     document.getElementById('statWeek').textContent=w;
     document.getElementById('statTotal').textContent=mo;
 
-    const up=_allBookings.filter(b=>b.booking_date>=today).sort((a,b)=>(a.booking_date+a.start_time).localeCompare(b.booking_date+b.start_time));
-    document.getElementById('upcomingCount').textContent=up.length?`${up.length} κρατήσεις`:'';
-    document.getElementById('adminUpcoming').innerHTML=up.length?up.map(b=>adminCard(b,true)).join(''):`<p class="text-center text-slate-400 text-sm py-6">Δεν υπάρχουν επερχόμενες κρατήσεις</p>`;
+    // προπονήσεις στα ίδια διαστήματα (για να ξεχωρίζουν από τις κρατήσεις)
+    const trN=(from,n)=>trainingItemsRange(from,n).length;
+    const mStart=ymNow+'-01', mDays=new Date(+ymNow.slice(0,4), +ymNow.slice(5,7), 0).getDate();
+    const sub=(id,n)=>{ const el=document.getElementById(id); if(el) el.textContent=n?`+ ${n} προπονήσεις`:''; };
+    sub('statTodayTr',trN(today,1)); sub('statWeekTr',trN(today,8)); sub('statTotalTr',trN(mStart,mDays));
+
+    // ── επερχόμενες: ανά μέρα, με φίλτρα μέρας / γηπέδου / τύπου ──
+    document.getElementById('upBkFilters').classList.replace('hidden','flex');
+    const val=id=>document.getElementById(id)?.value||'';
+    const fCourt=val('upBkCourt'), fType=val('upBkType');
+    let bks=_allBookings.filter(b=>b.booking_date>=today);
+    let trs=trainingItemsRange(today,14);
+    if(fCourt){ bks=bks.filter(b=>b.court_id===fCourt); trs=trs.filter(i=>i.court_id===fCourt); }
+    if(fType==='b') trs=[];
+    if(fType==='t') bks=[];
+    const allDays=[...new Set([...bks.map(b=>b.booking_date), ...trs.map(i=>i.date)])].sort();
+    fillFilter('upBkDay', allDays.map(d=>({ v:d, t:cbFmtDate(d) })), 'Όλες οι μέρες');
+    fillFilter('upBkCourt', courts.map(c=>({ v:c.id, t:c.name })), 'Όλα τα γήπεδα');
+    const fDay=val('upBkDay');
+    const days=fDay ? allDays.filter(d=>d===fDay) : allDays;
+    const nb=bks.filter(b=>days.includes(b.booking_date)).length, nt=trs.filter(i=>days.includes(i.date)).length;
+    document.getElementById('upcomingCount').textContent=(nb||nt)?`${nb} κρατήσεις · ${nt} προπονήσεις`:'';
+    if(days.length && (fDay || ![..._openDays].some(k=>k.startsWith('ub:')))) _openDays.add('ub:'+days[0]);
+    document.getElementById('adminUpcoming').innerHTML=days.length ? days.map(d=>{
+        const b=bks.filter(x=>x.booking_date===d), t=trs.filter(x=>x.date===d);
+        const items=[...b.map(x=>({ t:x.start_time, html:()=>adminCard(x,false) })), ...t.map(x=>({ t:x.start_time, html:()=>trainingCard(x,false) }))]
+            .sort((a,c)=>a.t.localeCompare(c.t));
+        const open=_openDays.has('ub:'+d);
+        return dayBlock('ub', d, cbFmtDate(d), `${b.length} κρ. · ${t.length} πρ.`, open ? items.map(i=>i.html()).join('') : '');
+    }).join('') : `<p class="text-center text-slate-400 text-sm py-6">Δεν υπάρχουν επερχόμενες κρατήσεις</p>`;
 
     renderAdminDay();
 }
@@ -4677,6 +4721,7 @@ function fillFilter(id, opts, allLabel){
    τη μέρα η σελίδα γινόταν ατελείωτη, οπότε μαζεύονται ανά μέρα. */
 const _openDays=new Set();
 function toggleDay(kind,k){
+    if(kind==='ub'||kind==='my'){ const key=kind+':'+k; _openDays.has(key)?_openDays.delete(key):_openDays.add(key); return kind==='ub'?renderAdmin():renderMine(); }
     const key=kind+':'+k;
     const body=document.getElementById('d-'+key); if(!body) return;
     const open=body.classList.toggle('hidden')===false;
