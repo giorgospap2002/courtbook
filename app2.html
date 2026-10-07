@@ -2366,7 +2366,7 @@ function renderMine(){
         else {
             // πολλές (π.χ. τηλεφωνικές της γραμματείας): ανά μέρα, ανοιχτή η πρώτη
             const days=[...new Set(up.map(b=>b.booking_date))];
-            if(![..._openDays].some(k=>k.startsWith('my:'))) _openDays.add('my:'+days[0]);
+            if(!_autoOpen.has('my')){ _openDays.add('my:'+days[0]); _autoOpen.set('my','*'); }
             html+=days.map(d=>{ const b=up.filter(x=>x.booking_date===d);
                 return dayBlock('my', d, cbFmtDate(d), b.length, _openDays.has('my:'+d) ? b.map(x=>myCard(x,false)).join('') : ''); }).join('');
         }
@@ -2617,7 +2617,8 @@ function renderAdmin(){
     const days=fDay ? allDays.filter(d=>d===fDay) : allDays;
     const nb=bks.filter(b=>days.includes(b.booking_date)).length, nt=trs.filter(i=>days.includes(i.date)).length;
     document.getElementById('upcomingCount').textContent=(nb||nt)?`${nb} κρατήσεις · ${nt} προπονήσεις`:'';
-    if(days.length && (fDay || ![..._openDays].some(k=>k.startsWith('ub:')))) _openDays.add('ub:'+days[0]);
+    // η πρώτη μέρα ανοίγει μόνη της μόνο την πρώτη φορά (ή όταν διαλέγεις μέρα) — μετά μένει όπως την άφησες
+    if(days.length && (!_autoOpen.has('ub') || (fDay && _autoOpen.get('ub')!==fDay))){ _openDays.add('ub:'+days[0]); _autoOpen.set('ub', fDay||'*'); }
     document.getElementById('adminUpcoming').innerHTML=days.length ? days.map(d=>{
         const b=bks.filter(x=>x.booking_date===d), t=trs.filter(x=>x.date===d);
         const items=[...b.map(x=>({ t:x.start_time, html:()=>adminCard(x,false) })), ...t.map(x=>({ t:x.start_time, html:()=>trainingCard(x,false) }))]
@@ -4720,6 +4721,7 @@ function fillFilter(id, opts, allLabel){
 /* Ποιες μέρες είναι ανοιχτές στις λίστες προπονήσεων. Με 50 προπονήσεις
    τη μέρα η σελίδα γινόταν ατελείωτη, οπότε μαζεύονται ανά μέρα. */
 const _openDays=new Set();
+const _autoOpen=new Map();   // λίστες όπου έχει ήδη ανοίξει αυτόματα η πρώτη μέρα
 function toggleDay(kind,k){
     if(kind==='ub'||kind==='my'){ const key=kind+':'+k; _openDays.has(key)?_openDays.delete(key):_openDays.add(key); return kind==='ub'?renderAdmin():renderMine(); }
     const key=kind+':'+k;
