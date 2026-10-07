@@ -5831,7 +5831,50 @@ function renderCoachAttendance(){
                 <button onclick="openAttendance('${g.id}')" class="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold">Άνοιγμα</button>
             </div>
             <div id="att-${g.id}"></div>
+            <details class="mt-2" ontoggle="if(this.open) loadAttHistory('${g.id}')">
+                <summary class="text-xs font-semibold text-brand cursor-pointer select-none">📋 Ιστορικό &amp; απουσίες</summary>
+                <div id="ah-${g.id}" class="mt-2 text-xs text-slate-400">Φόρτωση…</div>
+            </details>
         </div>`).join('');
+}
+
+// Ιστορικό ενός γκρουπ: προπονήσεις χωρίς παρουσιολόγιο, τα παρουσιολόγια και οι απουσίες ανά αθλητή
+async function loadAttHistory(gid){
+    const box=document.getElementById('ah-'+gid); if(!box) return;
+    const from=new Date(cbToday()+'T12:00:00'); from.setDate(from.getDate()-60);
+    const { data, error }=await sb.from('training_sessions').select('id,session_date,attendance(player_id,present)')
+        .eq('group_id',gid).gte('session_date',cbDateStr(from)).lte('session_date',cbToday()).order('session_date',{ ascending:false });
+    if(error){ box.textContent='Σφάλμα φόρτωσης'; return; }
+    const sess=data||[], name=pid=>(playersFull.find(p=>p.id===pid)||{}).name||'—';
+    // προπονήσεις των τελευταίων 3 εβδομάδων χωρίς παρουσιολόγιο
+    const done=new Set(sess.map(s=>s.session_date)), missing=[];
+    const born=String((groups.find(x=>x.id===gid)||{}).created_at||'').slice(0,10);   // όχι μέρες πριν φτιαχτεί το γκρουπ
+    for(let i=0;i<=21;i++){ const d=new Date(cbToday()+'T12:00:00'); d.setDate(d.getDate()-i); const ds=cbDateStr(d);
+        if(born && ds<born) break;
+        if(!done.has(ds) && trainingsOnDate(ds).some(t=>t.group_id===gid)) missing.push(ds); }
+    // απουσίες ανά αθλητή
+    const abs={};
+    sess.forEach(s=>(s.attendance||[]).forEach(a=>{ if(a.present===false) abs[a.player_id]=(abs[a.player_id]||0)+1; }));
+    const absList=Object.entries(abs).sort((a,b)=>b[1]-a[1]);
+    const dateBtn=(ds,txt,cls)=>`<button onclick="setAttDate('${gid}','${ds}')" class="${cls}">${txt}</button>`;
+    box.innerHTML=`
+        ${missing.length?`<div class="p-2 mb-2 bg-amber-50 border border-amber-200 rounded-lg">
+            <p class="text-[11px] font-bold text-amber-800 mb-1">⚠️ Χωρίς παρουσιολόγιο</p>
+            <div class="flex flex-wrap gap-1">${missing.map(ds=>dateBtn(ds,cbFmtDate(ds),'px-2 py-1 bg-white border border-amber-200 rounded-md text-[11px] text-amber-800 font-semibold')).join('')}</div></div>`:''}
+        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Απουσίες (τελευταίες 60 μέρες)</p>
+        <p class="text-[11px] text-slate-600 mb-2">${absList.length?absList.map(([pid,n])=>`${cbEsc(name(pid))} <b class="text-red-500">${n}</b>`).join(' · '):'Καμία απουσία 👏'}</p>
+        <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Παρουσιολόγια (${sess.length})</p>
+        ${sess.length?sess.map(s=>{ const at=s.attendance||[], pres=at.filter(a=>a.present!==false).length, away=at.filter(a=>a.present===false);
+            return `<div class="flex items-start justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0">
+                <div class="min-w-0">${dateBtn(s.session_date,cbFmtDate(s.session_date),'font-semibold text-[11px] text-slate-700 underline decoration-dotted')}
+                ${away.length?`<p class="text-[10px] text-red-500 truncate">Απόντες: ${away.map(a=>cbEsc(name(a.player_id))).join(', ')}</p>`:''}</div>
+                <span class="text-[11px] font-bold flex-shrink-0 ${away.length?'text-amber-700':'text-green-700'}">${pres}/${at.length} παρόντες</span></div>`; }).join('')
+          :'<p class="text-[11px] text-slate-400">Κανένα παρουσιολόγιο ακόμα</p>'}`;
+}
+function setAttDate(gid,ds){
+    const inp=document.getElementById('ad-'+gid); if(inp) inp.value=ds;
+    openAttendance(gid);
+    document.getElementById('att-'+gid)?.scrollIntoView({ block:'nearest', behavior:'smooth' });
 }
 
 /* ══════════════ ΣΥΝΔΡΟΜΕΣ ══════════════ */
@@ -6405,6 +6448,7 @@ async function saveAttendance(gid,date){
     if(error) return cbToast('Σφάλμα','err');
     cbToast('✓ Παρουσιολόγιο αποθηκεύτηκε');
     if(isOwner){ await loadPlayerActivity(); renderPlayers(); }
+    if(document.getElementById('ah-'+gid)?.closest('details')?.open) loadAttHistory(gid);   // ανανέωσε το ιστορικό
 }
 </script>
 </body>
