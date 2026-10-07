@@ -2421,6 +2421,34 @@ async function loadMyPayments(){
 
 /* Ακυρωμένες προπονήσεις του αθλητή: πότε χάθηκε, και πότε
    αναπληρώνεται — ή ότι εκκρεμεί ακόμα. */
+// Οι επόμενες 14 μέρες του αθλητή: εβδομαδιαίες, έκτακτες, αναπληρώσεις — και όσες ακυρώθηκαν
+function myUpcomingHtml(myGroups){
+    if(!myGroups.length) return '';
+    const gids=myGroups.map(g=>g.id), G=id=>myGroups.find(g=>g.id===id)||{};
+    const items=[], today=cbToday();
+    for(let i=0;i<14;i++){
+        const d=new Date(today+'T12:00:00'); d.setDate(d.getDate()+i); const ds=cbDateStr(d);
+        const cancelled=new Set(trainingOverrides.filter(o=>o.kind==='cancel' && o.the_date===ds).map(o=>o.schedule_id));
+        trainingSchedule.filter(t=>t.active!==false && gids.includes(t.group_id) && t.weekday===d.getDay()).forEach(t=>items.push({
+            ds, t:t.start_time, dur:t.duration_min, court:schedCourt(t,ds), name:G(t.group_id).name||'Προπόνηση',
+            coach:t.coach||G(t.group_id).coach||'', tag:cancelled.has(t.id)?'cancel':'' }));
+        trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===ds && gids.includes(o.group_id)).forEach(o=>items.push({
+            ds, t:o.start_time, dur:o.duration_min, court:o.court_id, name:G(o.group_id).name||'Προπόνηση',
+            coach:o.coach||G(o.group_id).coach||'', tag:o.makeup_for?'makeup':'extra' }));
+    }
+    if(!items.length) return '';
+    items.sort((a,b)=>(a.ds+a.t).localeCompare(b.ds+b.t));
+    const tag={ cancel:'<span class="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">ακυρώθηκε</span>',
+                makeup:'<span class="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">αναπλήρωση</span>',
+                extra:'<span class="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-full">έκτακτη</span>' };
+    return `<div class="border rounded-xl p-3.5 mb-4">
+        <p class="font-bold text-sm mb-2">Οι επόμενες προπονήσεις σου</p>
+        ${items.map(it=>`<div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0 ${it.tag==='cancel'?'opacity-60':''}">
+            <div class="min-w-0"><p class="text-[12px] font-semibold ${it.tag==='cancel'?'line-through':''}">${cbFmtDate(it.ds)} · ${it.t}–${cbM2T(cbT2M(it.t)+it.dur)}</p>
+                <p class="text-[11px] text-slate-500 truncate">${cbEsc(it.name)}${courtName(it.court)?' · '+cbEsc(courtName(it.court)):''}${it.coach?' · '+cbEsc(it.coach):''}</p></div>
+            ${it.tag?tag[it.tag]:''}</div>`).join('')}
+    </div>`;
+}
 function makeupsBanner(rows){
     if(!rows.length) return '';
     const pend=rows.filter(r=>!r.makeup_date);
@@ -2445,11 +2473,13 @@ function makeupsBanner(rows){
 async function renderMyTrainings(){
     const list=document.getElementById('myTrainingsList');
     list.innerHTML=`<p class="text-slate-400 text-sm py-4 text-center">Φόρτωση…</p>`;
-    const [res,,mk]=await Promise.all([
+    const [res,,mk,mg]=await Promise.all([
         sb.rpc('get_my_trainings',{ p_club_id:club.id }),
         loadMyPayments(),
-        sb.rpc('my_makeups',{ p_club_id:club.id })
+        sb.rpc('my_makeups',{ p_club_id:club.id }),
+        sb.rpc('my_groups',{ p_club_id:club.id })
     ]);
+    const upcoming=myUpcomingHtml((mg&&!mg.error&&mg.data)||[]);
     const rows=(res&&!res.error&&res.data)||[];
     const makeups=(mk&&!mk.error&&mk.data)||[];
     const present=rows.filter(r=>r.present).length;
@@ -2463,7 +2493,7 @@ async function renderMyTrainings(){
     if(subsOn) keys.add(cbToday().slice(0,7));
     const months=[...keys].filter(Boolean).sort().reverse();
 
-    if(!months.length){ list.innerHTML=makeupsBanner(makeups)+`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις προπονήσεις ακόμα</p></div>`; return; }
+    if(!months.length){ list.innerHTML=makeupsBanner(makeups)+upcoming+`<div class="text-center py-10"><p class="text-slate-400 text-sm">Δεν έχεις προπονήσεις ακόμα</p></div>`; return; }
     if(!_openMonths.size) _openMonths.add(months[0]);   // ο πιο πρόσφατος ανοιχτός
 
     const totals=`<div class="flex gap-3 mb-4">
@@ -2471,7 +2501,7 @@ async function renderMyTrainings(){
             <div class="flex-1 bg-slate-50 border rounded-xl p-3 text-center"><p class="text-2xl font-extrabold text-slate-400">${rows.length-present}</p><p class="text-[10px] text-slate-500 font-semibold">ΑΠΩΝ</p></div>
         </div>`;
 
-    list.innerHTML = makeupsBanner(makeups) + totals + months.map(k=>{
+    list.innerHTML = makeupsBanner(makeups) + upcoming + totals + months.map(k=>{
         const ms=byMonth[k]||[];
         const mp=ms.filter(r=>r.present).length;
         const open=_openMonths.has(k);
