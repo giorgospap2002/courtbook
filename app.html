@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Κρατήσεις — CourtBook</title>
+<meta name="referrer" content="strict-origin-when-cross-origin"><style id="antiClickjack">html{display:none!important}</style><script>if(self===top){document.getElementById("antiClickjack").remove()}else{top.location=self.location}</script>
 <link rel="icon" type="image/png" href="img/favicon.png"><link rel="apple-touch-icon" href="img/apple-touch-icon.png">
     <script>
     /* ── Ποιο design ανοίγει ──
@@ -916,7 +917,10 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (!slug) { await startLang(); document.getElementById('notFound').classList.remove('hidden'); return; }
 
     cbLoading(true);
-    const { data, error } = await sb.from('clubs').select('*').eq('slug', slug).maybeSingle();
+    // Χωρίς σύνδεση διαβάζονται μόνο τα δημόσια στοιχεία του club (όχι email/τηλέφωνο/ιδιοκτήτης)·
+    // τα πλήρη φορτώνονται μόλις συνδεθεί κάποιος (fullClub).
+    const { data:{ session } } = await sb.auth.getSession();
+    const { data, error } = await sb.from('clubs').select(session ? '*' : CLUB_PUBLIC_COLS).eq('slug', slug).maybeSingle();
     cbLoading(false);
     if (error || !data) { await startLang(); document.getElementById('notFound').classList.remove('hidden'); return; }
     club = data;
@@ -956,8 +960,18 @@ document.addEventListener('DOMContentLoaded', async () => {
     else showAuth();
 });
 
+const CLUB_PUBLIC_COLS='id,slug,name,logo_url,sport,sports,address,open_hour,close_hour,open_min,close_min,slot_minutes,partner_link,loyalty_msg,lang,'+
+    'bookings_enabled,subscriptions_enabled,coaches_enabled,tournaments_enabled,payments_enabled,clinics_enabled,lessons_online,'+
+    'plan_tier,plan_status,pay_mode,pay_ready,pay_refund_hours,sub_fee,pay_subs,clinic_pay,created_at';
+// μετά τη σύνδεση: τα πλήρη στοιχεία του club (ιδιοκτήτης, email κ.λπ.)
+async function fullClub(){
+    if(!club || ('owner_id' in club)) return;
+    const { data }=await sb.from('clubs').select('*').eq('id',club.id).maybeSingle();
+    if(data) club=data;
+}
 async function showPaused(){
     me = await cbCurrentUser();
+    if(me) await fullClub();
     document.title = club.name;
     document.getElementById('pausedClub').textContent = club.name;
     const owner = !!me && me.id === club.owner_id;
@@ -1312,6 +1326,7 @@ async function enterApp(){
     translateClubContent();   // δεν περιμένουμε — εφαρμόζεται μόλις έρθει
     document.getElementById('authScreen').classList.add('hidden');
     document.getElementById('appScreen').classList.remove('hidden');
+    await fullClub();
     isOwner = club.owner_id === me.id;
     // Σύλλογος μόνο προπονήσεων: οι καρτέλες εξαρτώνται από τον ρόλο (μέλος /
     // προπονητής / γραμματεία) — κρύβονται μέχρι να ξέρουμε ποιος μπήκε,
