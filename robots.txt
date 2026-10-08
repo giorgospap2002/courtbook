@@ -1,0 +1,6 @@
+User-agent: *
+Allow: /
+Disallow: /courtbook-admin.html
+Disallow: /app2.html
+
+Sitemap: https://court-book.gr/sitemap.xml
