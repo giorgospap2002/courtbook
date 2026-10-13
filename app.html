@@ -402,11 +402,11 @@
         <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 px-1">
             <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#3b5bdb"></i>Κράτηση</span>
             <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#10b981"></i>Ανοιχτό ματς</span>
-            <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#f59e0b"></i>Αναμονή πληρωμής</span>
-            <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#7c3aed"></i>Προπόνηση</span>
-            <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#0d9488"></i>Ιδιαίτερο</span>
-            <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#d97706"></i>Clinic</span>
-            <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#cbd5e1"></i>Ακυρωμένη</span>
+            <span id="bdLeg-pend" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#f59e0b"></i>Αναμονή πληρωμής</span>
+            <span id="bdLeg-train" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#7c3aed"></i>Προπόνηση</span>
+            <span id="bdLeg-lesson" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#0d9488"></i>Ιδιαίτερο</span>
+            <span id="bdLeg-clinic" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#d97706"></i>Clinic</span>
+            <span id="bdLeg-cancel" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#cbd5e1"></i>Ακυρωμένη</span>
             <span class="ml-auto text-slate-400">Πάτα σε κενό για κράτηση · σε κουτάκι για λεπτομέρειες</span>
         </div>
         <div class="bg-white rounded-2xl shadow-sm overflow-hidden anim-up"><div id="boardGrid" class="overflow-auto" style="max-height:78vh"></div></div>
@@ -3479,12 +3479,16 @@ function renderBoard(){
         items.push({ id:'c'+i, court:schedCourt(t,date), s:cbT2M(t.start_time), d:t.duration_min, type:'cancelled', t,
             color:'#cbd5e1', bg:'#f8fafc', title:(t.training_groups?.name||'Προπόνηση'), sub:'ακυρώθηκε'+(o.needs_makeup?' · αναπλήρωση':'') }); });
     items.forEach(it=>_boardItems[it.id]=it);
+    // υπόμνημα: μόνο ό,τι έχει αυτό το club (όχι clinics / online πληρωμές όπου δεν υπάρχουν)
+    const hasTrain=trainingSchedule.length>0 || trainingOverrides.some(o=>o.kind==='extra') || items.some(i=>i.type!=='booking');
+    const leg={ pend: payActive(), train: hasTrain, lesson: hasTrain || clinicsOn, clinic: clinicsOn, cancel: hasTrain };
+    Object.entries(leg).forEach(([k,on])=>{ const el=document.getElementById('bdLeg-'+k); if(el) el.style.display=on?'':'none'; });
     // ── σύνοψη ──
     const live=items.filter(i=>i.type!=='cancelled');
     const nb=live.filter(i=>i.type==='booking').length, nt=live.length-nb;
     const busyMin=live.reduce((a,i)=>a+i.d,0), occ=Math.min(100,Math.round(busyMin/(courts.length*(close-clubOpenMin()))*100));
     const pill=(t,c)=>`<span class="px-2.5 py-1 rounded-full font-bold" style="background:${c}1a;color:${c}">${t}</span>`;
-    document.getElementById('boardStats').innerHTML=pill(`${nb} κρατήσεις`,'#3b5bdb')+pill(`${nt} προπονήσεις`,'#7c3aed')+pill(`πληρότητα ${occ}%`,'#0f172a');
+    document.getElementById('boardStats').innerHTML=pill(`${nb} κρατήσεις`,'#3b5bdb')+(hasTrain?pill(`${nt} προπονήσεις`,'#7c3aed'):'')+pill(`πληρότητα ${occ}%`,'#0f172a');
     // ── πλέγμα ──
     const cols=`56px repeat(${courts.length}, minmax(118px,1fr))`;
     let html=`<div class="bd-wrap" style="grid-template-columns:${cols}">`;
