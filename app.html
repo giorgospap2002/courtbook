@@ -2353,7 +2353,7 @@ function myUpcomingHtml(myGroups){
         const cancelled=new Set(trainingOverrides.filter(o=>o.kind==='cancel' && o.the_date===ds).map(o=>o.schedule_id));
         trainingSchedule.filter(t=>t.active!==false && gids.includes(t.group_id) && t.weekday===d.getDay()).forEach(t=>items.push({
             ds, t:t.start_time, dur:t.duration_min, court:schedCourt(t,ds), name:G(t.group_id).name||'Προπόνηση',
-            coach:t.coach||G(t.group_id).coach||'', tag:cancelled.has(t.id)?'cancel':'' }));
+            coach:coachSubFor(t.id,ds)?.coach || t.coach||G(t.group_id).coach||'', tag:cancelled.has(t.id)?'cancel':(coachSubFor(t.id,ds)?'sub':'') }));
         trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===ds && gids.includes(o.group_id)).forEach(o=>items.push({
             ds, t:o.start_time, dur:o.duration_min, court:o.court_id, name:G(o.group_id).name||'Προπόνηση',
             coach:o.coach||G(o.group_id).coach||'', tag:o.makeup_for?'makeup':'extra' }));
@@ -2362,7 +2362,8 @@ function myUpcomingHtml(myGroups){
     items.sort((a,b)=>(a.ds+a.t).localeCompare(b.ds+b.t));
     const tag={ cancel:'<span class="text-[10px] font-bold text-red-600 bg-red-50 border border-red-200 px-1.5 py-0.5 rounded-full">ακυρώθηκε</span>',
                 makeup:'<span class="text-[10px] font-bold text-green-700 bg-green-50 border border-green-200 px-1.5 py-0.5 rounded-full">αναπλήρωση</span>',
-                extra:'<span class="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-full">έκτακτη</span>' };
+                extra:'<span class="text-[10px] font-bold text-purple-700 bg-purple-50 border border-purple-200 px-1.5 py-0.5 rounded-full">έκτακτη</span>',
+                sub:'<span class="text-[10px] font-bold text-amber-700 bg-amber-50 border border-amber-200 px-1.5 py-0.5 rounded-full">άλλος προπονητής</span>' };
     return `<div class="border rounded-xl p-3.5 mb-4">
         <p class="font-bold text-sm mb-2">📅 Οι επόμενες προπονήσεις σου</p>
         ${items.map(it=>`<div class="flex items-center justify-between gap-2 py-1.5 border-b border-slate-100 last:border-0 ${it.tag==='cancel'?'opacity-60':''}">
@@ -2495,7 +2496,7 @@ function trainingItemsOnDate(date){
     const out=trainingsOnDate(date).map(t=>({
         date, start_time:t.start_time, duration_min:t.duration_min, court_id:schedCourt(t,date),
         title:(t.training_groups?.name||'Προπόνηση'),
-        coach:(t.coach||t.training_groups?.coach||''), kind:'εβδομαδιαία'
+        coach:(coachSubFor(t.id,date)?.coach || t.coach||t.training_groups?.coach||''), kind:coachSubFor(t.id,date)?'αντικατάσταση':'εβδομαδιαία'
     }));
     trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>out.push({
         date, start_time:o.start_time, duration_min:o.duration_min, court_id:o.court_id,
@@ -3458,12 +3459,18 @@ async function renderMyLessons(){
         sb.from('training_overrides').select('*, training_groups(name)').eq('kind','extra').is('lesson_id',null).is('clinic_id',null)
           .or(`coach_id.eq.${myCoach.id}${gids.length?`,group_id.in.(${gids.join(',')})`:''}`).gte('the_date',cbToday()).lte('the_date',cbDateStr(to))
     ]);
+    // αντικαταστάσεις: όσες κάνει ο ίδιος, και όσες τον αντικαθιστούν
+    const subs=trainingOverrides.filter(o=>o.kind==='coach' && o.the_date>=cbToday() && o.the_date<=cbDateStr(to)).map(o=>({ o, s:trainingSchedule.find(x=>x.id===o.schedule_id) }))
+        .filter(x=>x.s && (x.o.coach_id===myCoach.id || gids.includes(x.s.group_id)));
     const items=[
         ...(c.data||[]).map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id, title:'Clinic: '+x.title, sub:x.level||'', cls:'bg-blue-50 border-blue-100' })),
         ...(l.data||[]).filter(x=>x.status==='confirmed' || (x.pay_until && new Date(x.pay_until)>new Date()))
             .map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id, title:'Ιδιαίτερο: '+x.name, sub:x.phone||'', tel:x.phone, cls:'bg-green-50 border-green-100' })),
         ...(o.data||[]).map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id,
-            title:x.client_name?'Ιδιαίτερο: '+x.client_name:'Έκτακτη: '+(x.training_groups?.name||''), sub:'', cls:x.client_name?'bg-green-50 border-green-100':'bg-purple-50 border-purple-100' }))
+            title:x.client_name?'Ιδιαίτερο: '+x.client_name:'Έκτακτη: '+(x.training_groups?.name||''), sub:'', cls:x.client_name?'bg-green-50 border-green-100':'bg-purple-50 border-purple-100' })),
+        ...subs.map(({o,s})=>({ d:o.the_date, t:s.start_time, dur:s.duration_min, court:schedCourt(s,o.the_date),
+            title: o.coach_id===myCoach.id ? 'Αντικατάσταση: '+(s.training_groups?.name||'') : `${s.training_groups?.name||''} — σε αντικαθιστά ${o.coach||''}`,
+            sub:'', cls:'bg-amber-50 border-amber-100' }))
     ].sort((a,b)=>a.d.localeCompare(b.d) || a.t.localeCompare(b.t));
     const card=document.getElementById('myLessonsCard');
     if(card) card.classList.toggle('hidden', !items.length);
@@ -4047,11 +4054,14 @@ function renderTschedule(){
                         <p class="text-[11px] text-slate-500 mt-0.5">${coach?('Προπονητής: '+coach):'Χωρίς προπονητή'}${t.coach?'':(coach?' <span class="text-slate-300">(από το γκρουπ)</span>':'')} <button onclick="setTschedCoach('${t.id}')" class="text-brand font-semibold ml-1">Αλλαγή</button></p>
                     </div>
                     <div class="flex gap-1 flex-shrink-0">
+                        ${pilotOn()?`<button onclick="toggleSub('${t.id}')" class="text-purple-600 text-[11px] font-semibold border border-purple-200 px-2 py-1.5 rounded-lg hover:bg-purple-100">Αντικατάσταση</button>`:''}
                         <button onclick="toggleMove('${t.id}')" class="text-purple-600 text-[11px] font-semibold border border-purple-200 px-2 py-1.5 rounded-lg hover:bg-purple-100">Μετακίνηση</button>
                         <button onclick="toggleRot('${t.id}')" title="Αλλάζει γήπεδο κάθε εβδομάδα" class="text-purple-600 text-[11px] font-semibold border border-purple-200 px-2 py-1.5 rounded-lg hover:bg-purple-100">Εναλλαγή</button>
                         <button onclick="delTsched('${t.id}')" class="text-red-500 text-[11px] font-semibold border border-red-200 px-2 py-1.5 rounded-lg hover:bg-red-50">Διαγραφή</button>
                     </div>
                 </div>
+                ${t.id===subOpenId?subPanel(t):''}
+                ${subsLine(t)}
                 ${t.id===moveOpenId?movePanel(t):''}
                 ${t.id===rotOpenId?rotPanel(t):''}
             </div>`;
@@ -4082,6 +4092,11 @@ function renderTschedule(){
             when=`${cbFmtDate(o.the_date)}${s?' '+s.start_time:''}`;
             type='Ακύρωση'; color='text-red-500';
             detail=[s?.training_groups?.name||'Προπόνηση', sCourt, pend?'εκκρεμεί αναπλήρωση':''].filter(Boolean).join(' · ');
+        } else if(o.kind==='coach'){
+            const s=trainingSchedule.find(x=>x.id===o.schedule_id);
+            when=`${cbFmtDate(o.the_date)}${s?' '+s.start_time:''}`;
+            type='Αντικατάσταση'; color='text-amber-600';
+            detail=[s?.training_groups?.name||'Προπόνηση', `${tschedCoach(s||{})||'—'} → ${o.coach||'—'}`].filter(Boolean).join(' · ');
         } else if(o.client_name){
             when=`${cbFmtDate(o.the_date)} ${o.start_time||''}`;
             type='Ιδιαίτερο'; color='text-emerald-600';
@@ -4098,6 +4113,55 @@ function renderTschedule(){
     }).join(''):'';
     document.getElementById('overridesWrap').classList.toggle('hidden', !ups.length);
     renderMakeups();
+}
+
+
+/* ══════════════ ΑΝΤΙΚΑΤΑΣΤΑΣΗ ΠΡΟΠΟΝΗΤΗ (μία ημερομηνία) ══════════════
+   Πιλοτικά στη Νίκη· αν δουλέψει, ανοίγει για όλους. Γήπεδο και ώρα δεν αλλάζουν —
+   μόνο ποιος κάνει εκείνη την προπόνηση. Το βλέπουν γραμματεία, αθλητές και οι δύο προπονητές. */
+const PILOT_CLUBS = new Set(['niki-demo']);
+const pilotOn = () => !!(club && PILOT_CLUBS.has(club.slug));
+const coachSubFor = (sid, date) => trainingOverrides.find(o=>o.kind==='coach' && o.schedule_id===sid && o.the_date===date) || null;
+let subOpenId=null;
+function toggleSub(id){ subOpenId = subOpenId===id ? null : id; moveOpenId=null; rotOpenId=null; renderTschedule(); }
+function subsLine(t){
+    const ups=trainingOverrides.filter(o=>o.kind==='coach' && o.schedule_id===t.id && o.the_date>=cbToday()).sort((a,b)=>a.the_date.localeCompare(b.the_date));
+    return ups.length ? `<div class="mt-2 flex flex-wrap gap-1.5">${ups.map(o=>`<span class="inline-flex items-center gap-1 text-[11px] bg-amber-50 border border-amber-200 text-amber-800 rounded-lg px-2 py-1">
+        ${cbFmtDate(o.the_date)}: <b>${cbEsc(o.coach||'—')}</b><button onclick="delOverride('${o.id}')" class="text-amber-500 font-bold ml-1">✕</button></span>`).join('')}</div>` : '';
+}
+function subPanel(t){
+    const occ=nextWeekdayDates(t.weekday,8).map(d=>`<option value="${d}">${cbFmtDate(d)}${coachSubFor(t.id,d)?' · ήδη: '+cbEsc(coachSubFor(t.id,d).coach||''):''}</option>`).join('');
+    const cur=tschedCoach(t);
+    const opts=coaches.filter(c=>c.name!==cur).map(c=>`<option value="${c.id}">${cbEsc(c.name)}</option>`).join('');
+    return `<div class="mt-3 pt-3 border-t border-purple-200">
+        <p class="text-[11px] text-slate-400 mb-2">Λείπει ο/η ${cbEsc(cur||'προπονητής')}; Την προπόνηση κάνει άλλος, <b>μόνο εκείνη τη μέρα</b> — ώρα και γήπεδο μένουν ίδια. Το βλέπουν οι αθλητές και οι δύο προπονητές.</p>
+        <div class="grid grid-cols-12 gap-2">
+            <select id="subDate" class="col-span-12 sm:col-span-5 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white">${occ}</select>
+            <select id="subCoach" onchange="document.getElementById('subName').classList.toggle('hidden',this.value!=='__other')" class="col-span-12 sm:col-span-7 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white">
+                ${opts}<option value="__other">Άλλος (γράψε όνομα)…</option></select>
+            <input id="subName" placeholder="Όνομα προπονητή" class="${coaches.filter(c=>c.name!==cur).length?'hidden ':''}col-span-12 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+            <button onclick="saveSub('${t.id}')" class="col-span-12 bg-purple-600 text-white rounded-lg py-2 text-sm font-bold">Αντικατάσταση</button>
+        </div>
+    </div>`;
+}
+async function saveSub(sid){
+    const t=trainingSchedule.find(x=>x.id===sid); if(!t) return;
+    const date=document.getElementById('subDate').value, sel=document.getElementById('subCoach').value;
+    let coach_id=null, coach=(document.getElementById('subName').value||'').trim();
+    if(sel && sel!=='__other'){ coach_id=sel; coach=(coaches.find(c=>c.id===sel)||{}).name||''; }
+    if(!date) return cbToast('Διάλεξε ημερομηνία','err');
+    if(!coach) return cbToast('Διάλεξε ή γράψε προπονητή','err');
+    if(trainingOverrides.some(o=>o.kind==='cancel' && o.schedule_id===sid && o.the_date===date)) return cbToast('Η προπόνηση εκείνης της μέρας είναι ακυρωμένη','err');
+    if(!await coachBusyOk(coach_id, date, t.start_time, t.duration_min)) return;
+    cbLoading(true);
+    const old=coachSubFor(sid,date);
+    if(old) await sb.from('training_overrides').delete().eq('id',old.id);
+    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, schedule_id:sid, group_id:t.group_id, the_date:date, kind:'coach', coach, ...(coach_id?{coach_id}:{}) });
+    cbLoading(false);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    subOpenId=null;
+    cbToast(`✓ ${cbFmtDate(date)}: την προπόνηση κάνει ο/η ${coach}`);
+    await loadTrainingSchedule(); renderTschedule();
 }
 
 // οι φόρμες «μίας φοράς» είναι κρυφές — ανοίγουν μόνο όταν χρειάζονται
@@ -4399,7 +4463,9 @@ async function delOverride(id){
         cbToast(r.refunded?`Ακυρώθηκε — επιστροφή ${r.refunded}€ στην κάρτα`:'Ακυρώθηκε');
         await loadTrainingSchedule(); renderTschedule(); loadDay(true); return;
     }
-    const msg = o?.kind==='cancel'
+    const msg = o?.kind==='coach'
+        ? 'Αναίρεση της αντικατάστασης;\n\nΤην προπόνηση θα την κάνει ο κανονικός προπονητής.'
+        : o?.kind==='cancel'
         ? 'Αναίρεση της ακύρωσης;\n\nΗ προπόνηση θα επανέλθει κανονικά εκείνη τη μέρα.'
         : 'Διαγραφή αυτής της προπόνησης;\n\nΤο γήπεδο θα ελευθερωθεί εκείνη τη μέρα.';
     if(!confirm(msg)) return;
