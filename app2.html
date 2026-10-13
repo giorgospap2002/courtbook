@@ -1217,7 +1217,7 @@ function renderExtras(){
     if(!ex) return;
     ex.innerHTML = extras.length
         ? `<div class="flex flex-wrap gap-x-4 gap-y-1 justify-center pt-3 border-t border-blue-100">`
-            + extras.map(e => `<span class="text-[12px] text-slate-500"><span class="font-bold text-slate-700">${e.price}€</span> ${e.label}</span>`).join('')
+            + extras.map(e => `<span class="text-[12px] text-slate-500"><span class="font-bold text-slate-700">${e.price}€</span> ${e.label}${e===lightsExtra()?` <span class="text-amber-600">· αυτόματα μετά τη δύση (σήμερα ${cbM2T(sunsetMin(cbToday()))})</span>`:''}</span>`).join('')
             + `</div>`
         : '';
 }
@@ -1890,10 +1890,12 @@ function renderSlots(){
                 card.classList.add('slot-pick');
                 // με online πληρωμή η κάρτα έχει περισσότερα πεδία → όλο το πλάτος
                 if(!isOwner && payActive()) card.style.gridColumn='1 / -1';
+                const pDate=document.getElementById('datePicker').value, lx=lightsExtra();
                 const btns=durationsForCourt(court).map(d=>{
                     const fits=durationFits(court,time,d.minutes);
+                    const lit=lx && needsLights(pDate,time,d.minutes) ? ` + ${lx.price}€` : '';
                     return fits
-                        ? `<button onclick="doBook('${court}','${time}',${d.minutes},${d.price})" class="flex-1 py-2 bg-brand text-white text-xs rounded-lg font-bold hover:bg-brand-dark transition">${d.label}${bookingsOn?`<br><span class="font-normal opacity-80">${d.price}€</span>`:''}</button>`
+                        ? `<button onclick="doBook('${court}','${time}',${d.minutes},${d.price})" class="flex-1 py-2 bg-brand text-white text-xs rounded-lg font-bold hover:bg-brand-dark transition">${d.label}${bookingsOn?`<br><span class="font-normal opacity-80">${d.price}€${lit}</span>`:''}</button>`
                         : `<button disabled class="flex-1 py-2 bg-slate-100 text-slate-300 text-xs rounded-lg font-bold cursor-not-allowed">${d.label}${bookingsOn?`<br><span class="font-normal">${d.price}€</span>`:''}</button>`;
                 }).join('');
                 const adminFields = isOwner ? `
@@ -1951,7 +1953,7 @@ function renderSlots(){
                 const exField = (isOwner || !payActive() || !extras.length) ? '' : `
                     <div class="mb-2 p-2 bg-slate-50 rounded-lg">
                         <p class="text-[10px] text-slate-400 font-bold mb-1">Extras (προαιρετικά) <span id="exTotal" class="text-brand">${extrasTotal()?'+'+extrasTotal()+'€':''}</span></p>
-                        ${extras.map(e=>`<div class="flex items-center gap-2 py-1">
+                        ${extras.filter(e=>e!==lightsExtra()).map(e=>`<div class="flex items-center gap-2 py-1">
                             <span class="flex-1 text-[11px] text-slate-600">${cbEsc(e.label)} · ${e.price}€</span>
                             <button type="button" onclick="exQty('${e.id}',-1)" class="w-6 h-6 rounded-full border border-slate-300 text-xs font-bold">−</button>
                             <span id="exq-${e.id}" class="w-4 text-center text-xs font-bold">${pickerExtras[e.id]||0}</span>
@@ -1971,7 +1973,7 @@ function renderSlots(){
                 const allFit=durationsForCourt(court).every(d=>durationFits(court,time,d.minutes));
                 const hint = allFit ? '' :
                     `<p class="text-[10px] text-amber-600 mt-1.5">Ελεύθερο μέχρι τις ${gap.until} (${gap.minutes}′) — οι μεγαλύτερες διάρκειες δεν χωράνε.</p>`;
-                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}${exField}${payField}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
+                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${coPlayerField}${openField}${noteField}${exField}${payField}${lx?`<p class="text-[10px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1 mb-2">Μετά τη δύση (${cbM2T(sunsetMin(pDate))}) τα φώτα χρεώνονται αυτόματα ${lx.price}€.</p>`:''}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
             } else if(!anyDurationFits(court,time)){
                 // Το slot είναι ελεύθερο, αλλά το κενό μέχρι την επόμενη κράτηση
                 // είναι μικρότερο από τη συντομότερη διάρκεια. Μην το προσφέρεις.
@@ -2260,7 +2262,9 @@ async function doBook(court,time,durMin,price){
     const split=!isOwner && payActive() && openSpots>0 && pickerSplit;
     const priv=!isOwner && payActive() && openSpots>0 && pickerPrivate;
     const payNow=split || (!isOwner && payActive() && (payRequired() || (document.getElementById('payNow')?.checked ?? pickerPayNow)));
-    const exList=(!isOwner && payActive()) ? Object.entries(pickerExtras).map(([id,qty])=>({ id, qty })) : [];
+    const lx=lightsExtra();
+    const exList=((!isOwner && payActive()) ? Object.entries(pickerExtras).map(([id,qty])=>({ id, qty })) : []).filter(x=>!lx || x.id!==lx.id);
+    if(lx && needsLights(date,time,durMin)) exList.push({ id:lx.id, qty:1 });
     pickerExtras={};
     pickerSlot=null; pickerOpenSpots=0; pickerPrivate=false; pickerSplit=false; pickerNote=''; pickerNewName=''; pickerNewPhone=''; cbLoading(true);
     try{
@@ -2959,6 +2963,35 @@ function exQty(id, d){
 function extrasTotal(){ return Math.round(Object.entries(pickerExtras).reduce((a,[id,q])=>{ const e=extras.find(x=>x.id===id); return a+(e?Number(e.price)*q:0); },0)*100)/100; }
 function extrasText(list){
     return (list||[]).map(x=>{ const e=extras.find(y=>y.id===x.id); return e?`${e.label}${x.qty>1?' ×'+x.qty:''}`:''; }).filter(Boolean).join(', ');
+}
+/* ══════════════ ΑΥΤΟΜΑΤΑ ΦΩΤΑ ΜΕΤΑ ΤΗ ΔΥΣΗ ══════════════
+   Ανά club (συντεταγμένες + ζώνη ώρας). Το extra «Φώτα» μπαίνει μόνο του όταν η κράτηση
+   περνά τη δύση του ηλίου εκείνης της μέρας· δεν το διαλέγει ούτε το βγάζει ο πελάτης. */
+const AUTO_LIGHTS = { 'niki-demo': { lat:38.2466, lon:21.7346, tz:'Europe/Athens', grace:15 } };
+const lightsCfg   = () => (club && AUTO_LIGHTS[club.slug]) || null;
+const lightsExtra = () => lightsCfg() ? extras.find(e=>/φ[ωώ]τα|lights?|licht/i.test(e.label||'')) || null : null;
+const _sunMemo = {};
+function sunsetMin(dateStr){   // λεπτά από τα μεσάνυχτα, τοπική ώρα του club (αλγόριθμος NOAA)
+    const c=lightsCfg(); if(!c) return 24*60;
+    if(_sunMemo[dateStr]!=null) return _sunMemo[dateStr];
+    const rad=Math.PI/180, d=new Date(dateStr+'T12:00:00Z');
+    const n=Math.round((Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())-Date.UTC(d.getUTCFullYear(),0,0))/864e5);
+    const lngH=c.lon/15, t=n+((18-lngH)/24), M=0.9856*t-3.289;
+    let L=(M+1.916*Math.sin(M*rad)+0.020*Math.sin(2*M*rad)+282.634+360)%360;
+    let RA=(Math.atan(0.91764*Math.tan(L*rad))/rad+360)%360;
+    RA=(RA+(Math.floor(L/90)*90-Math.floor(RA/90)*90))/15;
+    const sinD=0.39782*Math.sin(L*rad), cosD=Math.cos(Math.asin(sinD));
+    const cosH=(Math.cos(90.833*rad)-sinD*Math.sin(c.lat*rad))/(cosD*Math.cos(c.lat*rad));
+    if(cosH<-1||cosH>1) return (_sunMemo[dateStr]=24*60);
+    const H=Math.acos(cosH)/rad/15, T=H+RA-0.06571*t-6.622;
+    const UT=((T-lngH)%24+24)%24;
+    const utc=new Date(Date.UTC(d.getUTCFullYear(),d.getUTCMonth(),d.getUTCDate())+UT*3600e3);
+    const p=new Intl.DateTimeFormat('en-GB',{ timeZone:c.tz, hour:'2-digit', minute:'2-digit', hourCycle:'h23' }).formatToParts(utc);
+    return (_sunMemo[dateStr]=(+p.find(x=>x.type==='hour').value)*60 + (+p.find(x=>x.type==='minute').value));
+}
+function needsLights(dateStr, time, dur){
+    const c=lightsCfg(); if(!c || !lightsExtra() || !dateStr) return false;
+    return cbT2M(time)+dur > sunsetMin(dateStr)+(c.grace||0);
 }
 function payActive(){ return !!(club && club.payments_enabled && club.pay_ready && ['optional','required'].includes(club.pay_mode)); }
 function payRequired(){ return payActive() && club.pay_mode==='required'; }
@@ -3688,7 +3721,7 @@ function boardOpen(id){
         const b=i.b, players=bookingPlayers(b);
         body=row('Πελάτης',cbEsc(b.user_name||'—'))+row('Τηλέφωνο',b.user_phone?`<a href="tel:${cbEsc(b.user_phone)}" class="text-brand">${cbEsc(b.user_phone)}</a>`:'')
             +row('Email',cbEsc(b.user_email||''))+row('Γήπεδο',cbEsc(court))+row('Ώρα',`${cbM2T(i.s)}–${cbM2T(i.s+i.d)}`)
-            +row('Τιμή',b.price!=null?b.price+'€':'')+row('Πληρωμή',b.pay_status==='paid'?`✓ online ${b.pay_amount??''}€`:b.pay_status==='pending'?'πληρώνει τώρα':'στο γήπεδο')
+            +row('Τιμή',b.price!=null?b.price+'€':'')+row('Extras',(b.extras&&b.extras.length)?cbEsc(extrasText(b.extras)):'')+row('Πληρωμή',b.pay_status==='paid'?`✓ online ${b.pay_amount??''}€`:b.pay_status==='pending'?'πληρώνει τώρα':'στο γήπεδο')
             +row('Παίκτες',players.length?cbEsc(players.map(p=>p.name).join(', ')):'')+row('Ανοιχτό ματς',(b.open_spots||0)>0?`ψάχνει ${b.open_spots}`:'')
             +(b.note?`<p class="mt-2 text-[12px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1.5">${cbEsc(b.note)}</p>`:'');
         actions=`<button onclick="boardClose();doCancel('${b.id}')" class="flex-1 py-2.5 rounded-xl text-sm font-bold text-red-600 border border-red-200 hover:bg-red-50">Ακύρωση κράτησης</button>`;
