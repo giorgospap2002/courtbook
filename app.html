@@ -5534,21 +5534,35 @@ async function genSchedule(cid){
     cbToast(rows.length+' αγώνες');
 }
 
-/* Αποθήκευση σκορ. Ο νικητής βγαίνει μόνος του από τα σετ. */
-async function saveScore(mid){
+/* Αποθήκευση σκορ. Ο νικητής βγαίνει μόνος του από τα σετ.
+   Αθόρυβα: χωρίς «φορτώνει» και χωρίς να ξαναχτίζεται η σελίδα σε κάθε κουτάκι —
+   μόνο όταν κριθεί ο αγώνας (βαθμολογία / επόμενος γύρος), κρατώντας θέση και κέρσορα. */
+const _scoreTimer={};
+function saveScore(mid){ clearTimeout(_scoreTimer[mid]); _scoreTimer[mid]=setTimeout(()=>saveScoreNow(mid), 250); }
+function keepPlace(fn){
+    const y=window.scrollY, f=document.activeElement&&document.activeElement.id;
+    fn(); window.scrollTo(0,y);
+    if(f){ const el=document.getElementById(f); if(el) el.focus({ preventScroll:true }); }
+}
+async function saveScoreNow(mid){
     const g = k => { const el=document.getElementById('sc-'+mid+'-'+k); const v=el?el.value.trim():'';
                      return v===''? null : parseInt(v); };
     const p = { s1a:g('1a'), s1b:g('1b'), s2a:g('2a'), s2b:g('2b'), s3a:g('3a'), s3b:g('3b') };
     const m = tMatches.find(x=>x.id===mid);
+    const prevW = m.winner_id || null;
     p.winner_id = matchWinner({ ...m, ...p });
     if(!p.played_on && p.winner_id) p.played_on = m.played_on || cbToday();
-    cbLoading(true);
     const { error }=await sb.from('tournament_matches').update(p).eq('id',mid);
-    cbLoading(false);
-    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    if(error) return cbToast('Δεν αποθηκεύτηκε — έλεγξε τη σύνδεση','err');
     Object.assign(m,p);
-    if(m.stage==='ko') await autoAdvance(m.category_id);
-    renderTournaments();
+    if((p.winner_id||null)!==prevW){
+        if(m.stage==='ko') await autoAdvance(m.category_id);
+        keepPlace(renderTournaments);
+    }
+    // μικρή ένδειξη «αποθηκεύτηκε» στα κουτάκια του αγώνα
+    ['1a','1b','2a','2b','3a','3b'].forEach(k=>{ const el=document.getElementById('sc-'+mid+'-'+k); if(!el) return;
+        el.style.borderColor='#22c55e'; el.style.background='#f0fdf4';
+        setTimeout(()=>{ el.style.borderColor=''; el.style.background=''; }, 900); });
 }
 
 /* ══════════════ ΕΜΦΑΝΙΣΗ ══════════════ */
@@ -5884,7 +5898,7 @@ function categoryBlock(cat, editable){
         ${table}
         ${matches}
         ${bracketV}
-        ${editable && kMs.length ? `<details class="mt-3"><summary class="text-[11px] font-bold tracking-wide text-slate-400 uppercase cursor-pointer select-none">Σκορ & ώρες αγώνων νοκ-άουτ</summary>${bracket}</details>` : ''}
+        ${editable && kMs.length ? `<details class="mt-3" ${_tOpen.has('kod:'+cat.id)?'open':''} ontoggle="this.open?_tOpen.add('kod:${cat.id}'):_tOpen.delete('kod:${cat.id}')"><summary class="text-[11px] font-bold tracking-wide text-slate-400 uppercase cursor-pointer select-none">Σκορ & ώρες αγώνων νοκ-άουτ</summary>${bracket}</details>` : ''}
     </div>`;
 }
 
