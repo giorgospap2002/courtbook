@@ -4137,56 +4137,35 @@ function upcomingSessions(groupIds, days=14){
 }
 const sessLabel = s => `${cbFmtDate(s.date)} ${s.time}`;
 
-/* ── προπονητής: «χωράει αναπλήρωση» ── */
-let _coachOffers=[], _coachGuests=[];
-async function loadCoachOffers(){
-    const gids=myCoachGroups().map(g=>g.id); if(!gids.length) return;
-    const [o,g]=await Promise.all([
-        sb.from('makeup_offers').select('*').in('group_id',gids).gte('the_date',cbToday()),
-        sb.from('makeup_guests').select('*').in('group_id',gids).gte('the_date',cbToday())]);
-    _coachOffers=o.data||[]; _coachGuests=g.data||[];
-    gids.forEach(renderCoachOffers);
+/* ── γραμματεία: ποιοι χρειάζονται αναπλήρωση · πού υπάρχει ελεύθερη θέση · κανονισμένες ──
+   ελεύθερες θέσεις = όριο αθλητών τμήματος − μέλη − κανονισμένοι επισκέπτες εκείνης της μέρας */
+let _mgCand=[], _mgGuests=[], _mgPick=null, _mgAddOpen=false;
+function groupFree(gid, date){
+    const g=groups.find(x=>x.id===gid); if(!g || !g.max_athletes) return null;
+    return g.max_athletes - (g.memberIds||[]).length - _mgGuests.filter(x=>x.group_id===gid && x.the_date===date).length;
 }
-function renderCoachOffers(gid){
-    const el=document.getElementById('mo-'+gid); if(!el) return;
-    const ss=upcomingSessions([gid]);
-    if(!ss.length){ el.innerHTML=''; return; }
-    el.innerHTML=`<div class="p-2.5 bg-blue-50/60 border border-blue-100 rounded-lg">
-        <p class="text-[11px] font-bold text-blue-800 mb-0.5">🔁 Χωράει αναπλήρωση;</p>
-        <p class="text-[10px] text-slate-500 mb-1.5">Πάτα την προπόνηση όπου μπορεί να έρθει κάποιος από άλλο γκρουπ — ενημερώνεται η γραμματεία.</p>
-        <div class="flex flex-wrap gap-1.5">${ss.map(s=>{
-            const on=_coachOffers.some(o=>o.group_id===gid && o.the_date===s.date && o.start_time===s.time);
-            const gs=_coachGuests.filter(x=>x.group_id===gid && x.the_date===s.date);
-            return `<button onclick="toggleOffer('${gid}','${s.sid}','${s.date}','${s.time}')" class="px-2 py-1 rounded-lg text-[11px] font-semibold border ${on?'bg-green-600 text-white border-green-600':'bg-white text-slate-600 border-slate-200'}">${on?'✓ ':''}${sessLabel(s)}${gs.length?` · ${gs.length} επισκ.`:''}</button>`;
-        }).join('')}</div>
-        ${_coachGuests.filter(x=>x.group_id===gid).length?`<p class="text-[10px] text-slate-600 mt-1.5">Επισκέπτες: ${_coachGuests.filter(x=>x.group_id===gid).map(x=>`${cbEsc(x.player_name||'')} (${cbFmtDate(x.the_date)})`).join(', ')}</p>`:''}
-    </div>`;
-}
-async function toggleOffer(gid, sid, date, time){
-    const ex=_coachOffers.find(o=>o.group_id===gid && o.the_date===date && o.start_time===time);
-    const r = ex ? await sb.from('makeup_offers').delete().eq('id',ex.id)
-                 : await sb.from('makeup_offers').insert({ club_id:club.id, group_id:gid, schedule_id:sid, the_date:date, start_time:time });
-    if(r.error) return cbToast('Δεν αποθηκεύτηκε','err');
-    cbToast(ex ? 'Αφαιρέθηκε' : '✓ Η γραμματεία βλέπει ότι χωράει αναπλήρωση');
-    loadCoachOffers();
-}
-
-/* ── γραμματεία: ποιοι χρειάζονται · ποιες προπονήσεις χωράνε · κανονισμένες ── */
-let _mgCand=[], _mgOffers=[], _mgGuests=[], _mgPick=null, _mgAddOpen=false;
+const freeLbl = n => n===1 ? '1 ελεύθερη θέση' : `${n} ελεύθερες θέσεις`;
 async function renderGuestMakeups(){
     const el=document.getElementById('guestMakeupCard'); if(!el) return;
-    const [c,o,g]=await Promise.all([
+    const [c,g]=await Promise.all([
         sb.rpc('makeup_candidates',{ p_club_id:club.id }),
-        sb.from('makeup_offers').select('*').eq('club_id',club.id).gte('the_date',cbToday()).order('the_date'),
         sb.from('makeup_guests').select('*').eq('club_id',club.id).gte('the_date',cbToday()).order('the_date')]);
-    _mgCand=c.data||[]; _mgOffers=o.data||[]; _mgGuests=g.data||[];
+    _mgCand=c.data||[]; _mgGuests=g.data||[];
     const gName=id=>(groups.find(x=>x.id===id)||{}).name||'';
-    const sessOf=o=>upcomingSessions(null).find(s=>s.gid===o.group_id && s.date===o.the_date && s.time===o.start_time);
     const key=x=>`${x.player_id}|${x.missed_date}|${x.group_id||''}`;
+    const sess=upcomingSessions(null), noLimit=groups.filter(x=>!x.max_athletes);
     const cand=_mgCand.map(x=>{
         const k=key(x), open=_mgPick===k;
-        const offers=_mgOffers.filter(o=>o.group_id!==x.group_id).map(o=>({ o, s:sessOf(o) })).filter(z=>z.s);
-        const others=upcomingSessions(null).filter(s=>s.gid!==x.group_id && !offers.some(z=>z.s.sid===s.sid && z.s.date===s.date));
+        let opts='', full=0;
+        if(open){
+            const mine=new Set(groups.filter(gr=>(gr.memberIds||[]).includes(x.player_id)).map(gr=>gr.id)); if(x.group_id) mine.add(x.group_id);
+            const taken=new Set(_mgGuests.filter(z=>z.player_id===x.player_id).map(z=>z.group_id+'|'+z.the_date));
+            sess.filter(s=>!mine.has(s.gid) && !taken.has(s.gid+'|'+s.date)).forEach(s=>{
+                const f=groupFree(s.gid,s.date); if(f===null) return;
+                if(f>0) opts+=`<option value="${s.sid}|${s.date}">${sessLabel(s)} · ${cbEsc(s.gname)} · ${cbEsc(courtName(s.court))}${s.coach?' · '+cbEsc(s.coach):''} · ${freeLbl(f)}</option>`;
+                else full++;
+            });
+        }
         return `<div class="py-2 border-b border-slate-100 last:border-0">
             <div class="flex items-center gap-2">
                 <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">${cbEsc(x.player_name||'')}</p>
@@ -4195,29 +4174,23 @@ async function renderGuestMakeups(){
                 <button onclick="dismissNeed('${x.player_id}','${x.missed_date}','${x.group_id||''}','${x.need_id||''}')" title="Δεν χρειάζεται αναπλήρωση" class="text-slate-400 text-xs px-1">✕</button>
             </div>
             ${open?`<div class="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
-                <p class="text-[11px] font-bold text-slate-600 mb-1">Σε ποια προπόνηση θα έρθει; (αφού μιλήσεις μαζί του)</p>
-                <select id="mgSess" class="w-full px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">
-                    ${offers.length?`<optgroup label="✓ Χωράει αναπλήρωση (δήλωση προπονητή)">${offers.map(z=>`<option value="${z.s.sid}|${z.s.date}|${z.o.id}">${sessLabel(z.s)} · ${cbEsc(z.s.gname)} · ${cbEsc(courtName(z.s.court))}${z.s.coach?' · '+cbEsc(z.s.coach):''}</option>`).join('')}</optgroup>`:''}
-                    <optgroup label="Άλλες προπονήσεις (14 μέρες)">${others.map(s=>`<option value="${s.sid}|${s.date}|">${sessLabel(s)} · ${cbEsc(s.gname)} · ${cbEsc(courtName(s.court))}</option>`).join('')}</optgroup>
-                </select>
-                <button onclick="assignGuest('${x.player_id}','${x.missed_date}','${x.group_id||''}')" class="w-full mt-2 py-2 bg-brand text-white rounded-lg text-xs font-bold">Βάλε τον/την ${cbEsc((x.player_name||'').split(' ')[0])} σε αυτή την προπόνηση</button>
+                ${opts?`<p class="text-[11px] font-bold text-slate-600 mb-1">Σε ποια προπόνηση θα έρθει; (αφού μιλήσεις μαζί του)</p>
+                <select id="mgSess" class="w-full px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">${opts}</select>
+                <button onclick="assignGuest('${x.player_id}','${x.missed_date}','${x.group_id||''}')" class="w-full mt-2 py-2 bg-brand text-white rounded-lg text-xs font-bold">Βάλε τον/την ${cbEsc((x.player_name||'').split(' ')[0])} σε αυτή την προπόνηση</button>`
+                :`<p class="text-[11px] text-slate-500">Δεν υπάρχει προπόνηση με ελεύθερη θέση τις επόμενες 14 μέρες.</p>`}
+                ${full?`<p class="text-[10px] text-slate-400 mt-1.5">Πλήρεις προπονήσεις που δεν εμφανίζονται: ${full}</p>`:''}
             </div>`:''}
         </div>`;
     }).join('');
-    const offersHtml=_mgOffers.map(o=>{ const s=sessOf(o); if(!s) return '';
-        const n=_mgGuests.filter(x=>x.group_id===o.group_id && x.the_date===o.the_date).length;
-        return `<div class="flex items-center gap-2 py-1.5 text-xs border-b border-slate-100 last:border-0">
-            <span class="flex-1 min-w-0 truncate"><b>${sessLabel(s)}</b> · ${cbEsc(s.gname)} · ${cbEsc(courtName(s.court))}${s.coach?' · '+cbEsc(s.coach):''}${o.note?` · <i>${cbEsc(o.note)}</i>`:''}</span>
-            <span class="text-[10px] text-slate-400 flex-shrink-0">${n?n+' επισκ.':''}</span>
-            <button onclick="delOffer('${o.id}')" class="text-slate-400 flex-shrink-0">✕</button></div>`; }).join('');
-    const guestsHtml=_mgGuests.map(x=>{ const s=upcomingSessions(null).find(z=>z.gid===x.group_id && z.date===x.the_date && z.time===x.start_time);
+    const guestsHtml=_mgGuests.map(x=>{ const s=sess.find(z=>z.gid===x.group_id && z.date===x.the_date && z.time===x.start_time);
         return `<div class="flex items-center gap-2 py-1.5 text-xs border-b border-slate-100 last:border-0">
             <span class="flex-1 min-w-0 truncate"><b>${cbEsc(x.player_name||'')}</b> → ${cbEsc(gName(x.group_id))} · ${cbFmtDate(x.the_date)} ${x.start_time}${s?' · '+cbEsc(courtName(s.court)):''}${x.missed_date?` <span class="text-slate-400">(για ${cbFmtDate(x.missed_date)})</span>`:''}</span>
             <button onclick="delGuest('${x.id}')" class="text-red-400 flex-shrink-0">✕</button></div>`; }).join('');
     const players=playersFull.filter(p=>groups.some(g=>(g.memberIds||[]).includes(p.id))).sort((a,b)=>a.name.localeCompare(b.name));
     el.innerHTML=`<div class="bg-white rounded-2xl p-5 shadow-sm anim-up border border-blue-100">
         <p class="font-bold mb-1">🔁 Αναπληρώσεις αθλητών σε άλλο γκρουπ</p>
-        <p class="text-[11px] text-slate-500 mb-3">Οι προπονητές δηλώνουν πού χωράει κάποιος· εσύ μιλάς με τον αθλητή και τον βάζεις ως επισκέπτη μία φορά. Ο αθλητής το βλέπει στο κινητό του, ο προπονητής στο παρουσιολόγιο.</p>
+        <p class="text-[11px] text-slate-500 mb-3">Εμφανίζονται μόνο προπονήσεις με ελεύθερη θέση, με βάση το όριο αθλητών κάθε τμήματος. Μιλάς με τον αθλητή και τον βάζεις ως επισκέπτη μία φορά· το βλέπει στο κινητό του και ο προπονητής στο παρουσιολόγιο.</p>
+        ${noLimit.length?`<p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 mb-3">⚠️ Χωρίς όριο αθλητών (δεν δέχονται αναπλήρωση): ${noLimit.map(x=>cbEsc(x.name)).join(', ')}. Όρισέ το στις «Προπονήσεις».</p>`:''}
         <div class="flex items-center justify-between mb-1"><p class="text-[10px] font-bold text-slate-500 uppercase">Χρειάζονται αναπλήρωση (${_mgCand.length})</p>
             <button onclick="_mgAddOpen=!_mgAddOpen;renderGuestMakeups()" class="text-[11px] text-brand font-semibold">${_mgAddOpen?'Κλείσιμο':'+ Πρόσθεσε αθλητή'}</button></div>
         ${_mgAddOpen?`<div class="grid grid-cols-12 gap-2 mb-2 p-2 bg-slate-50 rounded-lg">
@@ -4226,19 +4199,20 @@ async function renderGuestMakeups(){
             <button onclick="addNeed()" class="col-span-5 sm:col-span-2 bg-brand text-white rounded-lg text-xs font-bold">Προσθήκη</button>
             <p class="col-span-12 text-[10px] text-slate-400">Π.χ. ειδοποίησε ότι θα λείψει. Οι απουσίες από τα παρουσιολόγια μπαίνουν εδώ μόνες τους.</p></div>`:''}
         ${cand||'<p class="text-[11px] text-slate-400 mb-1">Κανείς αυτή τη στιγμή 👏</p>'}
-        <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Χωράει αναπλήρωση — δηλώσεις προπονητών (${_mgOffers.length})</p>
-        ${offersHtml||'<p class="text-[11px] text-slate-400">Καμία ακόμα — οι προπονητές τις δηλώνουν από τις «Παρουσίες».</p>'}
         <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Κανονισμένες (${_mgGuests.length})</p>
         ${guestsHtml||'<p class="text-[11px] text-slate-400">Καμία ακόμα</p>'}
     </div>`;
 }
 async function assignGuest(pid, missed, mgid){
     const v=(document.getElementById('mgSess')||{}).value; if(!v) return cbToast('Διάλεξε προπόνηση','err');
-    const [sid,date,offer]=v.split('|'); const t=trainingSchedule.find(x=>x.id===sid); if(!t) return;
+    const [sid,date]=v.split('|'); const t=trainingSchedule.find(x=>x.id===sid); if(!t) return;
+    if(!(groupFree(t.group_id,date)>0)) return cbToast('Το τμήμα είναι πλήρες — διάλεξε άλλη προπόνηση','err');
     const p=playersFull.find(x=>x.id===pid);
     const { error }=await sb.from('makeup_guests').insert({ club_id:club.id, player_id:pid, player_name:p?p.name:null, group_id:t.group_id, schedule_id:sid,
-        the_date:date, start_time:t.start_time, missed_date:missed, missed_group_id:mgid||null, offer_id:offer||null });
-    if(error) return cbToast(error.code==='23505'?'Είναι ήδη σε αυτή την προπόνηση':'Δεν αποθηκεύτηκε','err');
+        the_date:date, start_time:t.start_time, missed_date:missed, missed_group_id:mgid||null });
+    if(error) return cbToast(error.code==='23505' ? 'Είναι ήδη σε αυτή την προπόνηση'
+        : /GROUP_FULL/.test(error.message||'') ? 'Το τμήμα μόλις γέμισε — διάλεξε άλλη προπόνηση'
+        : /NO_LIMIT/.test(error.message||'') ? 'Όρισε πρώτα όριο αθλητών στο τμήμα' : 'Δεν αποθηκεύτηκε','err');
     _mgPick=null; cbToast(`✓ ${p?p.name:''} → ${t.training_groups?.name||''}, ${cbFmtDate(date)} ${t.start_time}`);
     renderGuestMakeups();
 }
@@ -4255,7 +4229,6 @@ async function addNeed(){
     if(error) return cbToast('Δεν αποθηκεύτηκε','err');
     _mgAddOpen=false; renderGuestMakeups();
 }
-async function delOffer(id){ await sb.from('makeup_offers').delete().eq('id',id); renderGuestMakeups(); }
 async function delGuest(id){ if(!confirm('Να ακυρωθεί αυτή η αναπλήρωση;')) return; await sb.from('makeup_guests').delete().eq('id',id); renderGuestMakeups(); }
 
 /* ══════════════ ΑΝΤΙΚΑΤΑΣΤΑΣΗ ΠΡΟΠΟΝΗΤΗ (μία ημερομηνία) ══════════════
@@ -6624,13 +6597,11 @@ function renderCoachAttendance(){
                 <button onclick="openAttendance('${g.id}')" class="bg-indigo-500 text-white px-3 rounded-lg text-xs font-bold">Άνοιγμα</button>
             </div>
             <div id="att-${g.id}"></div>
-            ${pilotOn()?`<div id="mo-${g.id}" class="mt-2"></div>`:''}
             <details class="mt-2" ontoggle="if(this.open) loadAttHistory('${g.id}')">
                 <summary class="text-xs font-semibold text-brand cursor-pointer select-none">📋 Ιστορικό &amp; απουσίες</summary>
                 <div id="ah-${g.id}" class="mt-2 text-xs text-slate-400">Φόρτωση…</div>
             </details>
         </div>`).join('');
-    if(pilotOn()) loadCoachOffers();
 }
 
 // Ιστορικό ενός γκρουπ: προπονήσεις χωρίς παρουσιολόγιο, τα παρουσιολόγια και οι απουσίες ανά αθλητή
@@ -7061,6 +7032,14 @@ async function renameGroup(id){
     cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups();
 }
 
+async function setGroupMax(gid, v){
+    const n = v==='' ? null : parseInt(v,10);
+    if(n!==null && !(n>=1 && n<=500)) return cbToast('Βάλε αριθμό από 1 έως 500','err');
+    const { error }=await sb.from('training_groups').update({ max_athletes:n }).eq('id',gid);
+    if(error) return cbToast(error.message||'Σφάλμα','err');
+    cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups();
+}
+
 async function delGroup(id){
     if(!confirm('Διαγραφή γκρουπ; Θα σβηστούν μέλη & παρουσιολόγια του.')) return;
     await sb.from('training_groups').delete().eq('id',id);
@@ -7133,7 +7112,7 @@ function renderGroups(){
         <div class="border rounded-xl">
             <div onclick="toggleGroup('${g.id}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
                 <div class="min-w-0">
-                    <p class="font-bold text-sm flex items-center gap-1.5 min-w-0"><span class="truncate">${g.name}</span><span class="text-[10px] text-slate-400 font-normal flex-shrink-0">(${g.memberIds.length} μέλη)</span><button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px] flex-shrink-0">✏️</button></p>
+                    <p class="font-bold text-sm flex items-center gap-1.5 min-w-0"><span class="truncate">${g.name}</span><span class="text-[10px] ${pilotOn()&&g.max_athletes&&g.memberIds.length>g.max_athletes?'text-red-500':'text-slate-400'} font-normal flex-shrink-0">(${g.memberIds.length}${pilotOn()&&g.max_athletes?'/'+g.max_athletes:''} μέλη)</span><button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px] flex-shrink-0">✏️</button></p>
                     <p class="text-[11px] text-slate-500 mt-0.5 truncate">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'}</p>
                 </div>
                 <span id="gchev-${g.id}" class="text-slate-400 text-[10px] flex-shrink-0 transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
@@ -7143,6 +7122,7 @@ function renderGroups(){
                 <p class="text-[11px] text-slate-500">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'} <button onclick="setCoach('${g.id}')" class="text-brand font-semibold ml-1">Αλλαγή</button></p>
                 <button onclick="delGroup('${g.id}')" class="text-red-500 text-[11px] font-semibold border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">Διαγραφή</button>
             </div>
+            ${pilotOn()?`<div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500">Όριο αθλητών:</span><input type="number" min="1" max="500" value="${g.max_athletes||''}" placeholder="—" onchange="setGroupMax('${g.id}',this.value)" class="w-16 px-2 py-1 border border-slate-200 rounded-lg text-xs"><span class="text-[10px] text-slate-400">αναπλήρωση μόνο αν υπάρχει ελεύθερη θέση</span></div>`:''}
             <div class="flex flex-wrap gap-1.5 mb-2">${chips||'<span class="text-[11px] text-slate-400">Χωρίς μέλη</span>'}</div>
             ${(subPlansOn() && g.memberIds.length)?`<div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500">Πακέτο συνδρομής για όλο το γκρουπ:</span>${planSelect('__none', `setGroupPlan('${g.id}',this.value)`, '<option value="__keep" selected>— διάλεξε —</option>')}</div>`:''}
             <div class="flex gap-2 mb-3">
