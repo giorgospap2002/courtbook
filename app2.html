@@ -5367,6 +5367,7 @@ async function genKnockout(cid, size, fill){
         rd++;
     }
     cbLoading(true);
+    await releaseBookings(tMatches.filter(m=>m.category_id===cid && m.stage==='ko'));
     await sb.from('tournament_matches').delete().eq('category_id',cid).eq('stage','ko');
     const { error } = await sb.from('tournament_matches').insert(rows);
     cbLoading(false);
@@ -5485,6 +5486,8 @@ async function delTournament(id){
     const t=tours.find(x=>x.id===id);
     if(!confirm('Να διαγραφεί το «'+(t?t.name:'')+'» με όλες τις κατηγορίες και τους αγώνες του;')) return;
     cbLoading(true);
+    const tcids=tCats.filter(c=>c.tournament_id===id).map(c=>c.id);
+    await releaseBookings(tMatches.filter(m=>tcids.includes(m.category_id)));
     const { error }=await sb.from('tournaments').delete().eq('id',id);
     cbLoading(false);
     if(error) return cbToast('Δεν διαγράφηκε','err');
@@ -5540,6 +5543,7 @@ async function clearSchedule(cid){
     if(!n) return cbToast('Δεν υπάρχει πρόγραμμα','err');
     if(!confirm('Να σβηστούν και οι '+n+' αγώνες αυτής της κατηγορίας, μαζί με τα σκορ τους;\n\nΟι συμμετοχές και οι όμιλοι μένουν.')) return;
     cbLoading(true);
+    await releaseBookings(tMatches.filter(m=>m.category_id===cid));
     const { error }=await sb.from('tournament_matches').delete().eq('category_id',cid);
     cbLoading(false);
     if(error) return cbToast('Δεν σβήστηκε','err');
@@ -5593,6 +5597,7 @@ async function toggleEntries(cid){
 async function delCategory(cid){
     if(!confirm('Να διαγραφεί η κατηγορία με τους αγώνες της;')) return;
     cbLoading(true);
+    await releaseBookings(tMatches.filter(m=>m.category_id===cid));
     await sb.from('tournament_categories').delete().eq('id',cid);
     cbLoading(false);
     await loadTournaments(); renderTournaments();
@@ -5667,6 +5672,7 @@ async function genSchedule(cid){
             rows.push({ category_id:cid, stage:'group', group_no:null, round:ri+1, slot:si, p1_id:p1, p2_id:p2 })));
     }
     cbLoading(true);
+    await releaseBookings(tMatches.filter(m=>m.category_id===cid));
     await sb.from('tournament_matches').delete().eq('category_id',cid);
     const { error }=await sb.from('tournament_matches').insert(rows);
     cbLoading(false);
@@ -5703,6 +5709,10 @@ function scoreCell(mid,k,val,editable){
 }
 
 function matchCard(m, editable){
+    const core=matchCardCore(m, editable), i=core.lastIndexOf('</div>');
+    return core.slice(0,i) + schedBox(m, editable) + core.slice(i);
+}
+function matchCardCore(m, editable){
     // νοκ-άουτ με έναν μόνο παίκτη: bye (ή περιμένει αντίπαλο) — δεν γράφεται σκορ
     if(m.stage==='ko' && (!m.p1_id || !m.p2_id)){
         const one = m.p1_id || m.p2_id;
@@ -5881,7 +5891,7 @@ function categoryBlock(cat, editable){
             </div>`
             : `<select onchange="if(this.value){toggleEntry('${cat.id}',this.value);this.value='';}" class="w-full mt-2 px-3 py-2 border border-slate-200 rounded-lg text-xs bg-white">${opts}</select>`);
 
-        picker = pendBox + assignBox + flatBox + addBox;
+        picker = stepsBox(cat) + formatBox(cat) + pendBox + assignBox + flatBox + addBox;
     }
     // βαθμολογία
     const groupsKo = cat.format==='groups_ko';
@@ -5948,6 +5958,7 @@ function categoryBlock(cat, editable){
             <div class="space-y-2">${kMs.filter(m=>m.round===rd).map(m=>
                 (editable && rd===1 && !matchDone(m) ? koSlotPicker(m) : '') + matchCard(m,editable)).join('')}</div>`).join('')}`;
 
+    const bracketV = kMs.length ? bkView(cat, kMs) : '';
     const nQual = groupsKo ? qualifiers(cat).length : 0;
     const directKo = cat.format==='knockout';
     const koBtn = (editable && directKo) ? `
@@ -5993,7 +6004,10 @@ function categoryBlock(cat, editable){
             <span class="font-bold truncate">${cbEsc(cat.name)}</span>
             <span class="text-[11px] text-slate-400 flex-shrink-0">▲</span>
         </button>
-        <p class="text-[11px] text-slate-400 mb-2">${dbl?'Ζευγάρια':'Μονό'} · ${cat.format==='groups_ko'?'όμιλοι + νοκ-άουτ':cat.format==='knockout'?'νοκ-άουτ':'όλοι με όλους'}${!declOpen(cat)?' · δηλώσεις κλειστές':(cat.entries_deadline?' · ως '+cbFmtDate(cat.entries_deadline):'')}</p>
+        <div class="flex items-center gap-2 mb-2">
+            <p class="text-[11px] text-slate-400 flex-1">${dbl?'Ζευγάρια':'Μονό'} · ${cat.format==='groups_ko'?'όμιλοι + νοκ-άουτ':cat.format==='knockout'?'νοκ-άουτ':'όλοι με όλους'}${!declOpen(cat)?' · δηλώσεις κλειστές':(cat.entries_deadline?' · ως '+cbFmtDate(cat.entries_deadline):'')}</p>
+            ${(ms.length||acc.length)?`<button onclick="printCat('${cat.id}')" class="flex-shrink-0 px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">PDF</button>`:''}
+        </div>
         ${editable?`<button onclick="togglePublish('${cat.id}')" class="w-full mb-2 py-2 rounded-xl text-xs font-bold border-2 transition ${cat.published
             ?'border-green-600 bg-green-50 text-green-700'
             :'border-slate-300 bg-slate-50 text-slate-500'}">
@@ -6012,11 +6026,12 @@ function categoryBlock(cat, editable){
                 ${ms.length?'↻ Νέο πρόγραμμα αγώνων':'Δημιουργία προγράμματος αγώνων'}</button>
             ${ms.length?`<button onclick="clearSchedule('${cat.id}')" class="px-4 py-2.5 rounded-xl text-sm font-bold border border-red-200 text-red-500 hover:bg-red-50 transition">Σβήσιμο</button>`:''}
         </div>`:''}
-        ${koBtn}
+        ${(koBtn && kMs.length) ? `<details class="mt-3"><summary class="text-[11px] font-semibold text-brand cursor-pointer select-none">↻ Νέα κλήρωση ταμπλό</summary>${koBtn}</details>` : koBtn}
         ${(editable && directKo && ms.length)?`<button onclick="clearSchedule('${cat.id}')" class="w-full mt-2 py-2 rounded-xl text-xs font-bold border border-red-200 text-red-500 hover:bg-red-50 transition">Σβήσιμο ταμπλό</button>`:''}
         ${table}
         ${matches}
-        ${bracket}
+        ${bracketV}
+        ${editable && kMs.length ? `<details class="mt-3"><summary class="text-[11px] font-bold tracking-wide text-slate-400 uppercase cursor-pointer select-none">Σκορ & ώρες αγώνων νοκ-άουτ</summary>${bracket}</details>` : ''}
     </div>`;
 }
 
@@ -6064,13 +6079,14 @@ function renderTournaments(){
     if(btn) btn.classList.toggle('hidden', !editable);
     const hint=document.getElementById('tourHint');
     if(hint) hint.textContent = editable
-        ? 'Κατηγορίες, συμμετοχές, πρόγραμμα αγώνων και βαθμολογία. Τα γήπεδα κλείνονται χειροκίνητα.'
+        ? 'Δηλώσεις → όμιλοι ή ταμπλό → πρόγραμμα αγώνων με ώρα και γήπεδο (κλείνει αυτόματα) → σκορ, βαθμολογία, PDF.'
         : 'Οι αγώνες και η βαθμολογία των τουρνουά του συλλόγου.';
     if(!tours.length){
         wrap.innerHTML=`<p class="text-slate-400 text-sm py-2">${editable?'Κανένα τουρνουά ακόμα.':'Δεν υπάρχει τουρνουά αυτή τη στιγμή.'}</p>`;
         return;
     }
-    wrap.innerHTML = tours.map(t=>{
+    ensureBkCss();
+    wrap.innerHTML = (editable ? '' : myMatchesBox()) + tours.map(t=>{
         const cats=tCats.filter(c=>c.tournament_id===t.id);
         const open=_tOpen.has(t.id);
         const when=[t.start_date&&cbFmtDate(t.start_date), t.end_date&&cbFmtDate(t.end_date)].filter(Boolean).join(' – ');
@@ -6083,6 +6099,7 @@ function renderTournaments(){
                 <span class="text-slate-400 flex-shrink-0">${open?'▲':'▼'}</span>
             </button>
             ${open?`<div class="mt-3 space-y-2">
+                ${tourDaysBox(t, editable)}
                 ${cats.map(c=>categoryBlock(c,editable)).join('') || '<p class="text-slate-400 text-sm">Καμία κατηγορία ακόμα.</p>'}
                 ${editable?(_newCat&&_newCat.tid===t.id?newCatForm():`<div class="flex gap-2 pt-1">
                     <button onclick="openNewCat('${t.id}')" class="flex-1 py-2 border border-brand text-brand rounded-xl text-sm font-bold">+ Κατηγορία</button>
@@ -6091,6 +6108,316 @@ function renderTournaments(){
             </div>`:''}
         </div>`;
     }).join('');
+}
+
+
+/* ══════════════ ΤΟΥΡΝΟΥΑ: ΠΡΟΓΡΑΜΜΑ ΑΓΩΝΩΝ, ΤΑΜΠΛΟ, PDF ══════════════
+   Κάθε αγώνας παίρνει μέρα/ώρα/γήπεδο. Το γήπεδο κλείνει με κράτηση της γραμματείας
+   (φαίνεται παντού, δεν το κλείνει άλλος) και το πρόγραμμα κρατιέται στη σημείωση του αγώνα. */
+function matchSched(m){
+    const x=/@sched (\d{4}-\d{2}-\d{2}) (\d{2}:\d{2}) (\d+) (\S+) (\S+)/.exec((m&&m.note)||'');
+    return x ? { date:x[1], time:x[2], dur:+x[3], court:x[4], booking:x[5] } : null;
+}
+const schedText = s => `${cbFmtDate(s.date)} · ${s.time}–${cbM2T(cbT2M(s.time)+s.dur)} · ${courtName(s.court)}`;
+async function releaseBookings(list){
+    const ids=(list||[]).map(matchSched).filter(Boolean).map(s=>s.booking);
+    if(ids.length) await sb.from('bookings').delete().in('id',ids);
+}
+const catOf  = m => tCats.find(c=>c.id===m.category_id)||{};
+const tourOf = cat => tours.find(t=>t.id===cat.tournament_id)||{};
+function koRoundName(m){
+    const ko=tMatches.filter(x=>x.category_id===m.category_id && x.stage==='ko');
+    const total=Math.max(...ko.map(x=>x.round)), left=total-m.round;
+    return left===0?'Τελικός':left===1?'Ημιτελικός':left===2?'Προημιτελικός':'Φάση των '+Math.pow(2,left+1);
+}
+function matchTitle(m){
+    const A=m.p1_id?entryName(m.p1_id):null, B=m.p2_id?entryName(m.p2_id):null;
+    return (A&&B) ? `${A} – ${B}` : (m.stage==='ko' ? koRoundName(m) : 'Αγώνας');
+}
+
+let _schedOpen=null, _schedPick={};
+function schedBox(m, editable){
+    const s=matchSched(m);
+    const line = s ? `<p class="text-[11px] font-semibold text-brand pt-1">${schedText(s)}</p>`
+                   : ((editable || matchDone(m)) ? '' : `<p class="text-[10px] text-slate-400 pt-1">Η ώρα θα ανακοινωθεί</p>`);
+    if(!editable || matchDone(m)) return line;
+    if(_schedOpen!==m.id) return `${line}<button onclick="openSched('${m.id}')" class="mt-1 text-[11px] font-bold text-brand">${s?'Αλλαγή ώρας / γηπέδου':'Ώρα & γήπεδο'}</button>`;
+    const p=_schedPick;
+    const durs=[...new Set([...durations.map(d=>d.minutes), 60, 90, 120])].sort((a,b)=>a-b);
+    return `${line}<div class="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-xl space-y-2">
+        <div class="grid grid-cols-3 gap-1.5">
+            <input type="date" value="${p.date}" onchange="schedSet('date',this.value)" class="col-span-3 sm:col-span-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+            <select onchange="schedSet('court',this.value)" class="col-span-2 sm:col-span-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+                ${courts.map(c=>`<option value="${c.id}" ${c.id===p.court?'selected':''}>${cbEsc(c.name)}</option>`).join('')}</select>
+            <select onchange="schedSet('dur',+this.value)" class="px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+                ${durs.map(d=>`<option value="${d}" ${d===p.dur?'selected':''}>${d}′</option>`).join('')}</select>
+        </div>
+        <p class="text-[10px] text-slate-400">Ελεύθερες ώρες του γηπέδου · <span class="text-green-700 font-semibold">πράσινο</span> = βολεύει και τους δύο</p>
+        <div id="sch-${m.id}" class="flex flex-wrap gap-1.5"><span class="text-[11px] text-slate-400">Φόρτωση…</span></div>
+        <div class="flex gap-3 pt-1">
+            ${s?`<button onclick="clearMatchSched('${m.id}')" class="text-[11px] font-semibold text-red-500">Αφαίρεση ώρας</button>`:''}
+            <button onclick="_schedOpen=null;renderTournaments()" class="text-[11px] font-semibold text-slate-500 ml-auto">Κλείσιμο</button>
+        </div>
+    </div>`;
+}
+function openSched(mid){
+    const m=tMatches.find(x=>x.id===mid); if(!m) return;
+    const s=matchSched(m), t=tourOf(catOf(m)), today=cbToday();
+    const pref=[90,60].find(d=>durations.some(x=>x.minutes===d)) || (durations[0]||{}).minutes || 90;
+    _schedOpen=mid;
+    _schedPick={ mid, date: s?s.date:(t.start_date && t.start_date>today ? t.start_date : today),
+                 court: s?s.court:(courts[0]||{}).id, dur: s?s.dur:pref };
+    renderTournaments(); schedSlots();
+}
+function schedSet(k,v){ _schedPick[k]=v; renderTournaments(); schedSlots(); }
+const _DK=['sun','mon','tue','wed','thu','fri','sat'];
+function entryFits(eid, date, min){
+    const e=tEntries.find(x=>x.id===eid); if(!e) return true;
+    const dk=_DK[new Date(date+'T12:00:00').getDay()], hr=min/60;
+    const bk=(T_BANDS.find(b=>hr>=b[2] && hr<b[3])||[])[0];
+    return (!(e.days||[]).length || e.days.includes(dk)) && (!(e.bands||[]).length || e.bands.includes(bk));
+}
+async function schedSlots(){
+    const p=_schedPick, m=tMatches.find(x=>x.id===p.mid); const box=document.getElementById('sch-'+p.mid);
+    if(!m || !box || !p.date || !p.court) return;
+    if(p.date<cbToday()){ box.innerHTML='<span class="text-[11px] text-slate-400">Η μέρα έχει περάσει</span>'; return; }
+    const cur=(matchSched(m)||{}).booking;
+    const { data:bk }=await sb.from('bookings').select('id,start_time,duration_min').eq('club_id',club.id).eq('court_id',p.court).eq('booking_date',p.date);
+    if(_schedPick!==p || !document.getElementById('sch-'+p.mid)) return;
+    const busy=[...(bk||[]).filter(b=>b.id!==cur).map(b=>[cbT2M(b.start_time), cbT2M(b.start_time)+(b.duration_min||60)]),
+                ...trainingItemsOnDate(p.date).filter(t=>t.court_id===p.court).map(t=>[cbT2M(t.start_time), cbT2M(t.start_time)+t.duration_min])];
+    const open=clubOpenMin(), close=clubCloseMin()>open?clubCloseMin():24*60, step=club.slot_minutes||30;
+    const now=new Date(), nowM=p.date===cbToday()? now.getHours()*60+now.getMinutes() : -1;
+    const chips=[];
+    for(let s=open; s+p.dur<=close; s+=step){
+        if(s<=nowM || busy.some(([a,b])=>s<b && s+p.dur>a)) continue;
+        const both=(!m.p1_id||entryFits(m.p1_id,p.date,s)) && (!m.p2_id||entryFits(m.p2_id,p.date,s));
+        chips.push(`<button onclick="setMatchSched('${m.id}','${cbM2T(s)}')" class="px-2.5 py-1.5 rounded-lg text-xs font-bold border ${both?'bg-green-50 border-green-300 text-green-800':'bg-white border-slate-200 text-slate-600'} hover:border-brand">${cbM2T(s)}</button>`);
+    }
+    box.innerHTML = chips.join('') || '<span class="text-[11px] text-slate-400">Καμία ελεύθερη ώρα — δοκίμασε άλλο γήπεδο ή μέρα</span>';
+}
+async function setMatchSched(mid, time){
+    const m=tMatches.find(x=>x.id===mid), p=_schedPick, cat=catOf(m), old=matchSched(m);
+    cbLoading(true);
+    if(old) await sb.from('bookings').delete().eq('id',old.booking);
+    const { data:b, error }=await sb.from('bookings').insert({ club_id:club.id, court_id:p.court, user_id:me.id, booking_date:p.date,
+        start_time:time, duration_min:p.dur, price:0, user_name:`${cat.name}: ${matchTitle(m)}`, note:`Τουρνουά «${tourOf(cat).name||''}»` }).select('id').single();
+    if(error){ cbLoading(false); cbToast(/SLOT_TAKEN/.test(error.message||'')?'Η ώρα μόλις κλείστηκε — διάλεξε άλλη':'Δεν κλείστηκε το γήπεδο','err'); return schedSlots(); }
+    const note=`@sched ${p.date} ${time} ${p.dur} ${p.court} ${b.id}`+(((m.note||'').replace(/@sched [^\n]*/,'').trim())?'\n'+(m.note||'').replace(/@sched [^\n]*/,'').trim():'');
+    const { error:e2 }=await sb.from('tournament_matches').update({ note }).eq('id',mid);
+    cbLoading(false);
+    if(e2){ await sb.from('bookings').delete().eq('id',b.id); return cbToast('Δεν αποθηκεύτηκε','err'); }
+    m.note=note; _schedOpen=null;
+    cbToast(`✓ ${courtName(p.court)} · ${cbFmtDate(p.date)} ${time} — το γήπεδο κλείστηκε`);
+    renderTournaments();
+}
+async function clearMatchSched(mid){
+    const m=tMatches.find(x=>x.id===mid), s=matchSched(m); if(!s) return;
+    if(!confirm('Να αφαιρεθεί η ώρα του αγώνα; Το γήπεδο θα ελευθερωθεί.')) return;
+    cbLoading(true);
+    await sb.from('bookings').delete().eq('id',s.booking);
+    const note=(m.note||'').replace(/@sched [^\n]*\n?/,'').trim()||null;
+    await sb.from('tournament_matches').update({ note }).eq('id',mid);
+    cbLoading(false);
+    m.note=note; _schedOpen=null; renderTournaments(); cbToast('Η ώρα αφαιρέθηκε — το γήπεδο ελευθερώθηκε');
+}
+
+/* ── βήματα της κατηγορίας (γραμματεία) ── */
+function stepsBox(cat){
+    const acc=acceptedEntries(cat.id), ms=tMatches.filter(m=>m.category_id===cat.id);
+    const real=ms.filter(m=>m.p1_id && m.p2_id), done=real.filter(matchDone).length, sch=ms.filter(matchSched).length;
+    const grouped=cat.format!=='groups_ko' || acc.some(e=>e.group_no!=null);
+    const champ=cat.format==='round_robin' ? (real.length && done===real.length) : !!koChampion(ms.filter(m=>m.stage==='ko'));
+    const steps=[
+        ['Δηλώσεις', acc.length>=2, `${acc.length}`],
+        [cat.format==='knockout'?'Κλήρωση':cat.format==='groups_ko'?'Όμιλοι':'Συμμετοχές', grouped && acc.length>=2, ''],
+        ['Πρόγραμμα', ms.length>0, ms.length?`${ms.length}`:''],
+        ['Ώρες γηπέδων', ms.length>0 && sch>=ms.length, ms.length?`${sch}/${ms.length}`:''],
+        ['Αποτελέσματα', real.length>0 && done===real.length, real.length?`${done}/${real.length}`:''],
+        ['Νικητής', champ, '']];
+    const cur=steps.findIndex(s=>!s[1]);
+    return `<div class="flex flex-wrap items-center gap-1 mb-2">${steps.map((s,i)=>`<span class="px-2 py-1 rounded-lg text-[10px] font-bold ${s[1]?'bg-green-50 text-green-700':i===cur?'bg-brand text-white':'bg-slate-100 text-slate-400'}">${s[1]?'✓ ':i===cur?'▸ ':''}${s[0]}${s[2]?' · '+s[2]:''}</span>`).join('')}</div>`;
+}
+
+/* ── φορμάτ / όμιλοι — αλλάζουν όσο δεν υπάρχει πρόγραμμα ── */
+function formatBox(cat){
+    if(catLocked(cat.id)) return '';
+    const n=acceptedEntries(cat.id).length;
+    const pill=(on,label,f)=>`<button onclick="setCatFormat('${cat.id}','${f}')" class="px-2.5 py-1.5 rounded-lg text-[11px] font-semibold border ${on?'bg-brand text-white border-brand':'bg-white text-slate-500 border-slate-200'}">${label}</button>`;
+    const groupsN=Math.max(1, Math.round(n/(cat.group_size||4)));
+    return `<div class="mb-2 p-3 border border-slate-200 rounded-xl bg-slate-50/60">
+        <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-1.5">Φορμάτ</p>
+        <div class="flex flex-wrap gap-1.5">
+            ${pill(cat.format==='round_robin','Όλοι με όλους','round_robin')}
+            ${pill(cat.format==='groups_ko','Όμιλοι + νοκ-άουτ','groups_ko')}
+            ${pill(cat.format==='knockout','Νοκ-άουτ ταμπλό','knockout')}
+        </div>
+        ${cat.format==='groups_ko'?`<div class="flex flex-wrap items-center gap-2 mt-2.5">
+            <span class="text-[11px] text-slate-500">Όμιλοι</span>
+            <input type="number" min="1" max="16" value="${groupsN}" onchange="setCatGroups('${cat.id}',this.value)" class="w-14 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+            <span class="text-[11px] text-slate-400">${n?`≈ ${Math.ceil(n/groupsN)} ανά όμιλο`:''}</span>
+            <span class="text-[11px] text-slate-500 ml-2">Προκρίνονται</span>
+            <input type="number" min="1" max="8" value="${cat.advance_per_group||2}" onchange="setCatAdv('${cat.id}',this.value)" class="w-14 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white">
+            <span class="text-[11px] text-slate-400">ανά όμιλο</span>
+            ${n>=2?`<button onclick="drawGroups('${cat.id}')" class="ml-auto px-3 py-1.5 rounded-lg text-xs font-bold bg-brand text-white">Τυχαία κλήρωση σε ${groupsN} ${groupsN===1?'όμιλο':'ομίλους'}</button>`:''}
+        </div>`:''}
+        ${cat.format==='round_robin'&&n>=2?`<p class="text-[11px] text-slate-400 mt-2">${n} ${catIsDoubles(cat)?'ζευγάρια':'αθλητές'} → ${n*(n-1)/2} αγώνες</p>`:''}
+    </div>`;
+}
+async function catUpdate(cid, upd, msg){
+    const { error }=await sb.from('tournament_categories').update(upd).eq('id',cid);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    Object.assign(tCats.find(c=>c.id===cid)||{}, upd); renderTournaments(); if(msg) cbToast(msg);
+}
+const setCatFormat=(cid,f)=>catUpdate(cid,{ format:f }, '✓ Φορμάτ: '+(f==='groups_ko'?'όμιλοι + νοκ-άουτ':f==='knockout'?'νοκ-άουτ ταμπλό':'όλοι με όλους'));
+function setCatGroups(cid,v){ const n=acceptedEntries(cid).length, g=Math.max(1,Math.min(16,parseInt(v)||1)); catUpdate(cid,{ group_size:Math.max(2, Math.round(n/g)||2) }); }
+const setCatAdv=(cid,v)=>catUpdate(cid,{ advance_per_group:Math.max(1,Math.min(8,parseInt(v)||2)) });
+async function drawGroups(cid){
+    const cat=tCats.find(c=>c.id===cid), ent=shuffled(acceptedEntries(cid));
+    const g=Math.max(1, Math.round(ent.length/(cat.group_size||4)));
+    if(ent.some(e=>e.group_no!=null) && !confirm('Οι όμιλοι θα ξαναμοιραστούν τυχαία. Συνέχεια;')) return;
+    const ups=ent.map((e,i)=>({ id:e.id, group_no:(i%g)+1 }));
+    await bulkGroup(ups);
+    cbToast(`Κλήρωση σε ${g} ${g===1?'όμιλο':'ομίλους'} — πάτα «Δημιουργία προγράμματος αγώνων»`);
+}
+
+/* ── οπτικό ταμπλό ── */
+const BK_CSS = `
+.bk{display:flex;gap:16px;overflow-x:auto;padding:4px 2px 10px}
+.bk-col{display:flex;flex-direction:column;min-width:190px;flex:1}
+.bk-rt{font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#3b5bdb;text-align:center;margin-bottom:6px}
+.bk-ms{display:flex;flex-direction:column;justify-content:space-around;flex:1;gap:10px}
+.bk-m{border:1px solid #e2e8f0;border-radius:10px;background:#fff;overflow:hidden;font-size:12px}
+.bk-p{display:flex;justify-content:space-between;align-items:center;gap:8px;padding:6px 8px}
+.bk-p+.bk-p{border-top:1px solid #f1f5f9}
+.bk-w{font-weight:700;background:#f0fdf4}
+.bk-n{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bk-e{color:#94a3b8;font-style:italic}
+.bk-s{color:#475569;font-variant-numeric:tabular-nums;white-space:nowrap;letter-spacing:.04em}
+.bk-t{font-size:10px;color:#3b5bdb;padding:3px 8px;background:#f8fafc;border-top:1px solid #f1f5f9}
+.bk-champ{margin:0 0 10px;padding:10px;border-radius:12px;background:#fffbeb;border:1px solid #fde68a;text-align:center}
+.bk-champ small{display:block;font-size:10px;font-weight:800;letter-spacing:.06em;text-transform:uppercase;color:#b45309}
+.bk-champ b{font-size:15px}`;
+function ensureBkCss(){ if(!document.getElementById('bkCss')){ const s=document.createElement('style'); s.id='bkCss'; s.textContent=BK_CSS; document.head.appendChild(s); } }
+function bkView(cat, kMs){
+    const rounds=[...new Set(kMs.map(m=>m.round))].sort((a,b)=>a-b), total=rounds.length;
+    const nm=(r)=>{ const left=total-r; return left===0?'Τελικός':left===1?'Ημιτελικοί':left===2?'Προημιτελικοί':'Φάση των '+Math.pow(2,left+1); };
+    const sets=(m,side)=>[[m.s1a,m.s1b],[m.s2a,m.s2b],[m.s3a,m.s3b]].filter(x=>x[0]!=null&&x[1]!=null).map(x=>side?x[1]:x[0]).join(' ');
+    const ch=koChampion(kMs);
+    const box=m=>{
+        const w=matchWinner(m), s=matchSched(m), dead=koDead(kMs);
+        const p=(id,side)=>{
+            const lbl = id ? cbEsc(entryName(id)) : `<span class="bk-e">${dead.sideDead(m, side?'p2_id':'p1_id')?'bye':'—'}</span>`;
+            return `<div class="bk-p ${w&&w===id?'bk-w':''}"><span class="bk-n">${w&&w===id&&m.round===total?'':''}${lbl}</span><span class="bk-s">${sets(m,side)}</span></div>`;
+        };
+        return `<div class="bk-m">${p(m.p1_id,0)}${p(m.p2_id,1)}${s&&!matchDone(m)?`<div class="bk-t">${schedText(s)}</div>`:''}</div>`;
+    };
+    return `<p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mt-5 mb-1.5">Ταμπλό νοκ-άουτ</p>
+        ${ch?`<div class="bk-champ"><small>Νικητής</small><b>${cbEsc(entryName(ch))}</b></div>`:''}
+        <div class="bk">${rounds.map(r=>`<div class="bk-col"><div class="bk-rt">${nm(r)}</div><div class="bk-ms">${
+            kMs.filter(m=>m.round===r).sort((a,b)=>a.slot-b.slot).map(box).join('')}</div></div>`).join('')}</div>`;
+}
+
+/* ── πρόγραμμα αγώνων ανά ημέρα (όλο το τουρνουά) ── */
+function tourDaysBox(t, editable){
+    const cids=tCats.filter(c=>c.tournament_id===t.id && (editable || c.published)).map(c=>c.id);
+    const list=tMatches.filter(m=>cids.includes(m.category_id)).map(m=>({ m, s:matchSched(m) })).filter(x=>x.s)
+        .sort((a,b)=>(a.s.date+a.s.time).localeCompare(b.s.date+b.s.time));
+    const btn=`<button onclick="printTour('${t.id}')" class="px-2.5 py-1 rounded-lg border border-slate-200 text-[11px] font-semibold text-slate-600 hover:bg-slate-50">PDF όλου του τουρνουά</button>`;
+    if(!list.length) return cids.length ? `<div class="flex justify-end">${btn}</div>` : '';
+    const days=[...new Set(list.map(x=>x.s.date))];
+    const key='td:'+t.id, open=_tOpen.has(key);
+    return `<div class="border border-slate-200 rounded-xl">
+        <div class="flex items-center gap-2 p-3">
+            <button onclick="tToggle('${key}')" class="flex-1 text-left font-semibold text-sm">Πρόγραμμα αγώνων <span class="text-[11px] text-slate-400 font-normal">· ${list.length} αγώνες σε ${days.length} ${days.length===1?'μέρα':'μέρες'}</span> <span class="text-slate-400 text-[11px]">${open?'▲':'▼'}</span></button>
+            ${btn}
+        </div>
+        ${open?`<div class="px-3 pb-3">${days.map(d=>`<p class="text-[10px] font-bold tracking-wide text-brand uppercase mt-2 mb-1">${cbFmtDate(d)}</p>
+            ${list.filter(x=>x.s.date===d).map(({m,s})=>`<div class="flex items-center gap-2 py-1.5 border-b border-slate-100 last:border-0 text-sm ${matchDone(m)?'opacity-60':''}">
+                <span class="w-24 flex-shrink-0 text-[11px] font-bold">${s.time}–${cbM2T(cbT2M(s.time)+s.dur)}</span>
+                <span class="w-20 flex-shrink-0 text-[11px] text-slate-500 truncate">${cbEsc(courtName(s.court))}</span>
+                <span class="flex-1 min-w-0 truncate">${cbEsc(matchTitle(m))}</span>
+                <span class="text-[10px] text-slate-400 flex-shrink-0">${cbEsc(catOf(m).name||'')}${matchDone(m)?' · ✓':''}</span>
+            </div>`).join('')}`).join('')}</div>`:''}
+    </div>`;
+}
+
+/* ── ο αθλητής: οι αγώνες του ── */
+function myMatchesBox(){
+    if(!myPlayer) return '';
+    const pub=new Set(tCats.filter(c=>c.published).map(c=>c.id));
+    const mine=new Set(tEntries.filter(e=>pub.has(e.category_id) && (e.player_id===myPlayer.id || e.player2_id===myPlayer.id)).map(e=>e.id));
+    const list=tMatches.filter(m=>pub.has(m.category_id) && !matchDone(m) && (mine.has(m.p1_id) || mine.has(m.p2_id)))
+        .sort((a,b)=>((matchSched(a)||{}).date||'9')+((matchSched(a)||{}).time||'').localeCompare(((matchSched(b)||{}).date||'9')+((matchSched(b)||{}).time||'')));
+    if(!list.length) return '';
+    return `<div class="border-2 border-brand rounded-2xl p-3 mb-3">
+        <p class="font-bold mb-1">Οι αγώνες σου</p>
+        ${list.map(m=>{ const s=matchSched(m), me1=mine.has(m.p1_id), opp=me1?m.p2_id:m.p1_id;
+            return `<div class="py-2 border-b border-slate-100 last:border-0">
+                <p class="text-sm font-semibold">vs ${opp?cbEsc(entryName(opp)):'<span class="text-slate-400">θα κριθεί</span>'}</p>
+                <p class="text-[11px] ${s?'text-brand font-semibold':'text-slate-400'}">${s?''+schedText(s):'Η ώρα θα ανακοινωθεί'} · ${cbEsc(catOf(m).name||'')}</p>
+            </div>`; }).join('')}
+    </div>`;
+}
+
+/* ── PDF: εκτυπώσιμη σελίδα → «Αποθήκευση ως PDF» ── */
+function catPrintHtml(cat){
+    const ms=tMatches.filter(m=>m.category_id===cat.id), gMs=ms.filter(m=>m.stage!=='ko'), kMs=ms.filter(m=>m.stage==='ko');
+    const sc=m=>[[m.s1a,m.s1b],[m.s2a,m.s2b],[m.s3a,m.s3b]].filter(x=>x[0]!=null&&x[1]!=null).map(x=>x[0]+'-'+x[1]).join(' · ');
+    const mrow=m=>{ const s=matchSched(m), w=matchWinner(m);
+        return `<tr><td>${m.round}</td><td class="${w&&w===m.p1_id?'w':''}">${cbEsc(m.p1_id?entryName(m.p1_id):'—')}</td><td class="${w&&w===m.p2_id?'w':''}">${cbEsc(m.p2_id?entryName(m.p2_id):'—')}</td><td>${sc(m)||''}</td><td>${s?cbEsc(schedText(s)):''}</td></tr>`; };
+    const mtable=list=>list.length?`<table><tr><th>Γύρος</th><th>Παίκτης / Ζευγάρι</th><th>Αντίπαλος</th><th>Σκορ</th><th>Ώρα · Γήπεδο</th></tr>${list.map(mrow).join('')}</table>`:'';
+    const stable=rows=>`<table class="st"><tr><th>#</th><th>Όνομα</th><th>Ν</th><th>Η</th><th>Σετ</th></tr>${rows.map((r,i)=>`<tr><td>${i+1}</td><td>${cbEsc(r.name)}</td><td>${r.w}</td><td>${r.l}</td><td>${r.sw}-${r.sl}</td></tr>`).join('')}</table>`;
+    let body='';
+    if(cat.format==='groups_ko'){
+        const gns=[...new Set(gMs.map(m=>m.group_no))].filter(x=>x!=null).sort((a,b)=>a-b);
+        body+=gns.map(gn=>`<div class="grp"><h3>Όμιλος ${gn}</h3>${stable(groupTable(cat.id,gn))}${mtable(gMs.filter(m=>m.group_no===gn))}</div>`).join('');
+        if(!gns.length) body+=`<p>Συμμετέχοντες: ${acceptedEntries(cat.id).map(e=>cbEsc(entryName(e.id))).join(', ')}</p>`;
+    } else if(cat.format!=='knockout'){
+        const st=standings(cat.id);
+        body+=(st.length?`<h3>Βαθμολογία</h3>${stable(st)}`:'')+(gMs.length?`<h3>Αγώνες</h3>${mtable(gMs)}`:`<p>Συμμετέχοντες: ${acceptedEntries(cat.id).map(e=>cbEsc(entryName(e.id))).join(', ')}</p>`);
+    }
+    if(kMs.length) body+=`<div class="ko">${bkView(cat,kMs).replace(/class="text-\[11px\][^"]*"/,'class="h3"')}</div>`;
+    else if(cat.format==='knockout') body+=`<p>Συμμετέχοντες: ${acceptedEntries(cat.id).map(e=>cbEsc(entryName(e.id))).join(', ')}</p>`;
+    return `<section><h2>${cbEsc(cat.name)} <small>${catIsDoubles(cat)?'Διπλό':'Μονό'} · ${cat.format==='groups_ko'?'Όμιλοι + νοκ-άουτ':cat.format==='knockout'?'Νοκ-άουτ':'Όλοι με όλους'} · ${acceptedEntries(cat.id).length} ${catIsDoubles(cat)?'ζευγάρια':'συμμετοχές'}</small></h2>${body}</section>`;
+}
+function printDoc(title, inner){
+    const w=window.open('', '_blank'); if(!w) return cbToast('Επίτρεψε τα αναδυόμενα παράθυρα για το PDF','err');
+    const logo=club.logo_url?`<img src="${club.logo_url}" alt="">`:'';
+    w.document.write(`<!doctype html><html lang="el"><head><meta charset="utf-8"><title>${cbEsc(title)}</title><style>
+        @page{size:A4 landscape;margin:12mm}
+        body{font-family:-apple-system,Segoe UI,Roboto,Arial,sans-serif;color:#0f172a;margin:0;padding:18px;font-size:12px}
+        header{display:flex;align-items:center;gap:12px;border-bottom:2px solid #0f172a;padding-bottom:10px;margin-bottom:14px}
+        header img{width:46px;height:46px;object-fit:contain;border-radius:10px}
+        header h1{font-size:20px;margin:0} header p{margin:2px 0 0;color:#64748b}
+        h2{font-size:16px;margin:18px 0 8px} h2 small{font-weight:400;color:#64748b;font-size:12px}
+        h3,.h3{font-size:12px;text-transform:uppercase;letter-spacing:.05em;color:#3b5bdb;margin:12px 0 6px;font-weight:800}
+        table{border-collapse:collapse;width:100%;margin-bottom:8px} th,td{border:1px solid #e2e8f0;padding:5px 7px;text-align:left}
+        th{background:#f8fafc;font-size:11px;color:#475569} td.w{font-weight:700}
+        table.st{width:auto;min-width:360px} .grp{break-inside:avoid;margin-bottom:10px}
+        section{break-after:page} section:last-child{break-after:auto}
+        .bk{overflow:visible!important;flex-wrap:nowrap} .ko{break-inside:avoid}
+        .bar{position:sticky;top:0;background:#fff;padding:8px 0 12px;display:flex;gap:8px}
+        .bar button{padding:8px 14px;border-radius:10px;border:0;background:#0f172a;color:#fff;font-weight:700;cursor:pointer}
+        @media print{.bar{display:none} body{padding:0}}
+        ${BK_CSS}
+    </style></head><body>
+    <div class="bar"><button onclick="print()">Εκτύπωση / Αποθήκευση ως PDF</button></div>
+    <header>${logo}<div><h1>${cbEsc(title)}</h1><p>${cbEsc(club.name)} · ${new Date().toLocaleDateString(cbLocale())}</p></div></header>
+    ${inner}
+    <script>setTimeout(function(){ try{ print(); }catch(e){} }, 500);<\/script></body></html>`);
+    w.document.close();
+}
+function printCat(cid){ const cat=tCats.find(c=>c.id===cid); if(!cat) return; printDoc(`${tourOf(cat).name||'Τουρνουά'} — ${cat.name}`, catPrintHtml(cat)); }
+function printTour(tid){
+    const t=tours.find(x=>x.id===tid); if(!t) return;
+    const cats=tCats.filter(c=>c.tournament_id===tid && (isOwner || c.published));
+    const list=tMatches.filter(m=>cats.some(c=>c.id===m.category_id)).map(m=>({ m, s:matchSched(m) })).filter(x=>x.s)
+        .sort((a,b)=>(a.s.date+a.s.time).localeCompare(b.s.date+b.s.time));
+    const days=[...new Set(list.map(x=>x.s.date))];
+    const prog = list.length ? `<section><h2>Πρόγραμμα αγώνων</h2>${days.map(d=>`<h3>${cbFmtDate(d)}</h3><table><tr><th>Ώρα</th><th>Γήπεδο</th><th>Αγώνας</th><th>Κατηγορία</th></tr>${
+        list.filter(x=>x.s.date===d).map(({m,s})=>`<tr><td>${s.time}–${cbM2T(cbT2M(s.time)+s.dur)}</td><td>${cbEsc(courtName(s.court))}</td><td>${cbEsc(matchTitle(m))}</td><td>${cbEsc(catOf(m).name||'')}</td></tr>`).join('')}</table>`).join('')}</section>` : '';
+    printDoc(t.name, prog + cats.map(catPrintHtml).join(''));
 }
 
 /* ══════════════ ΠΡΟΠΟΝΗΤΕΣ ══════════════ */
