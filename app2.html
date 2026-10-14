@@ -1068,7 +1068,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=2');
+    const ok=await loadScript('app-i18n.js?v=4016a820');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -4282,8 +4282,8 @@ function renderTschedule(){
             detail=[s?.training_groups?.name||'Προπόνηση', `${tschedCoach(s||{})||'—'} → ${o.coach||'—'}`].filter(Boolean).join(' · ');
         } else if(o.client_name){
             when=`${cbFmtDate(o.the_date)} ${o.start_time||''}`;
-            type='Ιδιαίτερο'; color='text-emerald-600';
-            detail=[o.client_name+(o.coach?` (με ${o.coach})`:''), cName].filter(Boolean).join(' · ');
+            type=o.clinic_id?'Clinic':'Ιδιαίτερο'; color=o.clinic_id?'text-orange-600':'text-emerald-600';
+            detail=[o.client_name+(o.coach?` (${o.coach})`:''), cName].filter(Boolean).join(' · ');
         } else {
             const oc=o.coach||o.training_groups?.coach||'';
             when=`${cbFmtDate(o.the_date)} ${o.start_time||''}`;

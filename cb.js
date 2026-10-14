@@ -88,7 +88,8 @@ function cbConfigured() {
 function cbDateStr(d) { return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`; }
 function cbToday()      { return cbDateStr(new Date()); }
 function cbValidEmail(e){ return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
-function cbValidPhone(p){ return /^[0-9+\s\-]{10,15}$/.test(p); }
+// κενά, παύλες, τελείες, κάθετοι, παρενθέσεις δεν μετράνε: 8–15 ψηφία (Κύπρος 8, Ελλάδα 10, «+49 (0)69/123…»)
+function cbValidPhone(p){ return /^\+?\d{8,15}$/.test(String(p||'').replace(/[\s\-./()]/g,'')); }
 function cbT2M(t)        { const [h,m] = t.split(':').map(Number); return h*60+m; }
 function cbM2T(m)        { return `${String(Math.floor(m/60)).padStart(2,'0')}:${String(m%60).padStart(2,'0')}`; }
 // η εφαρμογή ορίζει cbLocale() όταν τρέχει σε άλλη γλώσσα· αλλού μένουν ελληνικά
