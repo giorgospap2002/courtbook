@@ -1074,7 +1074,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=4fbb9168');
+    const ok=await loadScript('app-i18n.js?v=6ce4670c');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -2886,7 +2886,7 @@ const xlsxWord=(el,en,de)=>({ en, de }[document.documentElement.lang] || el);
    Κρατήσεις, ιδιαίτερα και clinics μετράνε με την ημερομηνία που παίζονται· συνδρομές και
    καρτέλα πελάτη με την ημερομηνία πληρωμής. «Online» = ό,τι πληρώθηκε με κάρτα μέσα από την
    εφαρμογή· το υπόλοιπο είναι για το ταμείο του club. */
-const OLD_CLUBS = new Set(['orion-padel-club','aoap','aotegeas']);   // οι παλιοί σύλλογοι δεν αλλάζουν χωρίς έγκριση
+const OLD_CLUBS = new Set(['orion-padel-club','aotegeas']);   // οι παλιοί σύλλογοι δεν αλλάζουν χωρίς έγκριση
 const newFeature = () => !!(club && !OLD_CLUBS.has(club.slug));
 async function exportDaily(){
     if(typeof XLSX==='undefined'){ cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err'); return; }
@@ -2968,7 +2968,7 @@ async function exportDaily(){
             ['Έσοδα', 'Πλήθος', 'Ποσό (€)'],
             ...(bookingsOn ? [['Κρατήσεις γηπέδων', B.length, bCourt], ['Extras (φώτα, μπαλάκια…)', '', bEx]] : []),
             ...(clinicsOn ? [['Ιδιαίτερα', LES.length, lSum], ['Clinics', CLI.length, cSum]] : []),
-            ...(subsOn ? [['Συνδρομές που πληρώθηκαν', SUB.length, sSum]] : []),
+            ...(subsOn ? [['Συνδρομές που πληρώθηκαν', SUB.length, (SUB.length && SUB.every(r=>r['Ποσό (€)']==='')) ? '' : sSum]] : []),
             ['Χρεώσεις καρτέλας που εξοφλήθηκαν', TABP.length, tSum],
             ['ΣΥΝΟΛΟ ΗΜΕΡΑΣ', '', total],
             ['από αυτά online με κάρτα', '', online],
@@ -2976,8 +2976,9 @@ async function exportDaily(){
             [],
             ['Οφειλές', 'Πλήθος', 'Ποσό (€)'],
             ['Ανεξόφλητες χρεώσεις καρτέλας', owTab.length, sum(owTab,'Ποσό (€)')],
-            ...(subsOn ? [['Συνδρομές μήνα που δεν πληρώθηκαν', owSub.length, sum(owSub,'Ποσό (€)')]] : []),
+            ...(subsOn ? [['Συνδρομές μήνα που δεν πληρώθηκαν', owSub.length, (owSub.length && owSub.every(r=>r['Ποσό (€)']==='')) ? '' : sum(owSub,'Ποσό (€)')]] : []),
             [],
+            ...((subsOn && [...SUB,...owSub].some(r=>r['Ποσό (€)']==='')) ? [['Οι συνδρομές χωρίς ποσό δεν έχουν ορισμένο ποσό ή πακέτο συνδρομής — μετράνε στο πλήθος, όχι στο σύνολο.']] : []),
             ['Κρατήσεις, ιδιαίτερα και clinics μετράνε με την ημέρα που παίζονται· συνδρομές και καρτέλα με την ημέρα πληρωμής.']
         ];
         const wb=XLSX.utils.book_new();
@@ -4481,13 +4482,16 @@ async function renderGuestMakeups(){
         const k=key(x), open=_mgPick===k;
         let opts='', full=0;
         if(open){
+            const byDay=new Map();
             const mine=new Set(groups.filter(gr=>(gr.memberIds||[]).includes(x.player_id)).map(gr=>gr.id)); if(x.group_id) mine.add(x.group_id);
             const taken=new Set(_mgGuests.filter(z=>z.player_id===x.player_id).map(z=>z.group_id+'|'+z.the_date));
             sess.filter(s=>!mine.has(s.gid) && !taken.has(s.gid+'|'+s.date)).forEach(s=>{
                 const f=groupFree(s.gid,s.date); if(f===null) return;
-                if(f>0) opts+=`<option value="${s.sid}|${s.date}">${sessLabel(s)} · ${cbEsc(s.gname)} · ${cbEsc(courtName(s.court))}${s.coach?' · '+cbEsc(s.coach):''} · ${freeLbl(f)}</option>`;
+                if(f>0){ if(!byDay.has(s.date)) byDay.set(s.date,'');
+                    byDay.set(s.date, byDay.get(s.date)+`<option value="${s.sid}|${s.date}">${s.time} · ${cbEsc(s.gname)} · ${cbEsc(courtName(s.court))}${s.coach?' · '+cbEsc(s.coach):''} · ${freeLbl(f)}</option>`); }
                 else full++;
             });
+            byDay.forEach((o,dt)=>{ opts+=`<optgroup label="${cbFmtDate(dt)}">${o}</optgroup>`; });
         }
         return `<div class="py-2 border-b border-slate-100 last:border-0">
             <div class="flex items-center gap-2">
@@ -4513,7 +4517,13 @@ async function renderGuestMakeups(){
     el.innerHTML=`<div class="bg-white rounded-2xl p-5 shadow-sm anim-up border border-blue-100">
         <p class="font-bold mb-1">Αναπληρώσεις αθλητών σε άλλο γκρουπ</p>
         <p class="text-[11px] text-slate-500 mb-3">Εμφανίζονται μόνο προπονήσεις με ελεύθερη θέση, με βάση το όριο αθλητών κάθε τμήματος. Μιλάς με τον αθλητή και τον βάζεις ως επισκέπτη μία φορά· το βλέπει στο κινητό του και ο προπονητής στο παρουσιολόγιο.</p>
-        ${noLimit.length?`<p class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-1.5 mb-3">Χωρίς όριο αθλητών (δεν δέχονται αναπλήρωση): ${noLimit.map(x=>cbEsc(x.name)).join(', ')}. Όρισέ το στις «Προπονήσεις».</p>`:''}
+        ${noLimit.length?`<div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2 mb-3">
+            <p>${noLimit.length<=3 ? `Χωρίς όριο αθλητών (δεν δέχονται αναπλήρωση): ${noLimit.map(x=>cbEsc(x.name)).join(', ')}.` : `${noLimit.length} τμήματα χωρίς όριο αθλητών — δεν δέχονται αναπλήρωση.`}</p>
+            <div class="flex items-center gap-2 mt-1.5 flex-wrap"><span>Όριο για ${noLimit.length===1?'αυτό':'όλα αυτά'}:</span>
+                <input id="mgBulkMax" type="number" min="1" max="500" placeholder="π.χ. 8" class="w-16 px-2 py-1 border border-amber-200 rounded-lg text-xs bg-white">
+                <button onclick="bulkGroupMax()" class="px-2.5 py-1 rounded-lg bg-amber-600 text-white font-bold">Εφαρμογή</button>
+                <span class="text-amber-700/70">· αλλάζει μετά ανά τμήμα στις «Προπονήσεις»</span></div>
+        </div>`:''}
         <div class="flex items-center justify-between mb-1"><p class="text-[10px] font-bold text-slate-500 uppercase">Χρειάζονται αναπλήρωση (${_mgCand.length})</p>
             <button onclick="_mgAddOpen=!_mgAddOpen;renderGuestMakeups()" class="text-[11px] text-brand font-semibold">${_mgAddOpen?'Κλείσιμο':'+ Πρόσθεσε αθλητή'}</button></div>
         ${_mgAddOpen?`<div class="grid grid-cols-12 gap-2 mb-2 p-2 bg-slate-50 rounded-lg">
@@ -4526,6 +4536,19 @@ async function renderGuestMakeups(){
         <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Κανονισμένες (${_mgGuests.length})</p>
         ${guestsHtml||'<p class="text-[11px] text-slate-400">Καμία ακόμα</p>'}
     </div>`;
+}
+// ένα όριο σε όλα τα τμήματα που δεν έχουν (π.χ. ΑΟΑΠ με 100 τμήματα) — όσα έχουν ήδη δεν αλλάζουν
+async function bulkGroupMax(){
+    const n=parseInt((document.getElementById('mgBulkMax')||{}).value,10);
+    if(!(n>=1 && n<=500)) return cbToast('Βάλε αριθμό από 1 έως 500','err');
+    const ids=groups.filter(g=>!g.max_athletes).map(g=>g.id); if(!ids.length) return;
+    if(!confirm(`Όριο ${n} αθλητές σε ${ids.length} τμήματα χωρίς όριο;`)) return;
+    cbLoading(true);
+    const { error }=await sb.from('training_groups').update({ max_athletes:n }).eq('club_id',club.id).is('max_athletes',null);
+    cbLoading(false);
+    if(error) return cbToast(error.message||'Δεν αποθηκεύτηκε','err');
+    cbToast(`✓ Όριο ${n} σε ${ids.length} τμήματα`);
+    await loadGroups(); renderGuestMakeups(); if(typeof renderGroups==='function') renderGroups();
 }
 async function assignGuest(pid, missed, mgid){
     const v=(document.getElementById('mgSess')||{}).value; if(!v) return cbToast('Διάλεξε προπόνηση','err');
@@ -4558,7 +4581,7 @@ async function delGuest(id){ if(!confirm('Να ακυρωθεί αυτή η αν
 /* ══════════════ ΑΝΤΙΚΑΤΑΣΤΑΣΗ ΠΡΟΠΟΝΗΤΗ (μία ημερομηνία) ══════════════
    Πιλοτικά στη Νίκη· αν δουλέψει, ανοίγει για όλους. Γήπεδο και ώρα δεν αλλάζουν —
    μόνο ποιος κάνει εκείνη την προπόνηση. Το βλέπουν γραμματεία, αθλητές και οι δύο προπονητές. */
-const PILOT_CLUBS = new Set(['niki-demo']);
+const PILOT_CLUBS = new Set(['niki-demo','aoap']);
 const pilotOn = () => !!(club && PILOT_CLUBS.has(club.slug));
 const coachSubFor = (sid, date) => trainingOverrides.find(o=>o.kind==='coach' && o.schedule_id===sid && o.the_date===date) || null;
 let subOpenId=null;
