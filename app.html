@@ -925,7 +925,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=4016a820');
+    const ok=await loadScript('app-i18n.js?v=6dea964c');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1451,6 +1451,9 @@ async function enterApp(){
     if(tabBar) tabBar.style.visibility='';
     await loadRoster();
     await loadTrainingSchedule();
+    // η πρώτη καρτέλα σχεδιάστηκε πριν φτάσει το πρόγραμμα («καμία προπόνηση») — ξανά, τώρα που υπάρχει
+    if(activeTab==='myschedule'){ renderMySchedule(); if(clinicsOn) renderMyLessons(); }
+    else if(activeTab==='mytrainings') renderMyTrainings();
     await loadMine();
     await loadDay();
     await loadOpenMatches();
@@ -2703,6 +2706,24 @@ function adminCard(b,showDate){
     </div>`;
 }
 /* ══════════════ EXPORT EXCEL (owner) ══════════════ */
+// Excel στη γλώσσα της εφαρμογής: φύλλα, επικεφαλίδες, σταθερές λέξεις (Παρών, Εκκρεμεί…)· τα ονόματα μένουν όπως είναι
+function xlsxLocalize(wb){
+    const L=document.documentElement.lang;
+    if(!window.CBI18N || !L || L==='el') return wb;
+    const G=/[Ͱ-Ͽἀ-῿]/, tx=v=>(typeof v==='string' && G.test(v)) ? CBI18N.t(v) : v;
+    const out=XLSX.utils.book_new(), used=new Set();
+    wb.SheetNames.forEach(n=>{
+        const ws=wb.Sheets[n], aoa=XLSX.utils.sheet_to_json(ws,{ header:1, raw:true, defval:'' });
+        const ws2=XLSX.utils.aoa_to_sheet(aoa.map(r=>r.map(tx)));
+        if(ws['!cols']) ws2['!cols']=ws['!cols'];
+        let nm=String(tx(n)).replace(/[\\\/?*\[\]:]/g,' ').slice(0,31).trim()||'Sheet';
+        while(used.has(nm)) nm=nm.slice(0,28)+' '+(used.size+1);
+        used.add(nm); XLSX.utils.book_append_sheet(out, ws2, nm);
+    });
+    return out;
+}
+const xlsxWord=(el,en,de)=>({ en, de }[document.documentElement.lang] || el);
+
 async function exportExcel(){
     if(typeof XLSX==='undefined'){ cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err'); return; }
     const ym=document.getElementById('exportMonth').value || cbToday().slice(0,7);
@@ -2828,7 +2849,7 @@ async function exportExcel(){
         add(groupRows,'Ανά γκρουπ',{'Γκρουπ':'— κανένα γκρουπ —'});
         if(bookingsOn) add(bookRows,'Κρατήσεις',{'Ημερομηνία':'— καμία κράτηση —'});
 
-        XLSX.writeFile(wb, `${club.slug||'club'}-${ym}.xlsx`);
+        XLSX.writeFile(xlsxLocalize(wb), `${club.slug||'club'}-${ym}.xlsx`);
         cbToast(`✓ Κατέβηκε το Excel — ${monthLabel}`);
     }catch(e){ cbToast('Σφάλμα εξαγωγής','err'); }
     finally{ cbLoading(false); }
@@ -4910,11 +4931,11 @@ function exportPlayers(){
         ...(bookingsOn?{'Επίπεδο':p.level!=null?p.level:''}:{}),
         'Γκρουπ':(gOf[p.id]||[]).join(', '),
         'Σημειώσεις':p.notes||'',
-        'Εγγραφή':(p.created_at||'').slice(0,10)
+        'Ημ. εγγραφής':(p.created_at||'').slice(0,10)
     }));
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Πελάτες');
-    XLSX.writeFile(wb, `${club.slug||'club'}-pelates-${cbToday()}.xlsx`);
+    XLSX.writeFile(xlsxLocalize(wb), `${club.slug||'club'}-${xlsxWord('pelates','customers','kunden')}-${cbToday()}.xlsx`);
     cbToast(`Κατέβηκαν ${rows.length} πελάτες`);
 }
 
@@ -5016,7 +5037,7 @@ function exportAthletes(){
     }));
     const wb=XLSX.utils.book_new();
     XLSX.utils.book_append_sheet(wb, XLSX.utils.json_to_sheet(rows), 'Αθλητές');
-    XLSX.writeFile(wb, `${club.slug||'club'}-athlites-${cbToday()}.xlsx`);
+    XLSX.writeFile(xlsxLocalize(wb), `${club.slug||'club'}-${xlsxWord('athlites','athletes','athleten')}-${cbToday()}.xlsx`);
     cbToast(`Κατέβηκαν ${rows.length} αθλητές`);
 }
 
