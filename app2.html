@@ -1068,7 +1068,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=6dea964c');
+    const ok=await loadScript('app-i18n.js?v=90401bf3');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1527,6 +1527,7 @@ async function enterApp(){
     const tabBar=document.querySelector('.tab-btn')?.parentElement;
     if(!bookingsOn && tabBar) tabBar.style.visibility='hidden';
     const prof = await sb.from('profiles').select('name').eq('id', me.id).maybeSingle();
+    myName = (prof.data?.name || '').trim();
     // Ο ιδιοκτήτης εμφανίζεται ως «Admin» — είναι ρόλος, όχι πρόσωπο
     document.getElementById('welcomeName').textContent = isOwner ? (pilotOn()?'Γραμματεία':'Admin') : (prof.data?.name || me.email.split('@')[0]);
     document.getElementById('umName').textContent = prof.data?.name || me.email.split('@')[0];
@@ -2472,6 +2473,8 @@ function renderMine(){
     if(past.length){ html+=`<p class="text-[10px] font-bold text-slate-400 uppercase mt-5 mb-2">Ιστορικό</p>`+past.slice(-10).reverse().map(b=>myCard(b,true)).join(''); }
     list.innerHTML=html;
 }
+// μπήκα σε ματς άλλου μέλους (όχι κράτηση της γραμματείας στο όνομά μου)
+const otherMatch = b => b.mine_direct===false && !!b.user_name && !!myName && b.user_name.trim()!==myName;
 function myCard(b,isPast){
     const d=durations.find(x=>x.minutes===b.duration_min)||{label:b.duration_min+'′'};
     const price=b.price!=null?b.price:(d.price||'');
@@ -2486,12 +2489,12 @@ function myCard(b,isPast){
         ${(!isPast&&b.pay_status==='pending')?`<p class="text-[11px] text-amber-700 font-bold mt-1">Αναμονή πληρωμής — η ώρα κρατιέται για λίγα λεπτά</p>
             <button onclick="payBooking('${b.id}')" class="mt-1 text-[11px] text-white bg-brand px-2.5 py-1 rounded-lg font-semibold">Ολοκλήρωση πληρωμής</button>`:''}
         ${(!isPast&&b.split)?mySplitLine(b):''}
-        ${(!isPast&&b.open_spots>0)?`<p class="text-[11px] text-emerald-700 font-bold mt-1">Ανοιχτό ματς · ψάχνεις ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}${b.split?.is_private?' · ιδιωτικό':''}</p>
+        ${(!isPast&&b.open_spots>0)?`<p class="text-[11px] text-emerald-700 font-bold mt-1">Ανοιχτό ματς · ${otherMatch(b)?'ψάχνει':'ψάχνεις'} ${b.open_spots} ${b.open_spots===1?'παίκτη':'παίκτες'}${b.split?.is_private?' · ιδιωτικό':''}</p>
             <div class="flex gap-2 mt-1">
                 <button onclick="copyMatchLink('${b.id}')" class="text-[11px] text-brand border border-brand/30 px-2 py-1 rounded-lg font-semibold hover:bg-blue-50">Αντιγραφή link</button>
                 ${b.mine_direct!==false?`<button onclick="closeMatch('${b.id}')" class="text-[11px] text-slate-500 border border-slate-200 px-2 py-1 rounded-lg font-semibold hover:bg-slate-50">Κλείσε το ματς</button>`:''}
             </div>`:''}
-        ${(b.mine_direct===false)?`<p class="text-[11px] text-indigo-500 mt-0.5">κλείστηκε από το club</p>`:''}
+        ${(b.mine_direct===false)?`<p class="text-[11px] text-indigo-500 mt-0.5">${otherMatch(b)?`Ματς του ${cbEsc((b.user_name||'').split(' ')[0])}`:'κλείστηκε από το club'}</p>`:''}
         ${isOwner?`<p class="text-[11px] text-slate-500 mt-1">${b.user_name||'—'}${b.user_phone?` · Τηλ. ${b.user_phone}`:''}${b.user_email?` · ${b.user_email}`:''}</p>`:''}</div>
         ${isPast?`<span class="text-[10px] text-slate-400 font-medium">Τελείωσε</span>`:(b.mine_direct===false?`<span class="text-[10px] text-slate-400 font-medium">συμμετοχή</span>`:`<button onclick="doCancel('${b.id}')" class="text-xs text-red-500 border border-red-200 px-2.5 py-1 rounded-lg hover:bg-red-50 font-medium">Ακύρωση</button>`)}
     </div>`;
@@ -5347,6 +5350,7 @@ const availText = e => {
     return d||b ? [d,b].filter(Boolean).join(' · ') : '—';
 };
 
+let myName='';   // όνομα του συνδεδεμένου (για «Ματς του …» στις κρατήσεις όπου μπήκε σε ματς άλλου)
 let myPlayer=null;              // {id,name} του συνδεδεμένου αθλητή
 let _decl={};                   // πρόχειρο της φόρμας δήλωσης ανά κατηγορία
 
