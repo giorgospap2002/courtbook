@@ -1005,7 +1005,16 @@ footer a:hover{color:var(--ink)}
     let init = 'el';
     const q = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
     if (q === 'el' || T[q]) init = q;
-    else { try { const s = localStorage.getItem('cb_lang'); if (s === 'el' || T[s]) init = s; } catch(e) {} }
+    else {
+        let s = null; try { s = localStorage.getItem('cb_lang'); } catch(e) {}
+        if (s === 'el' || T[s]) init = s;
+        else {
+            // πρώτη επίσκεψη: γερμανόφωνος browser → DE· ελληνικά/αγγλικά → EL (πολλοί Έλληνες έχουν κινητό στα αγγλικά)· άλλη γλώσσα → EN
+            const nl = ((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase();
+            if (/^de/.test(nl) && T.de) init = 'de';
+            else if (nl && !/^(el|en)/.test(nl) && T.en) init = 'en';
+        }
+    }
     apply(init);
 })();
 </script>

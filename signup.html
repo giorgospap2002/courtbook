@@ -424,7 +424,12 @@ let CB_LANG = 'el';
 (function(){
     const q = (new URLSearchParams(location.search).get('lang') || '').toLowerCase();
     if (q === 'el' || CB_T[q]) { CB_LANG = q; return; }
-    try { const s = localStorage.getItem('cb_lang'); if (s === 'el' || CB_T[s]) CB_LANG = s; } catch(e) {}
+    let s = null; try { s = localStorage.getItem('cb_lang'); } catch(e) {}
+    if (s === 'el' || CB_T[s]) { CB_LANG = s; return; }
+    // πρώτη επίσκεψη κατευθείαν στην εγγραφή: ίδιος κανόνας με την αρχική
+    const nl = ((navigator.languages && navigator.languages[0]) || navigator.language || '').toLowerCase();
+    if (/^de/.test(nl) && CB_T.de) CB_LANG = 'de';
+    else if (nl && !/^(el|en)/.test(nl) && CB_T.en) CB_LANG = 'en';
 })();
 /* Κλειδί είναι το ίδιο το ελληνικό — αν λείπει μετάφραση, γυρνάει αυτούσιο. */
 function L(s){ const t = CB_S[CB_LANG]; return (t && t[s] != null) ? t[s] : s; }

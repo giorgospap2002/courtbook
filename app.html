@@ -3863,10 +3863,10 @@ function addDurRow(min='', label='', price=''){
     const row=document.createElement('div');
     row.className='flex gap-2 items-center';
     row.innerHTML=`
-        <input type="number" value="${min}" placeholder="λεπτά" class="dur-min w-20 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <input type="text" value="${label}" placeholder="ετικέτα" class="dur-label flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <input type="number" value="${price}" placeholder="€" class="dur-price w-20 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <button class="px-2 text-red-400 hover:text-red-600">✕</button>`;
+        <input type="number" value="${cbEsc(min)}" placeholder="λεπτά" class="dur-min w-16 sm:w-20 flex-shrink-0 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <input type="text" value="${cbEsc(label)}" placeholder="ετικέτα" class="dur-label flex-1 min-w-0 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <input type="number" value="${cbEsc(price)}" placeholder="€" class="dur-price w-16 sm:w-20 flex-shrink-0 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <button class="px-1.5 flex-shrink-0 text-red-400 hover:text-red-600">✕</button>`;
     row.querySelector('button').onclick=()=>row.remove();
     wrap.appendChild(row);
 }
@@ -3899,9 +3899,9 @@ function addExtraRow(label='', price=''){
     const row=document.createElement('div');
     row.className='flex gap-2 items-center';
     row.innerHTML=`
-        <input type="text" value="${label}" placeholder="π.χ. Ρακέτα" class="ex-label flex-1 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <input type="number" value="${price}" placeholder="€" class="ex-price w-24 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
-        <button class="px-2 text-red-400 hover:text-red-600">✕</button>`;
+        <input type="text" value="${cbEsc(label)}" placeholder="π.χ. Ρακέτα" class="ex-label flex-1 min-w-0 px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <input type="number" value="${cbEsc(price)}" placeholder="€" class="ex-price w-20 sm:w-24 flex-shrink-0 px-2 py-2.5 border border-slate-200 rounded-xl text-sm">
+        <button class="px-1.5 flex-shrink-0 text-red-400 hover:text-red-600">✕</button>`;
     row.querySelector('button').onclick=()=>row.remove();
     wrap.appendChild(row);
 }
