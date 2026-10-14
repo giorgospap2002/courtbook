@@ -422,6 +422,12 @@
             <input type="month" id="exportMonth" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs ml-auto">
             <button id="exportBtn" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">Κατέβασε</button>
         </div>
+        <div id="dailyCard" class="hidden bg-white rounded-2xl p-4 shadow-sm anim-up flex items-center gap-2 flex-wrap">
+            <p class="font-bold text-sm">📊 Αναφορά ημέρας</p>
+            <span class="text-[11px] text-slate-400">έσοδα, συνδρομές και οφειλές της μέρας</span>
+            <input type="date" id="dailyDate" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs ml-auto">
+            <button onclick="exportDaily()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">Κατέβασε</button>
+        </div>
         <div class="grid grid-cols-3 gap-3 anim-up">
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-brand" id="statToday">0</p><p id="statTodayTr" class="text-[10px] text-purple-500 font-semibold"></p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Σήμερα</p></div>
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-indigo-500" id="statWeek">0</p><p id="statWeekTr" class="text-[10px] text-purple-500 font-semibold"></p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Επόμενες 7μ.</p></div>
@@ -925,7 +931,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=90401bf3');
+    const ok=await loadScript('app-i18n.js?v=4fbb9168');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1442,6 +1448,8 @@ async function enterApp(){
     if(!isOwner) document.getElementById('datePicker').min=today;
     document.getElementById('adminDate').value=today;
     if(isOwner) document.getElementById('exportMonth').value=today.slice(0,7);
+    if(isOwner){ const dd=document.getElementById('dailyDate'); if(dd) dd.value=today;
+                 document.getElementById('dailyCard')?.classList.toggle('hidden', !newFeature()); }
     buildQuickDates();
     renderPartnerCta();
     // Σε σύλλογο που νοικιάζει γήπεδα, η καρτέλα «Κρατήσεις» είναι ημερολόγιο
@@ -2726,6 +2734,118 @@ function xlsxLocalize(wb){
     return out;
 }
 const xlsxWord=(el,en,de)=>({ en, de }[document.documentElement.lang] || el);
+
+/* ══════════════ ΑΝΑΦΟΡΑ ΗΜΕΡΑΣ ══════════════
+   Κρατήσεις, ιδιαίτερα και clinics μετράνε με την ημερομηνία που παίζονται· συνδρομές και
+   καρτέλα πελάτη με την ημερομηνία πληρωμής. «Online» = ό,τι πληρώθηκε με κάρτα μέσα από την
+   εφαρμογή· το υπόλοιπο είναι για το ταμείο του club. */
+const OLD_CLUBS = new Set(['orion-padel-club','aoap','aotegeas']);   // οι παλιοί σύλλογοι δεν αλλάζουν χωρίς έγκριση
+const newFeature = () => !!(club && !OLD_CLUBS.has(club.slug));
+async function exportDaily(){
+    if(typeof XLSX==='undefined'){ cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err'); return; }
+    const d=(document.getElementById('dailyDate')||{}).value||cbToday(), month=d.slice(0,7);
+    cbLoading(true);
+    try{
+        await Promise.all([loadPlayersFull(), loadGroups(), loadCoaches()]);
+        const none={ data:[] };
+        const [bk, ls, cl, mp, tb, pl]=await Promise.all([
+            bookingsOn ? cbAll(()=>sb.from('bookings').select('*, courts(name), booking_players(pay_status,pay_amount)')
+                .eq('club_id',club.id).eq('booking_date',d).order('start_time').order('id')) : none,
+            clinicsOn ? sb.from('lessons').select('*').eq('club_id',club.id).eq('the_date',d).neq('status','cancelled').order('start_time') : none,
+            clinicsOn ? sb.from('clinics').select('*').eq('club_id',club.id).eq('the_date',d).order('start_time') : none,
+            subsOn ? cbAll(()=>sb.from('member_payments').select('player_id,month,paid_date,note').eq('club_id',club.id)
+                .or(`paid_date.eq.${d},month.eq.${month}`).order('id')) : none,
+            cbAll(()=>sb.from('player_tab').select('*').eq('club_id',club.id).order('id')),
+            subsOn ? sb.from('sub_plans').select('id,name,price').eq('club_id',club.id) : none
+        ]);
+        const cids=(cl.data||[]).map(c=>c.id);
+        const ce=cids.length ? await sb.from('clinic_entries').select('*').in('clinic_id',cids).neq('status','cancelled').order('created_at') : none;
+
+        const money=n=>Math.round((Number(n)||0)*100)/100;
+        const sum=(a,k)=>money(a.reduce((s,x)=>s+(Number(x[k])||0),0));
+        const exOf=id=>extras.find(e=>e.id===id)||{};
+        const pName=pid=>(playersFull.find(p=>p.id===pid)||{}).name||'';
+        const coachN=id=>(coaches.find(c=>c.id===id)||{}).name||'';
+        const durL=m=>(durations.find(x=>x.minutes===m)||{label:m+'′'}).label;
+        const span=(t,m)=>`${t}-${cbM2T(cbT2M(t)+(m||60))}`;
+        const owner=club.owner_id||me.id;
+
+        // ── κρατήσεις ──
+        const B=(bk.data||[]).map(b=>{
+            const exs=(b.extras||[]).map(x=>({ l:exOf(x.id).label||'', q:x.qty||1, p:(Number(exOf(x.id).price)||0)*(x.qty||1) }));
+            const shares=(b.booking_players||[]).filter(p=>p.pay_status==='paid').reduce((s,p)=>s+(Number(p.pay_amount)||0),0);
+            const online=(b.pay_status==='paid' ? Number(b.pay_amount)||0 : 0)+shares;
+            const court=Number(b.price)||0, ex=exs.reduce((s,x)=>s+x.p,0);
+            return { 'Ώρα':span(b.start_time,b.duration_min), 'Γήπεδο':b.courts?.name||'', 'Πελάτης':b.user_name||'', 'Τηλέφωνο':b.user_phone||'',
+                'Διάρκεια':durL(b.duration_min), 'Γήπεδο (€)':money(court), 'Extras':exs.map(x=>(x.q>1?x.q+'× ':'')+x.l).join(', '), 'Extras (€)':money(ex),
+                'Σύνολο (€)':money(court+ex),
+                'Πληρωμή':b.pay_status==='paid'?'Online':b.pay_status==='pending'?'Αναμονή πληρωμής':shares?'Μοιρασμένη':'Στο ταμείο',
+                'Online (€)':money(online), 'Κλείστηκε από':b.user_id===owner?'Γραμματεία':'Μέλος (online)', 'Σημείωση':b.note||'' };
+        });
+        // ── ιδιαίτερα & clinics ──
+        const lc=[];
+        (ls.data||[]).forEach(l=>{ const p=Number(l.price)||0, on=l.pay_status==='paid'?(Number(l.pay_amount)||p):0;
+            lc.push({ 'Τύπος':'Ιδιαίτερο', 'Ώρα':span(l.start_time,l.duration_min), 'Τίτλος / Πελάτης':l.name||'', 'Προπονητής':coachN(l.coach_id),
+                'Γήπεδο':courtName(l.court_id), 'Ποσό (€)':money(p), 'Πληρωμή':l.pay_status==='paid'?'Online':l.pay_status==='pending'?'Αναμονή πληρωμής':'Στο ταμείο', 'Online (€)':money(on) }); });
+        const nLes=lc.length;
+        (cl.data||[]).forEach(c=>(ce.data||[]).filter(e=>e.clinic_id===c.id).forEach(e=>{ const p=Number(c.price)||0, on=e.pay_status==='paid'?(Number(e.pay_amount)||p):0;
+            lc.push({ 'Τύπος':'Clinic', 'Ώρα':span(c.start_time,c.duration_min), 'Τίτλος / Πελάτης':`${c.title} · ${e.name||''}`, 'Προπονητής':c.coach||coachN(c.coach_id),
+                'Γήπεδο':courtName(c.court_id), 'Ποσό (€)':money(p), 'Πληρωμή':e.pay_status==='paid'?'Online':e.pay_status==='pending'?'Αναμονή πληρωμής':'Στο ταμείο', 'Online (€)':money(on) }); }));
+        const LES=lc.slice(0,nLes), CLI=lc.slice(nLes);
+        // ── συνδρομές που πληρώθηκαν τη μέρα ──
+        const feeOf=pid=>{ const p=playersFull.find(x=>x.id===pid); const pp=p&&p.sub_plan_id?(pl.data||[]).find(x=>x.id===p.sub_plan_id):null;
+                           return pp ? Number(pp.price) : (club.sub_fee!=null ? Number(club.sub_fee) : null); };
+        const SUB=(mp.data||[]).filter(r=>r.paid_date===d).map(r=>{ const m=/([\d]+(?:[.,]\d+)?)\s*€/.exec(r.note||''); const amt=m?Number(m[1].replace(',','.')):feeOf(r.player_id);
+            const on=/stripe|online/i.test(r.note||'');
+            return { 'Αθλητής':pName(r.player_id), 'Μήνας':r.month, 'Ποσό (€)':amt==null?'':money(amt), 'Τρόπος':on?'Online':'Στη γραμματεία', 'Σχόλιο':r.note||'' }; });
+        // ── καρτέλα πελάτη ──
+        const tab=tb.error?[]:(tb.data||[]);
+        const TABP=tab.filter(t=>t.paid && t.paid_at===d).map(t=>({ 'Πελάτης':pName(t.player_id), 'Περιγραφή':t.text||'', 'Ποσό (€)':money(t.amount) }));
+        // ── οφειλές ──
+        const paidM=new Set((mp.data||[]).filter(r=>r.month===month).map(r=>r.player_id));
+        const inGroups=p=>groups.filter(g=>(g.memberIds||[]).includes(p.id)).map(g=>g.name);
+        const subOwed=subsOn ? playersFull.filter(p=>inGroups(p).length && !paidM.has(p.id)) : [];
+        const OW=[ ...tab.filter(t=>!t.paid && Number(t.amount)>0).map(t=>({ 'Είδος':'Καρτέλα', 'Πελάτης':pName(t.player_id), 'Ημερομηνία':t.entry_date||'', 'Περιγραφή':t.text||'', 'Ποσό (€)':money(t.amount) })),
+                   ...subOwed.map(p=>({ 'Είδος':'Συνδρομή', 'Πελάτης':p.name, 'Ημερομηνία':month, 'Περιγραφή':inGroups(p).join(', '), 'Ποσό (€)':feeOf(p.id)==null?'':money(feeOf(p.id)) })) ];
+
+        // ── σύνοψη ──
+        const bCourt=sum(B,'Γήπεδο (€)'), bEx=sum(B,'Extras (€)'), bOn=sum(B,'Online (€)');
+        const lSum=sum(LES,'Ποσό (€)'), lOn=sum(LES,'Online (€)'), cSum=sum(CLI,'Ποσό (€)'), cOn=sum(CLI,'Online (€)');
+        const sSum=sum(SUB,'Ποσό (€)'), sOn=money(SUB.filter(r=>r['Τρόπος']==='Online').reduce((s,r)=>s+(Number(r['Ποσό (€)'])||0),0));
+        const tSum=sum(TABP,'Ποσό (€)');
+        const total=money(bCourt+bEx+lSum+cSum+sSum+tSum), online=money(bOn+lOn+cOn+sOn);
+        const owTab=OW.filter(r=>r['Είδος']==='Καρτέλα'), owSub=OW.filter(r=>r['Είδος']==='Συνδρομή');
+        const longDate=new Date(d+'T12:00:00').toLocaleDateString(cbLocale(),{ weekday:'long', day:'numeric', month:'long', year:'numeric' });
+        const aoa=[
+            [club.name], ['Αναφορά ημέρας', longDate], [],
+            ['Έσοδα', 'Πλήθος', 'Ποσό (€)'],
+            ...(bookingsOn ? [['Κρατήσεις γηπέδων', B.length, bCourt], ['Extras (φώτα, μπαλάκια…)', '', bEx]] : []),
+            ...(clinicsOn ? [['Ιδιαίτερα', LES.length, lSum], ['Clinics', CLI.length, cSum]] : []),
+            ...(subsOn ? [['Συνδρομές που πληρώθηκαν', SUB.length, sSum]] : []),
+            ['Χρεώσεις καρτέλας που εξοφλήθηκαν', TABP.length, tSum],
+            ['ΣΥΝΟΛΟ ΗΜΕΡΑΣ', '', total],
+            ['από αυτά online με κάρτα', '', online],
+            ['στο ταμείο του club', '', money(total-online)],
+            [],
+            ['Οφειλές', 'Πλήθος', 'Ποσό (€)'],
+            ['Ανεξόφλητες χρεώσεις καρτέλας', owTab.length, sum(owTab,'Ποσό (€)')],
+            ...(subsOn ? [['Συνδρομές μήνα που δεν πληρώθηκαν', owSub.length, sum(owSub,'Ποσό (€)')]] : []),
+            [],
+            ['Κρατήσεις, ιδιαίτερα και clinics μετράνε με την ημέρα που παίζονται· συνδρομές και καρτέλα με την ημέρα πληρωμής.']
+        ];
+        const wb=XLSX.utils.book_new();
+        const s0=XLSX.utils.aoa_to_sheet(aoa); s0['!cols']=[{wch:44},{wch:12},{wch:14}];
+        XLSX.utils.book_append_sheet(wb, s0, 'Σύνοψη');
+        const add=(rows,name,empty,w)=>{ const ws=XLSX.utils.json_to_sheet(rows.length?rows:[empty]); if(w) ws['!cols']=w.map(x=>({wch:x})); XLSX.utils.book_append_sheet(wb, ws, name); };
+        if(bookingsOn) add(B,'Κρατήσεις',{'Ώρα':'— καμία κράτηση —'},[12,10,24,14,10,10,22,10,10,16,10,16,24]);
+        if(clinicsOn) add(lc,'Ιδιαίτερα & Clinics',{'Τύπος':'— κανένα —'},[10,12,30,20,10,10,16,10]);
+        if(subsOn) add(SUB,'Συνδρομές',{'Αθλητής':'— καμία πληρωμή —'},[24,10,10,16,30]);
+        add(OW,'Οφειλές',{'Είδος':'— καμία οφειλή —'},[12,24,12,30,10]);
+        XLSX.writeFile(xlsxLocalize(wb), `${club.slug||'club'}-${xlsxWord('anafora','report','bericht')}-${d}.xlsx`);
+        cbToast(`✓ Κατέβηκε η αναφορά — ${cbFmtDate(d)}`);
+    }catch(e){ cbToast(e.message||'Σφάλμα εξαγωγής','err'); }
+    finally{ cbLoading(false); }
+}
 
 async function exportExcel(){
     if(typeof XLSX==='undefined'){ cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err'); return; }
