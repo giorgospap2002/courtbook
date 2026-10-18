@@ -471,6 +471,7 @@ hr,.border-t,.border-b{border-color:var(--line)}
             <button id="mytrainingsTabBtn" data-tab="mytrainings" class="tab-btn flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M13 4.5a1.5 1.5 0 1 0 0-.01"/><path d="M7 21l3-6 3 2v4M10 15l1-5 4 3h4M11 10l-3-1-3 3"/></svg>Οι Προπονήσεις μου</button>
             <button id="adminTabBtn" data-tab="admin" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3l7.5 3v5.5c0 4.6-3.2 8.2-7.5 9.5-4.3-1.3-7.5-4.9-7.5-9.5V6z"/><path d="M9 12l2 2 4-4"/></svg>Admin</button>
             <button id="rosterTabBtn" data-tab="roster" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8.5" r="3.5"/><path d="M2.5 20c.8-3.6 3.4-5.5 6.5-5.5s5.7 1.9 6.5 5.5M16 5.2a3.5 3.5 0 0 1 0 6.6M18.5 14.8c1.6.8 2.6 2.5 3 5.2"/></svg>Πελάτες</button>
+            <button id="topTabBtn" data-tab="top" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium">Top παίκτες</button>
             <button id="athletesTabBtn" data-tab="athletes" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="14" r="5.5"/><path d="M8.5 9.5L6 3h4l2 4 2-4h4l-2.5 6.5"/><path d="M12 11.8v4.4M10.4 13.2l1.6-1.4"/></svg>Αθλητές</button>
             <button id="myScheduleTabBtn" data-tab="myschedule" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="5" width="17" height="15.5" rx="3"/><path d="M8 3v4M16 3v4M3.5 10h17M8 14h3M8 17h6"/></svg>Το πρόγραμμά μου</button>
             <button id="attendanceTabBtn" data-tab="attendance" class="tab-btn hidden flex-shrink-0 whitespace-nowrap px-3 sm:px-4 py-3 text-xs text-slate-400 border-b-2 border-transparent font-medium"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3.5" y="3.5" width="17" height="17" rx="4"/><path d="M8 12.2l2.8 2.8L16.5 9"/></svg>Παρουσίες</button>
@@ -625,6 +626,22 @@ hr,.border-t,.border-b{border-color:var(--line)}
 
     <!-- ROSTER (Μητρώο: Παίκτες + Γκρουπ + Παρουσιολόγιο) -->
     <!-- ══════════ ΑΘΛΗΤΕΣ ΠΡΟΠΟΝΗΣΗΣ ══════════ -->
+    <div id="tab-top" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
+        <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between gap-2 flex-wrap mb-1">
+                <p class="font-bold">Top παίκτες του μήνα</p>
+                <div class="flex items-center gap-1.5">
+                    <button onclick="topShift(-1)" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 font-bold">‹</button>
+                    <input type="month" id="topMonth" onchange="renderTop()" class="px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+                    <button onclick="topShift(1)" class="w-8 h-8 rounded-lg border border-slate-200 text-slate-500 font-bold">›</button>
+                    <button onclick="exportTop()" class="px-2.5 py-1.5 rounded-lg bg-green-600 text-white text-xs font-bold">Excel</button>
+                </div>
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Όσοι έπαιξαν τα περισσότερα παιχνίδια — με δική τους κράτηση, κράτηση της γραμματείας ή ως συμπαίκτες. Μετράνε τα παιχνίδια που έχουν γίνει.</p>
+            <div id="topList"></div>
+        </div>
+    </div>
+
     <div id="tab-athletes" class="tab-panel hidden flex-1 max-w-4xl w-full mx-auto p-4 space-y-4">
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between gap-2 mb-1">
@@ -1039,7 +1056,21 @@ let activeTab='booking', pickerSlot=null, dayData=[], myBookings=[], _refresh=nu
 let APP_LANG='el';
 const APP_LANGS=['el','en','de'];
 const cbLocale=()=>({ el:'el-GR', en:'en-GB', de:'de-AT' })[APP_LANG]||'el-GR';
-const _langKey=()=>'cb_app_lang:'+(cbQS('club')||'');
+const _langKey=()=>'cb_app_lang:'+((typeof club!=='undefined' && club && club.slug) || cbQS('club') || '');
+/* Καθαρά links: court-book.gr/<slug>. Το 404.html του site μεταφέρει το /<slug> στην εφαρμογή.
+   Τοπικά (localhost) δεν υπάρχει 404.html, οπότε εκεί μένει το ?club=. */
+const prettyOn=()=>/^https?:$/.test(location.protocol) && !/^(localhost|127\.0\.0\.1)$/.test(location.hostname);
+function clubHref(params){
+    const base = prettyOn() ? '/'+encodeURIComponent(club.slug) : location.pathname+'?club='+encodeURIComponent(club.slug);
+    return params ? base+(base.includes('?')?'&':'?')+params : base;
+}
+// στη γραμμή διευθύνσεων: /<slug> (+ όσα άλλα params χρειάζεται ακόμα η εφαρμογή, π.χ. ?join=)
+function prettyUrl(){
+    if(!club || !prettyOn()) return;
+    const q=new URLSearchParams(location.search); ['club','e2e','nc','x'].forEach(k=>q.delete(k));
+    const s=q.toString(), want='/'+encodeURIComponent(club.slug)+(s?'?'+s:'')+location.hash;
+    if(location.pathname+location.search+location.hash!==want){ try{ history.replaceState(history.state,'',want); }catch(e){} }
+}
 function storedLang(){ try{ const v=localStorage.getItem(_langKey()); return APP_LANGS.includes(v)?v:null; }catch(e){ return null; } }
 function pickLang(){
     const q=(cbQS('lang')||'').toLowerCase();
@@ -1074,7 +1105,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=6ce4670c');
+    const ok=await loadScript('app-i18n.js?v=31f69572');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1119,6 +1150,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     cbLoading(false);
     if (error || !data) { await startLang(); document.getElementById('notFound').classList.remove('hidden'); return; }
     club = data;
+    prettyUrl();
     await startLang();
     // σύλλογος σε παύση από το CourtBook: κλειδωμένος για όλους μέχρι να ενεργοποιηθεί ξανά
     if (club.plan_status === 'paused') { showPaused(); return; }
@@ -1192,7 +1224,7 @@ function applyBranding() {
     const ini = (club.name || 'CB').replace(/[^\p{L}\p{N}\s]/gu, ' ').trim().split(/\s+/).filter(w => w.length > 2 || /\p{N}/u.test(w))
         .slice(0, 2).map(w => w[0]).join('').toUpperCase() || (club.name || 'CB').slice(0, 2).toUpperCase();
     ['authLogoFallback','hdrLogoFallback'].forEach(id => document.getElementById(id).textContent = ini);
-    document.getElementById('shareLink').value = location.origin + location.pathname + '?club=' + club.slug;
+    document.getElementById('shareLink').value = location.origin + clubHref();
     if (club.logo_url) {
         ['authLogo','hdrLogo'].forEach(id => { const el=document.getElementById(id); el.src=club.logo_url; el.classList.remove('hidden'); });
         document.getElementById('authLogoFallback').classList.add('hidden');
@@ -1386,7 +1418,7 @@ async function handleReset(){
     cbLoading(true);
     try{
         // γυρνάει στο app με το club — εκεί θα ζητηθεί ΝΕΟΣ κωδικός
-        const back = location.origin + location.pathname + '?club=' + club.slug;
+        const back = location.origin + clubHref();
         // αν το Supabase αγνοήσει το redirect και στείλει στη ρίζα, το index.html
         // θα ξέρει σε ποιο club να προωθήσει
         try{ localStorage.setItem('cb_reset_club', club.slug); }catch(e){}
@@ -1543,6 +1575,7 @@ async function enterApp(){
         document.getElementById('adminBadge').classList.remove('hidden');
         document.getElementById('adminTabBtn').classList.remove('hidden');
         document.getElementById('rosterTabBtn').classList.remove('hidden');
+        if(TOP_CLUBS.has(club.slug)) document.getElementById('topTabBtn').classList.remove('hidden');
         document.getElementById('trainingTabBtn').classList.remove('hidden');
         if(bookingsOn) document.getElementById('boardTabBtn').classList.remove('hidden');
         // «Αθλητές»: μόνο σε συλλόγους με κρατήσεις ΚΑΙ γκρουπ προπόνησης. Σε σύλλογο μόνο
@@ -1681,6 +1714,7 @@ function switchTab(tab){
     if(tab==='board'){ renderBoard(); loadAdmin().then(renderBoard); }
     if(tab==='roster'||tab==='training') renderRoster();
     if(tab==='athletes') renderAthletesTab();
+    if(tab==='top') renderTop();
     if(tab==='myschedule'){ renderMySchedule(); if(clinicsOn) renderMyLessons(); }
     if(tab==='attendance') renderCoachAttendance();
     if(tab==='tournaments') renderTournaments();
@@ -2053,7 +2087,7 @@ function opHintText(){
 }
 function opHint(){ const el=document.getElementById('opHint'); if(el) el.textContent=opHintText(); }
 
-function matchLink(id){ return location.origin + location.pathname + '?club=' + club.slug + '&join=' + id; }
+function matchLink(id){ return location.origin + clubHref('join=' + id); }
 
 async function copyMatchLink(id){
     const url=matchLink(id);
@@ -2118,7 +2152,7 @@ const _JOIN_MSG={
     closed:'Οι θέσεις έκλεισαν — το ματς είναι σε λιγότερο από 2 ώρες'
 };
 async function sharePay(id){
-    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const ret=location.origin+clubHref();
     const r=await payCall({ action:'share_checkout', booking_id:id, return_url:ret });
     if(r.url){ location.href=r.url; return true; }
     if(r.status==='paid'){ cbToast('✓ Έχει ήδη πληρωθεί'); return false; }
@@ -2174,7 +2208,7 @@ async function closeMatch(id){
 async function handleJoinParam(){
     const id=new URLSearchParams(location.search).get('join');
     if(!id) return;
-    history.replaceState({},'',location.pathname+'?club='+club.slug);   // καθάρισε το URL
+    history.replaceState({},'',clubHref());   // καθάρισε το URL
     const { data, error }=await sb.rpc('get_open_match',{ p_booking_id:id });
     const m=(data||[])[0];
     if(error || !m) return cbToast('Το ματς δεν βρέθηκε','err');
@@ -2888,6 +2922,73 @@ const xlsxWord=(el,en,de)=>({ en, de }[document.documentElement.lang] || el);
    εφαρμογή· το υπόλοιπο είναι για το ταμείο του club. */
 const OLD_CLUBS = new Set(['orion-padel-club','aotegeas']);   // οι παλιοί σύλλογοι δεν αλλάζουν χωρίς έγκριση
 const newFeature = () => !!(club && !OLD_CLUBS.has(club.slug));
+/* ══════════════ TOP ΠΑΙΚΤΕΣ ΤΟΥ ΜΗΝΑ (μόνο Orion) ══════════════
+   Κάθε κράτηση = ένα παιχνίδι για όσους έπαιξαν: τον πελάτη της κράτησης (μέλος, ή το όνομα που
+   έγραψε η γραμματεία) και τους συμπαίκτες της. Τα ονόματα της γραμματείας ενώνονται με τα μέλη
+   ανεξάρτητα από σειρά λέξεων και τόνους («Χουντουλέσης Χρήστος» = «Χρήστος Χουντουλέσης»).
+   Δεν μετράνε κρατήσεις που δεν είναι πελάτες (προπόνηση, πάρτι, δοκιμή, τουρνουά). */
+const TOP_CLUBS = new Set(['orion-padel-club']);
+const _normN=s=>String(s||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().replace(/[^\p{L}\p{N} ]/gu,' ').replace(/\s+/g,' ').trim();
+const nameKey=s=>_normN(s).split(' ').filter(Boolean).sort().join(' ');
+const notPlayer=raw=>{ const n=_normN(raw); return !n || /[:–]/.test(String(raw||'')) || /(^| )(δοκιμ|προπον|παρτ|party|test|τουρνου|ακαδημ)/.test(n) || /κρατηση γραμματειας/.test(n); };
+let _topRows=[];
+function topShift(n){ const el=document.getElementById('topMonth'); if(!el.value) el.value=cbToday().slice(0,7);
+    const [y,m]=el.value.split('-').map(Number), d=new Date(y,m-1+n,1); el.value=d.getFullYear()+'-'+String(d.getMonth()+1).padStart(2,'0'); renderTop(); }
+async function renderTop(){
+    const el=document.getElementById('topList'); if(!el) return;
+    const mi=document.getElementById('topMonth'); if(!mi.value) mi.value=cbToday().slice(0,7);
+    const ym=mi.value, [y,m]=ym.split('-').map(Number), start=ym+'-01', last=`${ym}-${String(new Date(y,m,0).getDate()).padStart(2,'0')}`;
+    const today=cbToday(), end=last<today?last:today, now=new Date(), nowMin=now.getHours()*60+now.getMinutes();
+    if(start>today){ _topRows=[]; el.innerHTML='<p class="text-slate-400 text-sm py-3">Ο μήνας δεν έχει αρχίσει ακόμα</p>'; return; }
+    el.innerHTML='<p class="text-slate-400 text-sm py-3">Φόρτωση…</p>';
+    if(!playersFull.length) await loadPlayersFull();
+    const { data:bk }=await cbAll(()=>sb.from('bookings').select('id,booking_date,start_time,duration_min,user_id,user_name,user_email,user_phone,booking_players(player_id)')
+        .eq('club_id',club.id).gte('booking_date',start).lte('booking_date',end).order('booking_date').order('id'));
+    if(document.getElementById('topMonth').value!==ym) return;   // άλλαξε μήνας στο μεταξύ
+    const owner=club.owner_id||me.id, pById=new Map(playersFull.map(p=>[p.id,p]));
+    const byEmail=new Map(playersFull.filter(p=>p.email).map(p=>[p.email.toLowerCase().trim(),p]));
+    const byName=new Map(); playersFull.forEach(p=>{ const k=nameKey(p.name); if(k && !byName.has(k)) byName.set(k,p); });
+    const R=new Map();
+    (bk||[]).forEach(b=>{
+        if(b.booking_date===today && cbT2M(b.start_time)>nowMin) return;   // δεν έχει γίνει ακόμα
+        const who=[];
+        let org = (b.user_id!==owner && b.user_email) ? byEmail.get(b.user_email.toLowerCase().trim()) : null;
+        if(!org && !notPlayer(b.user_name)) org=byName.get(nameKey(b.user_name))||null;
+        if(org) who.push({ key:org.id, name:org.name, phone:org.phone });
+        else if(!notPlayer(b.user_name)) who.push({ key:'n:'+nameKey(b.user_name), name:String(b.user_name).trim(), phone:b.user_phone });
+        (b.booking_players||[]).forEach(x=>{ const p=pById.get(x.player_id); if(p) who.push({ key:p.id, name:p.name, phone:p.phone }); });
+        const seen=new Set();
+        who.forEach(w=>{ if(seen.has(w.key)) return; seen.add(w.key);
+            const r=R.get(w.key)||{ name:w.name, phone:w.phone||'', games:0, mins:0, last:'' };
+            r.games++; r.mins+=b.duration_min||60; if(b.booking_date>r.last) r.last=b.booking_date; if(!r.phone && w.phone) r.phone=w.phone; R.set(w.key,r); });
+    });
+    _topRows=[...R.values()].sort((a,b)=>b.games-a.games || b.mins-a.mins || a.name.localeCompare(b.name));
+    if(!_topRows.length){ el.innerHTML='<p class="text-slate-400 text-sm py-3">Κανένα παιχνίδι αυτόν τον μήνα</p>'; return; }
+    const max=_topRows[0].games, games=(bk||[]).filter(b=>!(b.booking_date===today && cbT2M(b.start_time)>nowMin)).length;
+    const hrs=m=>{ const h=Math.round(m/6)/10; return (h%1?h.toLocaleString(cbLocale()):String(h))+' ώρ.'; };
+    const medal=i=>i===0?'bg-amber-400 text-white':i===1?'bg-slate-300 text-slate-700':i===2?'bg-orange-300 text-white':'bg-slate-100 text-slate-500';
+    let rank=0, prev=null;
+    el.innerHTML=`<p class="text-[11px] text-slate-500 mb-2">${_topRows.length} παίκτες · ${games} παιχνίδια · έως ${cbFmtDate(end)}</p>
+        <div class="divide-y divide-slate-100">${_topRows.map((r,i)=>{ if(prev===null || r.games!==prev) rank=i; prev=r.games;
+            return `<div class="flex items-center gap-3 py-2">
+                <span class="w-7 h-7 rounded-full flex items-center justify-center text-xs font-extrabold flex-shrink-0 ${medal(rank)}">${rank+1}</span>
+                <div class="flex-1 min-w-0">
+                    <p class="text-sm font-semibold truncate">${cbEsc(r.name)}</p>
+                    <div class="h-1.5 bg-slate-100 rounded-full mt-1"><div class="h-1.5 rounded-full bg-brand" style="width:${Math.max(4,Math.round(r.games/max*100))}%"></div></div>
+                </div>
+                <div class="text-right flex-shrink-0"><p class="text-sm font-extrabold">${r.games}</p><p class="text-[10px] text-slate-400">${hrs(r.mins)}</p></div>
+            </div>`; }).join('')}</div>`;
+}
+function exportTop(){
+    if(typeof XLSX==='undefined' || !_topRows.length) return cbToast('Δεν υπάρχουν δεδομένα','err');
+    const ym=document.getElementById('topMonth').value; let rank=0, prev=null;
+    const rows=_topRows.map((r,i)=>{ if(prev===null || r.games!==prev) rank=i; prev=r.games;
+        return { 'Θέση':rank+1, 'Πελάτης':r.name, 'Τηλέφωνο':r.phone||'', 'Παιχνίδια':r.games, 'Ώρες':Math.round(r.mins/6)/10, 'Τελευταίο παιχνίδι':r.last }; });
+    const wb=XLSX.utils.book_new(), ws=XLSX.utils.json_to_sheet(rows); ws['!cols']=[{wch:6},{wch:28},{wch:14},{wch:10},{wch:8},{wch:16}];
+    XLSX.utils.book_append_sheet(wb, ws, 'Top παίκτες');
+    XLSX.writeFile(xlsxLocalize(wb), `${club.slug}-top-${ym}.xlsx`);
+}
+
 async function exportDaily(){
     if(typeof XLSX==='undefined'){ cbToast('Η βιβλιοθήκη Excel δεν φόρτωσε — δοκίμασε ξανά','err'); return; }
     const d=(document.getElementById('dailyDate')||{}).value||cbToday(), month=d.slice(0,7);
@@ -3188,7 +3289,7 @@ async function payCall(body){
     return data||{};
 }
 async function payCheckout(id){
-    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const ret=location.origin+clubHref();
     const r=await payCall({ action:'checkout', booking_id:id, return_url:ret });
     if(r.url){ location.href=r.url; return true; }
     if(r.status==='paid'){ cbToast('✓ Η κράτηση έχει ήδη πληρωθεί'); return true; }
@@ -3200,7 +3301,7 @@ let mySubFee=null;   // το ποσό του μέλους (πακέτο του �
 function subPayOn(){ return !!(club && subsOn && club.payments_enabled && club.pay_ready && club.pay_subs && Number(mySubFee)>0); }
 async function paySub(month){
     cbLoading(true);
-    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const ret=location.origin+clubHref();
     const r=await payCall({ action:'sub_checkout', club_id:club.id, month, return_url:ret });
     if(r.url){ location.href=r.url; return; }
     cbLoading(false);
@@ -3212,7 +3313,7 @@ async function payBooking(id){ cbLoading(true); try{ await payCheckout(id); } fi
 async function handlePayReturn(){
     const q=new URLSearchParams(location.search), ok=q.get('pb'), back=q.get('pbx'), sub=q.get('ps'), shOk=q.get('pms'), shBack=q.get('pmx');
     if(shOk || shBack){
-        history.replaceState({},'',location.pathname+'?club='+club.slug);
+        history.replaceState({},'',clubHref());
         cbLoading(true);
         if(shOk){
             let st='pending';
@@ -3227,7 +3328,7 @@ async function handlePayReturn(){
         switchTab('openmatches'); return;
     }
     if(sub){
-        history.replaceState({},'',location.pathname+'?club='+club.slug);
+        history.replaceState({},'',clubHref());
         cbLoading(true);
         let st='pending';
         for(let i=0;i<4 && st==='pending';i++){
@@ -3240,7 +3341,7 @@ async function handlePayReturn(){
         return;
     }
     if(!ok && !back) return;
-    history.replaceState({},'',location.pathname+'?club='+club.slug);
+    history.replaceState({},'',clubHref());
     if(back){
         cbToast('Η πληρωμή δεν ολοκληρώθηκε — η ώρα κρατιέται για λίγα λεπτά. Ολοκλήρωσέ την από «Οι Κρατήσεις μου».','err');
         switchTab('mybookings'); return;
@@ -3323,7 +3424,7 @@ async function payDisconnect(){
    Οι θέσεις μετριούνται στη βάση (join_clinic) — δεν γεμίζει παραπάνω. */
 const _CL_ERR={ FULL:'Το clinic γέμισε', ALREADY:'Έχεις ήδη θέση', PAST:'Το clinic έχει ήδη ξεκινήσει',
     NOT_MEMBER:'Πρέπει πρώτα να γραφτείς στο club', NOT_OPEN:'Το clinic δεν είναι διαθέσιμο', AUTH:'Κάνε πρώτα είσοδο', CLUB_PAUSED:'Ο σύλλογος είναι σε παύση' };
-const clinicLink=id=>location.origin+location.pathname+'?club='+encodeURIComponent(club.slug)+'&clinic='+id;
+const clinicLink=id=>location.origin+clubHref('clinic='+id);
 function clinicPayOn(){ return !!(club.payments_enabled && club.pay_ready && (club.clinic_pay||'required')!=='off'); }
 async function loadClinics(){
     const { data }=await sb.rpc('list_clinics',{ p_club_id:club.id });
@@ -3409,7 +3510,7 @@ async function joinClinic(id){
 }
 async function clinicPay(entryId, keepLoading){
     if(!keepLoading) cbLoading(true);
-    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const ret=location.origin+clubHref();
     const r=await payCall({ action:'clinic_checkout', entry_id:entryId, return_url:ret });
     if(r.url){ location.href=r.url; return true; }
     cbLoading(false);
@@ -3519,7 +3620,7 @@ async function handleClinicParam(){
     if(!clinicsOn) return;
     const q=new URLSearchParams(location.search), cid=q.get('clinic'), pc=q.get('pc');
     if(!cid && !pc) return;
-    history.replaceState({},'',location.pathname+'?club='+club.slug);
+    history.replaceState({},'',clubHref());
     if(pc){
         cbLoading(true); let st='pending';
         for(let i=0;i<4 && st==='pending';i++){ const r=await payCall({ action:'clinic_confirm', entry_id:pc }); st=r.status||'pending'; if(st==='pending') await new Promise(res=>setTimeout(res,1500)); }
@@ -3728,7 +3829,7 @@ async function bookLesson(time){
 }
 async function lessonPay(id, keepLoading){
     if(!keepLoading) cbLoading(true);
-    const ret=location.origin+location.pathname+'?club='+encodeURIComponent(club.slug);
+    const ret=location.origin+clubHref();
     const r=await payCall({ action:'lesson_checkout', lesson_id:id, return_url:ret });
     if(r.url){ location.href=r.url; return true; }
     cbLoading(false);
@@ -3760,7 +3861,7 @@ async function cancelLesson(id, byOwner){
 async function handleLessonParam(){
     const q=new URLSearchParams(location.search), pl=q.get('pl'), plx=q.get('plx');
     if(!pl && !plx) return false;
-    history.replaceState({},'',location.pathname+'?club='+club.slug);
+    history.replaceState({},'',clubHref());
     cbLoading(true);
     if(pl){
         let st='pending';

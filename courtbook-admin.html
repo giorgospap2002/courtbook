@@ -273,7 +273,7 @@ h2.h{font-family:var(--cond);font-weight:800;font-size:34px;line-height:1;margin
             <label class="field" style="margin-top:0"><span>Όνομα συλλόγου</span>
                 <input id="edNm" class="inp" oninput="edChanged()"></label>
             <label class="field"><span>Link</span>
-                <div class="slugrow"><span>app.html?club=</span><input id="edSlug" autocapitalize="off" spellcheck="false" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'');edChanged()"></div></label>
+                <div class="slugrow"><span>court-book.gr/</span><input id="edSlug" autocapitalize="off" spellcheck="false" oninput="this.value=this.value.toLowerCase().replace(/[^a-z0-9-]/g,'');edChanged()"></div></label>
             <div class="row2">
                 <label class="field"><span>Email ειδοποιήσεων</span><input id="edMail" type="email" class="inp" oninput="edChanged()"></label>
                 <label class="field"><span>Τηλέφωνο</span><input id="edTel" type="tel" class="inp" oninput="edChanged()"></label>
@@ -521,7 +521,7 @@ function openEd(id){
     $('edName').textContent = c.name;
     $('edSub').textContent = c.slug + ' · από ' + fmtD(c.created_at) + (c.owner_name ? ' · ' + c.owner_name : '');
     const mail = c.owner_email || c.email;
-    $('edLinks').innerHTML = '<a href="app.html?club=' + encodeURIComponent(c.slug) + '" target="_blank" rel="noopener">Άνοιγμα club ↗</a>'
+    $('edLinks').innerHTML = '<a href="/' + encodeURIComponent(c.slug) + '" target="_blank" rel="noopener">Άνοιγμα club ↗</a>'
         + (mail ? '<a href="mailto:' + esc(mail) + '">' + esc(mail) + '</a>' : '')
         + (c.phone ? '<a href="tel:' + esc(c.phone.replace(/\s/g,'')) + '">' + esc(c.phone) + '</a>' : '');
     $('edStats').innerHTML = [[c.courts,'γήπεδα'],[c.members + (c.pending ? ' +' + c.pending : ''),'μέλη'],[c.groups,'τμήματα'],[c.coaches,'προπονητές'],
@@ -630,10 +630,10 @@ function askDelete(id){
     $('delModal').classList.remove('hidden');
     setTimeout(() => $('delInp').focus(), 50);
 }
-// δέχεται σκέτο «aotegeas» ή ολόκληρο το link «…app.html?club=aotegeas»
+// δέχεται σκέτο «aotegeas» ή ολόκληρο το link («court-book.gr/aotegeas» ή «…app.html?club=aotegeas»)
 function delTyped(){
     const s = $('delInp').value.trim().toLowerCase();
-    const m = s.match(/[?&]club=([^&#\s]+)/);
+    const m = s.match(/[?&]club=([^&#\s]+)/) || s.match(/court-book\.gr\/([a-z0-9-]+)/);
     return m ? decodeURIComponent(m[1]) : s;
 }
 function closeDel(){ $('delModal').classList.add('hidden'); delTarget = null; }

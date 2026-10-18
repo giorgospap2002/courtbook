@@ -274,7 +274,7 @@ button.choice.tier .big{font-size:26px;line-height:1}
                 <p class="qs" data-i18n="q5s">Αυτό θα βλέπουν τα μέλη σου παντού.</p>
                 <div class="qgap"><input id="clubName" type="text" placeholder="π.χ. Αθλητικός Όμιλος Αντισφαίρισης" data-i18n-ph="ph2" oninput="updateSlug()"></div>
                 <p class="hint"><span data-i18n="yourlink">Το link σου:</span>
-                    <b>app.html?club=<span id="slugPreview" data-i18n="slug">to-club-sou</span></b></p>
+                    <b>court-book.gr/<span id="slugPreview" data-i18n="slug">to-club-sou</span></b></p>
             </div>
 
             <div class="q hidden" data-q="clubSport">
@@ -597,7 +597,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         box.classList.remove('hidden');
         box.innerHTML = '✓ ' + L('Συνδεδεμένος ως') + ' <b>' + cbEsc(u.email) + '</b>.'
             + '<div class="mt-2 flex flex-col gap-1.5">'
-            + (mine || []).map(c => '<a href="app.html?club=' + encodeURIComponent(c.slug) + '" class="text-brand font-semibold underline">→ '
+            + (mine || []).map(c => '<a href="/' + encodeURIComponent(c.slug) + '" class="text-brand font-semibold underline">→ '
                 + L('Πήγαινε στο') + ' &laquo;' + cbEsc(c.name) + '&raquo;</a>').join('')
             + '<button type="button" onclick="doLogout()" class="text-slate-400 underline text-left">' + L('Αποσύνδεση') + '</button></div>';
         const ce = document.getElementById('clubEmail');
@@ -646,7 +646,7 @@ async function doLogin(){
         await cbSignIn(v('loginEmail').toLowerCase(), document.getElementById('loginPass').value);
         _account = await cbCurrentUser();
         const { data: mine } = await sb.from('clubs').select('slug').eq('owner_id', _account.id).limit(1);
-        if (mine && mine.length) { cbToast(L('Καλώς ήρθες!')); location.href = 'app.html?club=' + encodeURIComponent(mine[0].slug); return; }
+        if (mine && mine.length) { cbToast(L('Καλώς ήρθες!')); location.href = '/' + encodeURIComponent(mine[0].slug); return; }
         cbToast(L('Συνδέθηκες!'));
         showRegister();
     } catch(e) { cbToast(L('Λάθος email ή κωδικός'), 'err'); }
@@ -770,7 +770,7 @@ async function finish(){
         if (durs.length) await sb.from('durations').insert(durs.map(d => ({ club_id: club.id, ...d })));
 
         cbToast(L('🎉 Το club δημιουργήθηκε!'));
-        setTimeout(() => location.href = 'app.html?club=' + encodeURIComponent(slug) + (CB_LANG !== 'el' ? '&lang=' + CB_LANG : ''), 900);
+        setTimeout(() => location.href = (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? 'app.html?club=' : '/') + encodeURIComponent(slug) + (CB_LANG !== 'el' ? (/^(localhost|127\.0\.0\.1)$/.test(location.hostname) ? '&' : '?') + 'lang=' + CB_LANG : ''), 900);
     } catch(e) {
         cbToast(e.message || L('Σφάλμα δημιουργίας'), 'err');
         document.getElementById('nextBtn').disabled = false;

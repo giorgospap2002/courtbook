@@ -1089,7 +1089,7 @@ document.getElementById('year').textContent = new Date().getFullYear();
     let slug = 'test';
     try { slug = localStorage.getItem('cb_reset_club') || slug; } catch(e) {}
     const extra = q.has('code') ? '&code=' + encodeURIComponent(q.get('code')) : '';
-    location.replace('app.html?club=' + encodeURIComponent(slug) + extra + h);
+    location.replace('/' + encodeURIComponent(slug) + (extra ? '?' + extra.slice(1) : '') + h);
 })();
 </script>
 </body>
