@@ -194,6 +194,12 @@ span.text-brand,button.text-brand.underline,.text-brand.font-semibold{text-decor
 .slot-free:has(button) > div{margin-bottom:0}
 .slot-pick{background:#fff;border-color:var(--ink)!important;box-shadow:0 0 0 1px var(--ink),0 22px 40px -24px rgba(11,15,23,.5)!important}
 .slot-mine{background:linear-gradient(90deg,var(--mine-soft),#f1faf5);border-color:#b3e2c6!important;box-shadow:inset 3px 0 0 var(--mine)}
+/* κάρτες που ανοιγοκλείνουν από τον τίτλο */
+.cb-fold-head{cursor:pointer;user-select:none}
+.cb-fold[data-closed]>:not(.cb-fold-head){display:none!important}
+.cb-fold[data-closed]>.cb-fold-head{margin-bottom:0!important}
+.cb-chev{display:inline-block;margin-left:8px;font-size:11px;line-height:1;color:var(--muted,#94a3b8);transition:transform .15s;vertical-align:middle}
+.cb-fold[data-closed] .cb-chev{transform:rotate(-90deg)}
 .slot-other{background:var(--paper-2);border-color:var(--paper-2)!important}
 .slot-cont{background:transparent;border-color:var(--line-2)!important;border-style:dashed}
 .slot-past{background:transparent;border-color:var(--line)!important;opacity:.45}
