@@ -666,6 +666,7 @@
             <p class="text-[11px] text-slate-400 mb-4">Διάλεξε ημερομηνία και πέρνα παρουσιολόγιο στα γκρουπ σου.</p>
             <div id="coachGroups" class="space-y-3"></div>
         </div>
+        <div id="coachMakeupCard"></div>
     </div>
 
     <!-- SETTINGS -->
@@ -963,7 +964,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=fa2fa5c8');
+    const ok=await loadScript('app-i18n.js?v=3df6c1cd');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -4426,14 +4427,17 @@ function groupFree(gid, date){
 }
 const freeLbl = n => n===1 ? '1 ελεύθερη θέση' : `${n} ελεύθερες θέσεις`;
 async function renderGuestMakeups(){
-    const el=document.getElementById('guestMakeupCard'); if(!el) return;
+    const el=document.getElementById(isOwner?'guestMakeupCard':'coachMakeupCard'); if(!el) return;
+    // προπονητής: μόνο οι αθλητές των δικών του γκρουπ (το ίδιο ισχύει και στη βάση)
+    const myG = isOwner ? null : new Set(myCoachGroups().map(g=>g.id));
     const [c,g]=await Promise.all([
         sb.rpc('makeup_candidates',{ p_club_id:club.id }),
         sb.from('makeup_guests').select('*').eq('club_id',club.id).gte('the_date',cbToday()).order('the_date')]);
     _mgCand=c.data||[]; _mgGuests=g.data||[];
     const gName=id=>(groups.find(x=>x.id===id)||{}).name||'';
     const key=x=>`${x.player_id}|${x.missed_date}|${x.group_id||''}`;
-    const sess=upcomingSessions(null), noLimit=groups.filter(x=>!x.max_athletes);
+    const sess=upcomingSessions(null), noLimit=isOwner ? groups.filter(x=>!x.max_athletes) : [];
+    const shownGuests = myG ? _mgGuests.filter(x=>myG.has(x.missed_group_id) || myG.has(x.group_id)) : _mgGuests;   // οι ελεύθερες θέσεις μετράνε ΟΛΕΣ
     const cand=(_mgAll?_mgCand:_mgCand.slice(0,5)).map(x=>{
         const k=key(x), open=_mgPick===k;
         let opts='', full=0;
@@ -4465,14 +4469,16 @@ async function renderGuestMakeups(){
             </div>`:''}
         </div>`;
     }).join('');
-    const guestsHtml=_mgGuests.map(x=>{ const s=sess.find(z=>z.gid===x.group_id && z.date===x.the_date && z.time===x.start_time);
+    const guestsHtml=shownGuests.map(x=>{ const s=sess.find(z=>z.gid===x.group_id && z.date===x.the_date && z.time===x.start_time);
         return `<div class="flex items-center gap-2 py-1.5 text-xs border-b border-slate-100 last:border-0">
             <span class="flex-1 min-w-0 truncate"><b>${cbEsc(x.player_name||'')}</b> → ${cbEsc(gName(x.group_id))} · ${cbFmtDate(x.the_date)} ${x.start_time}${s?' · '+cbEsc(courtName(s.court)):''}${x.missed_date?` <span class="text-slate-400">(για ${cbFmtDate(x.missed_date)})</span>`:''}</span>
-            <button onclick="delGuest('${x.id}')" class="text-red-400 flex-shrink-0">✕</button></div>`; }).join('');
-    const players=playersFull.filter(p=>groups.some(g=>(g.memberIds||[]).includes(p.id))).sort((a,b)=>a.name.localeCompare(b.name));
+            ${!myG || myG.has(x.missed_group_id) ? `<button onclick="delGuest('${x.id}')" class="text-red-400 flex-shrink-0">✕</button>` : `<span class="text-[10px] text-blue-600 flex-shrink-0">έρχεται σε εσένα</span>`}</div>`; }).join('');
+    const players=playersFull.filter(p=>groups.some(g=>(!myG || myG.has(g.id)) && (g.memberIds||[]).includes(p.id))).sort((a,b)=>a.name.localeCompare(b.name));
     el.innerHTML=`<div class="bg-white rounded-2xl p-5 shadow-sm anim-up border border-blue-100">
         <p class="font-bold mb-1">🔁 Αναπληρώσεις αθλητών σε άλλο γκρουπ</p>
-        <p class="text-[11px] text-slate-500 mb-3">Εμφανίζονται μόνο προπονήσεις με ελεύθερη θέση, με βάση το όριο αθλητών κάθε τμήματος. Μιλάς με τον αθλητή και τον βάζεις ως επισκέπτη μία φορά· το βλέπει στο κινητό του και ο προπονητής στο παρουσιολόγιο.</p>
+        <p class="text-[11px] text-slate-500 mb-3">${isOwner
+            ? 'Εμφανίζονται μόνο προπονήσεις με ελεύθερη θέση, με βάση το όριο αθλητών κάθε τμήματος. Μιλάς με τον αθλητή και τον βάζεις ως επισκέπτη μία φορά· το βλέπει στο κινητό του και ο προπονητής στο παρουσιολόγιο.'
+            : 'Όσοι έλειψαν από τα γκρουπ σου. Τους βάζεις μία φορά σε άλλη προπόνηση με ελεύθερη θέση (οποιουδήποτε προπονητή)· το βλέπουν στο κινητό τους, η γραμματεία και ο προπονητής εκείνου του γκρουπ.'}</p>
         ${noLimit.length?`<div class="text-[11px] text-amber-800 bg-amber-50 border border-amber-100 rounded-lg px-2.5 py-2 mb-3">
             <p>⚠️ ${noLimit.length<=3 ? `Χωρίς όριο αθλητών (δεν δέχονται αναπλήρωση): ${noLimit.map(x=>cbEsc(x.name)).join(', ')}.` : `${noLimit.length} τμήματα χωρίς όριο αθλητών — δεν δέχονται αναπλήρωση.`}</p>
             <div class="flex items-center gap-2 mt-1.5 flex-wrap"><span>Όριο για ${noLimit.length===1?'αυτό':'όλα αυτά'}:</span>
@@ -4489,7 +4495,7 @@ async function renderGuestMakeups(){
             <p class="col-span-12 text-[10px] text-slate-400">Π.χ. ειδοποίησε ότι θα λείψει. Οι απουσίες από τα παρουσιολόγια μπαίνουν εδώ μόνες τους.</p></div>`:''}
         ${cand||'<p class="text-[11px] text-slate-400 mb-1">Κανείς αυτή τη στιγμή 👏</p>'}
         ${_mgCand.length>5?`<button onclick="_mgAll=!_mgAll;renderGuestMakeups()" class="w-full mt-1 py-1.5 text-[11px] font-semibold text-brand bg-slate-50 rounded-lg">${_mgAll?'Δείξε λιγότερους':`Δείξε όλους (${_mgCand.length})`}</button>`:''}
-        <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Κανονισμένες (${_mgGuests.length})</p>
+        <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Κανονισμένες (${shownGuests.length})</p>
         ${guestsHtml||'<p class="text-[11px] text-slate-400">Καμία ακόμα</p>'}
     </div>`;
 }
@@ -4527,7 +4533,7 @@ async function dismissNeed(pid, missed, gid, needId){
 }
 async function addNeed(){
     const pid=document.getElementById('mgP').value, d=document.getElementById('mgD').value; if(!pid||!d) return;
-    const g=groups.find(x=>(x.memberIds||[]).includes(pid));
+    const g=(isOwner?groups:myCoachGroups()).find(x=>(x.memberIds||[]).includes(pid));
     const { error }=await sb.from('makeup_needs').insert({ club_id:club.id, player_id:pid, group_id:g?g.id:null, missed_date:d, kind:'manual' });
     if(error) return cbToast('Δεν αποθηκεύτηκε','err');
     _mgAddOpen=false; renderGuestMakeups();
@@ -7342,6 +7348,7 @@ function renderMySchedule(){
 
 /* ── Παρουσιολόγια του προπονητή ── */
 function renderCoachAttendance(){
+    if(pilotOn()) renderGuestMakeups();
     const el=document.getElementById('coachGroups');
     const mine=myCoachGroups();
     if(!mine.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-3 text-center">Δεν σου έχει ανατεθεί κανένα γκρουπ ακόμα</p>`; return; }
@@ -7982,6 +7989,7 @@ async function saveAttendance(gid,date){
     const { error }=await sb.from('attendance').upsert(rows,{ onConflict:'session_id,player_id' });
     if(error) return cbToast('Σφάλμα','err');
     cbToast('✓ Παρουσιολόγιο αποθηκεύτηκε');
+    if(pilotOn() && rows.some(r=>!r.present)) renderGuestMakeups();   // ο απών εμφανίζεται αμέσως στις αναπληρώσεις
     if(isOwner){ await loadPlayerActivity(); renderPlayers(); }
     if(document.getElementById('ah-'+gid)?.closest('details')?.open) loadAttHistory(gid);   // ανανέωσε το ιστορικό
 }
