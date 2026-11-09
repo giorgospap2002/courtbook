@@ -1111,7 +1111,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=dc777df8');
+    const ok=await loadScript('app-i18n.js?v=b52e386f');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -4607,20 +4607,36 @@ const sessLabel = s => `${cbFmtDate(s.date)} ${s.time}`;
 
 /* ── γραμματεία: ποιοι χρειάζονται αναπλήρωση · πού υπάρχει ελεύθερη θέση · κανονισμένες ──
    ελεύθερες θέσεις = όριο αθλητών τμήματος − μέλη − κανονισμένοι επισκέπτες εκείνης της μέρας */
-let _mgCand=[], _mgGuests=[], _mgPick=null, _mgAddOpen=false, _mgAll=false;
+let _mgCand=[], _mgGuests=[], _mgAway=[], _mgPick=null, _mgAddOpen=false, _mgAll=false;
+const awayOn = (gid, date) => { const g=groups.find(x=>x.id===gid)||{};
+    return new Set(_mgAway.filter(x=>x.group_id===gid && x.missed_date===date && (g.memberIds||[]).includes(x.player_id)).map(x=>x.player_id)).size; };
 function groupFree(gid, date){
     const g=groups.find(x=>x.id===gid); if(!g || !g.max_athletes) return null;
-    return g.max_athletes - (g.memberIds||[]).length - _mgGuests.filter(x=>x.group_id===gid && x.the_date===date).length;
+    return g.max_athletes - (g.memberIds||[]).length - _mgGuests.filter(x=>x.group_id===gid && x.the_date===date).length + awayOn(gid, date);
+}
+// ο αθλητής: οι επόμενες προπονήσεις των γκρουπ του (για «θα λείψει»)
+function mgAwayOpts(pid){
+    const gids=(isOwner?groups:myCoachGroups()).filter(g=>(g.memberIds||[]).includes(pid)).map(g=>g.id);
+    const taken=new Set(_mgAway.filter(x=>x.player_id===pid).map(x=>x.group_id+'|'+x.missed_date));
+    const s=upcomingSessions(gids, 28).filter(x=>!taken.has(x.gid+'|'+x.date));
+    return s.length ? s.map(x=>`<option value="${x.gid}|${x.date}">${cbFmtDate(x.date)} ${x.time} · ${cbEsc(x.gname)}</option>`).join('')
+                    : '<option value="">Καμία προπόνηση τις επόμενες 4 εβδομάδες</option>';
 }
 const freeLbl = n => n===1 ? '1 ελεύθερη θέση' : `${n} ελεύθερες θέσεις`;
 async function renderGuestMakeups(){
     const el=document.getElementById(isOwner?'guestMakeupCard':'coachMakeupCard'); if(!el) return;
     // προπονητής: μόνο οι αθλητές των δικών του γκρουπ (το ίδιο ισχύει και στη βάση)
     const myG = isOwner ? null : new Set(myCoachGroups().map(g=>g.id));
-    const [c,g]=await Promise.all([
+    const [c,g,aw]=await Promise.all([
         sb.rpc('makeup_candidates',{ p_club_id:club.id }),
-        sb.from('makeup_guests').select('*').eq('club_id',club.id).gte('the_date',cbToday()).order('the_date')]);
-    _mgCand=c.data||[]; _mgGuests=g.data||[];
+        sb.from('makeup_guests').select('*').eq('club_id',club.id).gte('the_date',cbToday()).order('the_date'),
+        sb.from('makeup_needs').select('player_id,group_id,missed_date').eq('club_id',club.id).eq('kind','manual').gte('missed_date',cbToday())]);
+    _mgAway=aw.data||[];
+    // ίδιος αθλητής/μέρα/γκρουπ από «θα λείψει» ΚΑΙ από το παρουσιολόγιο → μία γραμμή (η ειδοποίηση)
+    const _seen=new Set(), _all=c.data||[];
+    _mgCand=_all.filter(x=>x.source==='manual' || !_all.some(y=>y.source==='manual' && y.player_id===x.player_id && y.missed_date===x.missed_date && y.group_id===x.group_id))
+        .filter(x=>{ const k=x.player_id+'|'+x.missed_date+'|'+x.group_id; if(_seen.has(k)) return false; _seen.add(k); return true; });
+    _mgGuests=g.data||[];
     const gName=id=>(groups.find(x=>x.id===id)||{}).name||'';
     const key=x=>`${x.player_id}|${x.missed_date}|${x.group_id||''}`;
     const sess=upcomingSessions(null), noLimit=isOwner ? groups.filter(x=>!x.max_athletes) : [];
@@ -4643,9 +4659,9 @@ async function renderGuestMakeups(){
         return `<div class="py-2 border-b border-slate-100 last:border-0">
             <div class="flex items-center gap-2">
                 <div class="flex-1 min-w-0"><p class="text-sm font-semibold truncate">${cbEsc(x.player_name||'')}</p>
-                    <p class="text-[11px] text-slate-500">${cbEsc(x.group_name||'')} · έχασε ${cbFmtDate(x.missed_date)} <span class="text-[10px] ${x.source==='absence'?'text-red-500':'text-amber-600'}">· ${x.source==='absence'?'απουσία':'χειροκίνητα'}</span>${x.phone?` · <a href="tel:${cbEsc(x.phone)}" class="text-brand font-semibold">τηλ. ${cbEsc(x.phone)}</a>`:''}</p></div>
+                    <p class="text-[11px] text-slate-500">${cbEsc(x.group_name||'')} · ${x.missed_date>=cbToday()?'λείπει':'έχασε'} ${cbFmtDate(x.missed_date)} <span class="text-[10px] ${x.source==='absence'?'text-red-500':'text-amber-600'}">· ${x.source==='absence'?'απουσία':(x.missed_date>=cbToday()?'θα λείψει':'ειδοποίησε')}</span>${x.phone?` · <a href="tel:${cbEsc(x.phone)}" class="text-brand font-semibold">τηλ. ${cbEsc(x.phone)}</a>`:''}</p></div>
                 <button onclick="_mgPick=${open?'null':`'${k}'`};renderGuestMakeups()" class="px-2.5 py-1.5 rounded-lg text-[11px] font-bold ${open?'bg-slate-100 text-slate-600':'bg-brand text-white'}">${open?'Κλείσιμο':'Κανόνισε'}</button>
-                <button onclick="dismissNeed('${x.player_id}','${x.missed_date}','${x.group_id||''}','${x.need_id||''}')" title="Δεν χρειάζεται αναπλήρωση" class="text-slate-400 text-xs px-1">✕</button>
+                <button onclick="dismissNeed('${x.player_id}','${x.missed_date}','${x.group_id||''}','${x.need_id||''}')" title="${x.source==='manual'?'Ακύρωση «θα λείψει»':'Δεν χρειάζεται αναπλήρωση'}" class="text-slate-400 text-xs px-1">✕</button>
             </div>
             ${open?`<div class="mt-2 p-2.5 bg-slate-50 border border-slate-200 rounded-lg">
                 ${opts?`<p class="text-[11px] font-bold text-slate-600 mb-1">Σε ποια προπόνηση θα έρθει; (αφού μιλήσεις μαζί του)</p>
@@ -4674,12 +4690,12 @@ async function renderGuestMakeups(){
                 <span class="text-amber-700/70">· αλλάζει μετά ανά τμήμα στις «Προπονήσεις»</span></div>
         </div>`:''}
         <div class="flex items-center justify-between mb-1"><p class="text-[10px] font-bold text-slate-500 uppercase">Χρειάζονται αναπλήρωση (${_mgCand.length})</p>
-            <button onclick="_mgAddOpen=!_mgAddOpen;renderGuestMakeups()" class="text-[11px] text-brand font-semibold">${_mgAddOpen?'Κλείσιμο':'+ Πρόσθεσε αθλητή'}</button></div>
+            <button onclick="_mgAddOpen=!_mgAddOpen;renderGuestMakeups()" class="text-[11px] text-brand font-semibold">${_mgAddOpen?'Κλείσιμο':'+ Θα λείψει (ειδοποίηση)'}</button></div>
         ${_mgAddOpen?`<div class="grid grid-cols-12 gap-2 mb-2 p-2 bg-slate-50 rounded-lg">
-            <select id="mgP" class="col-span-12 sm:col-span-7 px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">${players.map(p=>`<option value="${p.id}">${cbEsc(p.name)}</option>`).join('')}</select>
-            <input id="mgD" type="date" value="${cbToday()}" class="col-span-7 sm:col-span-3 px-2 py-2 border border-slate-200 rounded-lg text-xs">
-            <button onclick="addNeed()" class="col-span-5 sm:col-span-2 bg-brand text-white rounded-lg text-xs font-bold">Προσθήκη</button>
-            <p class="col-span-12 text-[10px] text-slate-400">Π.χ. ειδοποίησε ότι θα λείψει. Οι απουσίες από τα παρουσιολόγια μπαίνουν εδώ μόνες τους.</p></div>`:''}
+            <select id="mgP" onchange="document.getElementById('mgS').innerHTML=mgAwayOpts(this.value)" class="col-span-12 sm:col-span-5 px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">${players.map(p=>`<option value="${p.id}">${cbEsc(p.name)}</option>`).join('')}</select>
+            <select id="mgS" class="col-span-8 sm:col-span-5 px-2 py-2 border border-slate-200 rounded-lg text-xs bg-white">${players.length?mgAwayOpts(players[0].id):''}</select>
+            <button onclick="addNeed()" class="col-span-4 sm:col-span-2 bg-brand text-white rounded-lg text-xs font-bold">Θα λείψει</button>
+            <p class="col-span-12 text-[10px] text-slate-400">Ειδοποίησε ότι δεν θα έρθει: η θέση του εκείνη τη μέρα ελευθερώνεται για αναπλήρωση άλλου, κι ο ίδιος μπαίνει στη λίστα για να του βρεις άλλη προπόνηση. Οι απουσίες από τα παρουσιολόγια μπαίνουν εδώ μόνες τους.</p></div>`:''}
         ${cand||'<p class="text-[11px] text-slate-400 mb-1">Κανείς αυτή τη στιγμή </p>'}
         ${_mgCand.length>5?`<button onclick="_mgAll=!_mgAll;renderGuestMakeups()" class="w-full mt-1 py-1.5 text-[11px] font-semibold text-brand bg-slate-50 rounded-lg">${_mgAll?'Δείξε λιγότερους':`Δείξε όλους (${_mgCand.length})`}</button>`:''}
         <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Κανονισμένες (${shownGuests.length})</p>
@@ -4713,16 +4729,24 @@ async function assignGuest(pid, missed, mgid){
     renderGuestMakeups();
 }
 async function dismissNeed(pid, missed, gid, needId){
+    if(needId && missed>=cbToday()){
+        const over = gid && groupFree(gid, missed)!==null && groupFree(gid, missed)-1 < 0;
+        if(!confirm(over ? 'Η θέση του έχει ήδη δοθεί σε άλλον για αναπλήρωση — αν ακυρωθεί, το τμήμα εκείνη τη μέρα θα έχει έναν παραπάνω.\n\nΝα ακυρωθεί το «θα λείψει»;'
+                         : 'Να ακυρωθεί το «θα λείψει»; (θα έρθει κανονικά)')) return;
+        await sb.from('makeup_needs').delete().eq('id',needId); return renderGuestMakeups();
+    }
     if(!confirm('Να βγει από τη λίστα; (δεν χρειάζεται αναπλήρωση)')) return;
     if(needId) await sb.from('makeup_needs').delete().eq('id',needId);
     else await sb.from('makeup_needs').insert({ club_id:club.id, player_id:pid, group_id:gid||null, missed_date:missed, kind:'dismissed' });
     renderGuestMakeups();
 }
 async function addNeed(){
-    const pid=document.getElementById('mgP').value, d=document.getElementById('mgD').value; if(!pid||!d) return;
-    const g=(isOwner?groups:myCoachGroups()).find(x=>(x.memberIds||[]).includes(pid));
-    const { error }=await sb.from('makeup_needs').insert({ club_id:club.id, player_id:pid, group_id:g?g.id:null, missed_date:d, kind:'manual' });
+    const pid=document.getElementById('mgP').value, v=document.getElementById('mgS').value; if(!pid||!v) return cbToast('Διάλεξε προπόνηση','err');
+    const [gid,d]=v.split('|');
+    const { error }=await sb.from('makeup_needs').insert({ club_id:club.id, player_id:pid, group_id:gid, missed_date:d, kind:'manual' });
     if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    const p=playersFull.find(x=>x.id===pid);
+    cbToast(`✓ ${p?p.name:''} θα λείψει ${cbFmtDate(d)} — η θέση του ελευθερώθηκε`);
     _mgAddOpen=false; renderGuestMakeups();
 }
 async function delGuest(id){ if(!confirm('Να ακυρωθεί αυτή η αναπλήρωση;')) return; await sb.from('makeup_guests').delete().eq('id',id); renderGuestMakeups(); }
@@ -8164,10 +8188,12 @@ async function openAttendance(gid){
         (at||[]).forEach(r=>existing[r.player_id]=r.present);
     }
     const { data:guests }=pilotOn() ? await sb.from('makeup_guests').select('player_id,player_name').eq('group_id',gid).eq('the_date',date) : { data:[] };
+    const { data:aw }=pilotOn() ? await sb.from('makeup_needs').select('player_id').eq('group_id',gid).eq('missed_date',date).eq('kind','manual') : { data:[] };
+    const away=new Set((aw||[]).map(x=>x.player_id));
     box.innerHTML=g.memberIds.map(pid=>{
         const p=playersFull.find(x=>x.id===pid); if(!p) return '';
-        const checked = sess?.id ? (existing[pid]!==false) : true; // default: παρών
-        return `<label class="flex items-center justify-between py-1 text-xs border-b last:border-0"><span>${p.name}</span><input type="checkbox" class="att-chk" data-pid="${pid}" ${checked?'checked':''}></label>`;
+        const checked = sess?.id ? (existing[pid]!==false) : !away.has(pid); // default: παρών — εκτός αν ειδοποίησε ότι θα λείψει
+        return `<label class="flex items-center justify-between py-1 text-xs border-b last:border-0"><span>${p.name}${away.has(pid)?' <span class="text-[10px] font-bold text-amber-600">· ειδοποίησε ότι θα λείψει</span>':''}</span><input type="checkbox" class="att-chk" data-pid="${pid}" ${checked?'checked':''}></label>`;
     }).join('')+(guests||[]).filter(x=>!g.memberIds.includes(x.player_id)).map(x=>{
         const checked = sess?.id ? (existing[x.player_id]!==false) : true;
         return `<label class="flex items-center justify-between py-1 text-xs border-b last:border-0 bg-blue-50/60"><span>${cbEsc(x.player_name||'Επισκέπτης')} <span class="text-[10px] font-bold text-blue-700">· επισκέπτης (αναπλήρωση)</span></span><input type="checkbox" class="att-chk" data-pid="${x.player_id}" ${checked?'checked':''}></label>`;
