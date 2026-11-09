@@ -456,6 +456,10 @@ hr,.border-t,.border-b{border-color:var(--line)}
                         </div>
                         <select id="langSel" class="hidden" aria-hidden="true" data-noi18n><option value="el">EL</option><option value="en">EN</option><option value="de">DE</option></select>
                     </div>
+                    <label id="umFindRow" class="hidden um-item flex items-start gap-2.5 px-3 py-2.5 rounded-xl text-sm hover:bg-slate-50 cursor-pointer">
+                        <input id="umFind" type="checkbox" onchange="setFindable(this.checked)" class="mt-0.5 w-4 h-4 accent-emerald-600 flex-shrink-0">
+                        <span>Να με βρίσκουν ως συμπαίκτη<span class="block text-[10px] text-slate-400 leading-snug">Τα μέλη του club βλέπουν μόνο το όνομά σου όταν ψάχνουν συμπαίκτη</span></span>
+                    </label>
                     <button id="umPlan" type="button" onclick="openMyPlan()" class="um-item hidden w-full text-left px-3 py-2.5 rounded-xl text-sm hover:bg-slate-50" role="menuitem">Το πακέτο μου</button>
                     <button type="button" onclick="closeUserMenu();showChangePass()" class="um-item w-full text-left px-3 py-2.5 rounded-xl text-sm hover:bg-slate-50" role="menuitem">Αλλαγή κωδικού</button>
                     <button id="logoutBtn" type="button" class="um-item w-full text-left px-3 py-2.5 rounded-xl text-sm text-red-500 hover:bg-red-50" role="menuitem">Έξοδος</button>
@@ -1107,7 +1111,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=3df6c1cd');
+    const ok=await loadScript('app-i18n.js?v=dc777df8');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1571,6 +1575,7 @@ async function enterApp(){
     // Ο ιδιοκτήτης εμφανίζεται ως «Admin» — είναι ρόλος, όχι πρόσωπο
     document.getElementById('welcomeName').textContent = isOwner ? (pilotOn()?'Γραμματεία':'Admin') : (prof.data?.name || me.email.split('@')[0]);
     document.getElementById('umName').textContent = prof.data?.name || me.email.split('@')[0];
+    loadFindable();
     document.getElementById('umEmail').textContent = me.email || '';
     if(isOwner && 'plan_tier' in club) document.getElementById('umPlan').classList.remove('hidden');
     if(isOwner){
@@ -2262,6 +2267,19 @@ function bfSelect(id){
 }
 function bfClear(){ pickerBookFor=null; const chip=document.getElementById('bfChip'); if(chip) chip.innerHTML=''; }
 
+async function loadFindable(){
+    const row=document.getElementById('umFindRow'); if(!row) return;
+    if(isOwner || isCoach || !club){ row.classList.add('hidden'); return; }
+    const { data, error }=await sb.rpc('my_findable',{ p_club_id:club.id });
+    if(error || data===null){ row.classList.add('hidden'); return; }
+    document.getElementById('umFind').checked = data!==false; row.classList.remove('hidden');
+}
+async function setFindable(on){
+    const { error }=await sb.rpc('set_my_findable',{ p_club_id:club.id, p_on:!!on });
+    if(error){ document.getElementById('umFind').checked=!on; return cbToast('Δεν αποθηκεύτηκε','err'); }
+    cbToast(on ? '✓ Τα μέλη μπορούν να σε βρουν ως συμπαίκτη' : '✓ Δεν εμφανίζεσαι πια στην αναζήτηση συμπαίκτη');
+}
+
 /* ── Typeahead συμπαικτών (εγγεγραμμένοι + guests χωρίς λογαριασμό) ── */
 let pickerCoPlayers=[];   // εγγεγραμμένοι {id,name}
 let pickerGuests=[];      // ονόματα/placeholders χωρίς λογαριασμό
@@ -2271,19 +2289,41 @@ function coChipsHtml(){
     return reg+gs;
 }
 function renderCoChips(){ const el=document.getElementById('coChips'); if(el) el.innerHTML=coChipsHtml(); }
+/* Τα μέλη δεν έχουν τη λίστα του club: ψάχνουν στη βάση (≥3 γράμματα, ως 5 ονόματα, μόνο όσοι δεν έχουν κρυφτεί).
+   Γραμματεία & προπονητές έχουν την πλήρη λίστα (roster), όπως πριν. */
+const _pFound=new Map();   // id → όνομα από τις αναζητήσεις
+let _psTimer=null, _psSeq=0;
+function playerSearch(q, cb){
+    q=(q||'').trim();
+    if(roster.length){ const f=cb_fold(q); cb(q?roster.filter(p=>cb_fold(p.name).includes(f)).slice(0,6):[]); return; }
+    clearTimeout(_psTimer);
+    if(q.length<3){ cb(null); return; }
+    const seq=++_psSeq;
+    _psTimer=setTimeout(async()=>{
+        const { data }=await sb.rpc('search_club_players',{ p_club_id:club.id, p_q:q });
+        if(seq!==_psSeq) return;
+        (data||[]).forEach(p=>_pFound.set(p.id,p.name)); cb(data||[]);
+    }, 250);
+}
+const cb_fold = s => String(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').replace(/\u03c2/g,'\u03c3');
+const pName = id => (roster.find(x=>x.id===id)||{}).name || _pFound.get(id) || '';
+const MIN3 = '<p class="text-[11px] text-slate-400 px-2 py-1">Γράψε τουλάχιστον 3 γράμματα του ονόματος</p>';
 function coSearchInput(v){
     const box=document.getElementById('coSuggest'); if(!box) return;
-    const q=(v||'').trim().toLowerCase();
-    if(!q){ box.innerHTML=''; return; }
+    if(!(v||'').trim()){ box.innerHTML=''; return; }
+    playerSearch(v, res=>{ if(res===null){ box.innerHTML=MIN3; return; } coShow(res); });
+}
+function coShow(res){
+    const box=document.getElementById('coSuggest'); if(!box) return;
     const chosen=new Set(pickerCoPlayers.map(p=>p.id));
-    const matches=roster.filter(p=>!chosen.has(p.id) && (p.name||'').toLowerCase().includes(q)).slice(0,6);
+    const matches=res.filter(p=>!chosen.has(p.id));
     box.innerHTML=matches.length
-        ? matches.map(p=>`<button onclick="coAdd('${p.id}')" class="block w-full text-left px-2 py-1.5 text-xs hover:bg-slate-100 rounded-lg">${p.name}</button>`).join('')
+        ? matches.map(p=>`<button onclick="coAdd('${p.id}')" class="block w-full text-left px-2 py-1.5 text-xs hover:bg-slate-100 rounded-lg">${cbEsc(p.name)}</button>`).join('')
         : `<p class="text-[11px] text-slate-400 px-2 py-1">Δεν βρέθηκε εγγεγραμμένος — χρησιμοποίησε «+ Παίκτης χωρίς λογαριασμό»</p>`;
 }
 function coAdd(id){
-    const p=roster.find(x=>x.id===id); if(!p) return;
-    if(!pickerCoPlayers.some(x=>x.id===id)) pickerCoPlayers.push({ id:p.id, name:p.name });
+    const name=pName(id); if(!name) return;
+    if(!pickerCoPlayers.some(x=>x.id===id)) pickerCoPlayers.push({ id, name });
     const s=document.getElementById('coSearch'); if(s) s.value='';
     const box=document.getElementById('coSuggest'); if(box) box.innerHTML='';
     renderCoChips();
@@ -5625,7 +5665,17 @@ function declToggle(cid, kind, val){
     if(i<0) arr.push(val); else arr.splice(i,1);
     renderTournaments();
 }
-function declPartner(cid, v){ (_decl[cid]||(_decl[cid]={days:[],bands:[],partner:''})).partner=v; }
+function declPartner(cid, v){ (_decl[cid]||(_decl[cid]={days:[],bands:[],partner:''})).partner=v; renderTournaments(); }
+function declPartnerSearch(cid, v){
+    const box=document.getElementById('dps-'+cid); if(!box) return;
+    if(!(v||'').trim()){ box.innerHTML=''; return; }
+    playerSearch(v, res=>{
+        if(res===null){ box.innerHTML=MIN3; return; }
+        const ok=res.filter(p=>(!myPlayer || p.id!==myPlayer.id) && !inCategory(cid,p.id));
+        box.innerHTML=ok.length ? ok.map(p=>`<button onclick="declPartner('${cid}','${p.id}')" class="block w-full text-left px-2 py-1.5 text-xs hover:bg-slate-100 rounded-lg">${cbEsc(p.name)}</button>`).join('')
+            : '<p class="text-[11px] text-slate-400 px-2 py-1">Δεν βρέθηκε — ο συμπαίκτης πρέπει να είναι εγγεγραμμένος στο club</p>';
+    });
+}
 
 async function submitDeclaration(cid){
     const cat=tCats.find(c=>c.id===cid);
@@ -5636,7 +5686,7 @@ async function submitDeclaration(cid){
     if(!d.days.length)  return cbToast('Διάλεξε τουλάχιστον μία μέρα','err');
     if(!d.bands.length) return cbToast('Διάλεξε τουλάχιστον μία ώρα','err');
     if(d.partner && inCategory(cid,d.partner)) return cbToast('Ο συμπαίκτης έχει ήδη δηλωθεί','err');
-    const pn = d.partner ? (roster.find(x=>x.id===d.partner)||{}).name || '' : null;
+    const pn = d.partner ? pName(d.partner) : null;
     cbLoading(true);
     const { error }=await sb.from('tournament_entries').insert({
         category_id:cid, player_id:myPlayer.id, player_name:myPlayer.name,
@@ -6320,13 +6370,13 @@ function categoryBlock(cat, editable){
         } else if(declOpen(cat) && myPlayer){
             const d=_decl[cat.id]||{days:[],bands:[],partner:''};
             const chip=(on,label,onclick)=>`<button onclick="${onclick}" class="px-2.5 py-1.5 rounded-lg text-xs font-semibold border ${on?'bg-brand text-white border-brand':'bg-white text-slate-500 border-slate-200'}">${label}</button>`;
-            const free = roster.filter(p=>p.id!==myPlayer.id && !inCategory(cat.id,p.id));
+
             picker = `<div class="mt-2 border border-slate-200 rounded-xl p-3">
                 ${dbl?`<p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-1.5">Ο συμπαίκτης σου</p>
-                <select onchange="declPartner('${cat.id}',this.value)" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white mb-3">
-                    <option value="">— διάλεξε —</option>
-                    ${free.map(p=>`<option value="${p.id}" ${d.partner===p.id?'selected':''}>${cbEsc(p.name)}</option>`).join('')}
-                </select>
+                ${d.partner?`<div class="flex items-center gap-2 mb-3"><span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 rounded-full px-3 py-1 text-sm">${cbEsc(pName(d.partner))}
+                    <button onclick="declPartner('${cat.id}','')" class="text-blue-400 font-bold">✕</button></span></div>`
+                : `<input oninput="declPartnerSearch('${cat.id}',this.value)" autocomplete="off" placeholder="Γράψε το όνομά του (τουλάχιστον 3 γράμματα)" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm mb-1">
+                   <div id="dps-${cat.id}" class="mb-3 max-h-40 overflow-y-auto"></div>`}
                 <p class="text-[11px] text-slate-400 -mt-2 mb-3">Θα το δει στην καρτέλα του.</p>`:''}
                 <p class="text-[11px] font-bold tracking-wide text-slate-400 uppercase mb-1.5">Πότε μπορείς;</p>
                 <div class="flex flex-wrap gap-1.5 mb-2">
