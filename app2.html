@@ -507,6 +507,7 @@ hr,.border-t,.border-b{border-color:var(--line)}
                 </div>
             </div>
             <div id="quickDates" class="flex gap-2 overflow-x-auto no-scrollbar pb-1"></div>
+            <div id="hoursNote"></div>
             <div id="rainBar"></div>
         </div>
         <div class="flex gap-4 text-xs text-slate-500 px-1">
@@ -968,6 +969,7 @@ hr,.border-t,.border-b{border-color:var(--line)}
                         <select id="setClose" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm bg-white"></select>
                     </div>
                 </div>
+                <div id="hoursExtra"></div>
                 <div id="partnerField">
                     <label class="text-[10px] font-semibold text-slate-400 uppercase block mb-1">Σύνδεσμος «Βρες συμπαίκτη» (WhatsApp/Viber ομάδα)</label>
                     <input id="setPartnerLink" type="url" placeholder="https://chat.whatsapp.com/…  ή  https://invite.viber.com/…" class="w-full px-3 py-2.5 border border-slate-200 rounded-xl text-sm">
@@ -1111,7 +1113,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=b52e386f');
+    const ok=await loadScript('app-i18n.js?v=e4e007e7');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1169,11 +1171,13 @@ document.addEventListener('DOMContentLoaded', async () => {
     tournamentsOn = club.tournaments_enabled === true;
     clinicsOn = club.clinics_enabled === true;
 
-    const [cRes, dRes, eRes] = await Promise.all([
+    const [cRes, dRes, eRes, hRes] = await Promise.all([
         sb.from('courts').select('*').eq('club_id', club.id).order('sort_order'),
         sb.from('durations').select('*').eq('club_id', club.id).order('minutes'),
-        sb.from('extras').select('*').eq('club_id', club.id).order('sort_order')
+        sb.from('extras').select('*').eq('club_id', club.id).order('sort_order'),
+        sb.from('club_hours').select('*').eq('club_id', club.id)
     ]);
+    clubHours = hRes.data || [];
     courts = cRes.data || [];
     durations = dRes.data || [];
     extras = eRes.data || [];
@@ -1699,8 +1703,140 @@ function applyClubMode(){
 /* Ωράριο σε λεπτά. Τα open_min/close_min είναι 0 ή 30, ώστε ένα club
    να μπορεί να ανοίγει «εννιά και μισή». Αν λείπουν (πριν τρέξει το
    migration) διαβάζονται ως 0 και το ωράριο μένει ακριβώς όπως ήταν. */
-function clubOpenMin(){  return (club.open_hour||0)*60  + (club.open_min||0);  }
-function clubCloseMin(){ return (club.close_hour||0)*60 + (club.close_min||0); }
+function clubBaseOpen(){  return (club.open_hour||0)*60  + (club.open_min||0);  }
+function clubBaseClose(){ return (club.close_hour||0)*60 + (club.close_min||0); }
+/* Ωράριο ανά μέρα & αργίες (club_hours): συγκεκριμένη ημερομηνία > εβδομαδιαίο > κανονικό ωράριο.
+   _hDate = η μέρα που βλέπουμε στο πρόγραμμα· όπου δεν έχει οριστεί, ισχύει το κανονικό ωράριο. */
+let clubHours=[], _hDate=null;
+function dayHours(date){
+    const wd=new Date(date+'T12:00:00').getDay();
+    const r=clubHours.find(x=>x.the_date===date) || clubHours.find(x=>x.weekday===wd);
+    if(!r) return { closed:false, open:clubBaseOpen(), close:clubBaseClose(), special:false };
+    return { closed:!!r.closed, open:r.closed?clubBaseOpen():r.open_min, close:r.closed?clubBaseClose():r.close_min, note:r.note||'', special:true, oneOff:!!r.the_date };
+}
+function clubOpenMin(){  return _hDate ? dayHours(_hDate).open  : clubBaseOpen(); }
+function clubCloseMin(){ return _hDate ? dayHours(_hDate).close : clubBaseClose(); }
+
+/* ── Ρυθμίσεις: ωράριο ανά μέρα (εβδομαδιαίο) & αργίες / ειδικές μέρες — αποθηκεύονται αμέσως ── */
+const _WD_ORDER=[1,2,3,4,5,6,0], _WD_NAME=['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','Πέμπτη','Παρασκευή','Σάββατο'];
+const hrLbl = m => m<1440 ? cbM2T(m) : cbM2T(m-1440)+' (+1)';
+const hrOpts = (a,b,cur) => { let o=''; for(let m=a;m<=b;m+=30) o+=`<option value="${m}" ${m===cur?'selected':''}>${hrLbl(m)}</option>`; return o; };
+async function loadClubHours(){ const { data }=await sb.from('club_hours').select('*').eq('club_id',club.id); clubHours=data||[]; }
+function renderHoursExtra(){
+    const el=document.getElementById('hoursExtra'); if(!el || !isOwner) return;
+    const sel='px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white';
+    const week=_WD_ORDER.map(wd=>{
+        const r=clubHours.find(x=>x.weekday===wd), mode=!r?'normal':r.closed?'closed':'special';
+        return `<div class="flex items-center gap-2 py-1.5 border-b border-slate-100 last:border-0 flex-wrap">
+            <span class="w-20 text-xs font-semibold">${_WD_NAME[wd]}</span>
+            <select onchange="setWeekMode(${wd},this.value)" class="${sel}">
+                <option value="normal" ${mode==='normal'?'selected':''}>Κανονικό ωράριο</option>
+                <option value="closed" ${mode==='closed'?'selected':''}>Κλειστά</option>
+                <option value="special" ${mode==='special'?'selected':''}>Άλλο ωράριο</option></select>
+            ${mode==='special'?`<select onchange="setWeekTime(${wd},'open_min',this.value)" class="${sel}">${hrOpts(0,1410,r.open_min)}</select>
+                <span class="text-xs text-slate-400">–</span>
+                <select onchange="setWeekTime(${wd},'close_min',this.value)" class="${sel}">${hrOpts(30,1680,r.close_min)}</select>`:''}
+        </div>`; }).join('');
+    const days=clubHours.filter(x=>x.the_date && x.the_date>=cbToday()).sort((a,b)=>a.the_date.localeCompare(b.the_date)).map(r=>
+        `<div class="flex items-center gap-2 py-1.5 border-b border-slate-100 last:border-0 text-xs">
+            <span class="font-semibold">${cbFmtDate(r.the_date)}</span>
+            <span class="${r.closed?'text-red-600 font-semibold':'text-blue-700'}">${r.closed?'Κλειστά':hrLbl(r.open_min)+'–'+hrLbl(r.close_min)}</span>
+            <span class="flex-1 min-w-0 truncate text-slate-500">${cbEsc(r.note||'')}</span>
+            <button onclick="delDayRule('${r.id}')" class="text-red-400 font-bold px-1">✕</button></div>`).join('');
+    el.innerHTML=`<div class="border border-slate-200 rounded-xl p-3 mt-1">
+        <p class="text-[10px] font-semibold text-slate-400 uppercase mb-1">Ωράριο ανά μέρα</p>
+        <p class="text-[10px] text-slate-400 mb-2">Ισχύει κάθε εβδομάδα. Αποθηκεύεται αμέσως.</p>
+        ${week}
+        <p class="text-[10px] font-semibold text-slate-400 uppercase mt-4 mb-1">Αργίες & ειδικές μέρες</p>
+        <p class="text-[10px] text-slate-400 mb-2">Π.χ. Χριστούγεννα κλειστά ή Παραμονή ως τις 15:00. Υπερισχύει του εβδομαδιαίου.</p>
+        ${days||'<p class="text-[11px] text-slate-400 mb-2">Καμία</p>'}
+        <div class="grid grid-cols-12 gap-2 mt-2">
+            <input id="hdDate" type="date" min="${cbToday()}" class="col-span-6 sm:col-span-3 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+            <select id="hdMode" onchange="document.getElementById('hdTimes').classList.toggle('hidden',this.value!=='special')" class="col-span-6 sm:col-span-3 ${sel}">
+                <option value="closed">Κλειστά</option><option value="special">Άλλο ωράριο</option></select>
+            <div id="hdTimes" class="hidden col-span-12 sm:col-span-6 flex items-center gap-2">
+                <select id="hdOpen" class="flex-1 ${sel}">${hrOpts(0,1410,clubBaseOpen())}</select><span class="text-xs text-slate-400">–</span>
+                <select id="hdClose" class="flex-1 ${sel}">${hrOpts(30,1680,Math.min(clubBaseClose(),1680))}</select></div>
+            <input id="hdNote" placeholder="Σημείωση (π.χ. Χριστούγεννα)" class="col-span-8 sm:col-span-9 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
+            <button onclick="addDayRule()" class="col-span-4 sm:col-span-3 bg-brand text-white rounded-lg text-xs font-bold py-1.5">Προσθήκη</button>
+        </div></div>`;
+}
+async function hoursSaved(msg){
+    await loadClubHours(); renderHoursExtra(); cbToast(msg||'✓ Αποθηκεύτηκε');
+    if(document.getElementById('slots')) { buildQuickDates(); renderSlots(); }
+}
+async function setWeekMode(wd, mode){
+    const r=clubHours.find(x=>x.weekday===wd); let error=null;
+    if(mode==='normal'){ if(r) ({ error }=await sb.from('club_hours').delete().eq('id',r.id)); }
+    else {
+        const row={ club_id:club.id, weekday:wd, closed:mode==='closed',
+            open_min: mode==='special' ? (r&&r.open_min!=null?r.open_min:clubBaseOpen()) : null,
+            close_min: mode==='special' ? (r&&r.close_min!=null?r.close_min:clubBaseClose()) : null };
+        ({ error } = r ? await sb.from('club_hours').update(row).eq('id',r.id) : await sb.from('club_hours').insert(row));
+    }
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    hoursSaved(mode==='closed' ? `✓ ${_WD_NAME[wd]}: κλειστά` : mode==='normal' ? `✓ ${_WD_NAME[wd]}: κανονικό ωράριο` : null);
+}
+async function setWeekTime(wd, k, v){
+    const r=clubHours.find(x=>x.weekday===wd); if(!r) return;
+    const upd={ [k]:parseInt(v) }, o=k==='open_min'?upd[k]:r.open_min, c=k==='close_min'?upd[k]:r.close_min;
+    if(c<=o){ renderHoursExtra(); return cbToast('Η ώρα κλεισίματος πρέπει να είναι μετά το άνοιγμα','err'); }
+    const { error }=await sb.from('club_hours').update(upd).eq('id',r.id);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err'); hoursSaved();
+}
+async function addDayRule(){
+    const d=document.getElementById('hdDate').value, mode=document.getElementById('hdMode').value;
+    if(!d) return cbToast('Διάλεξε ημερομηνία','err');
+    const o=parseInt(document.getElementById('hdOpen').value), c=parseInt(document.getElementById('hdClose').value);
+    if(mode==='special' && c<=o) return cbToast('Η ώρα κλεισίματος πρέπει να είναι μετά το άνοιγμα','err');
+    const row={ club_id:club.id, the_date:d, closed:mode==='closed', open_min:mode==='special'?o:null, close_min:mode==='special'?c:null,
+                note:document.getElementById('hdNote').value.trim()||null };
+    const ex=clubHours.find(x=>x.the_date===d);
+    const { error } = ex ? await sb.from('club_hours').update(row).eq('id',ex.id) : await sb.from('club_hours').insert(row);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    // κρατήσεις / προπονήσεις που ήδη υπάρχουν εκείνη τη μέρα — δεν σβήνονται αυτόματα, μόνο ενημέρωση
+    const { count }=await sb.from('bookings').select('id',{ count:'exact', head:true }).eq('club_id',club.id).eq('booking_date',d);
+    const tr=trainingsOnDate(d).length;
+    hoursSaved(`✓ ${cbFmtDate(d)}: ${mode==='closed'?'κλειστά':cbM2T(o)+'–'+cbM2T(c%1440)}`);
+    if(count||tr) setTimeout(()=>alert(`Προσοχή: εκείνη τη μέρα υπάρχουν ήδη ${count?count+' κρατήσεις':''}${count&&tr?' και ':''}${tr?tr+' προπονήσεις':''}. Δεν ακυρώνονται αυτόματα — δες τες στο Πρόγραμμα της μέρας.`),300);
+}
+async function delDayRule(id){
+    const { error }=await sb.from('club_hours').delete().eq('id',id);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err'); hoursSaved('✓ Αφαιρέθηκε');
+}
+
+/* ── Κάρτες που ανοιγοκλείνουν: πατάς τον τίτλο. Η πρώτη κάρτα κάθε καρτέλας ανοιχτή, οι άλλες κλειστές·
+      μετά θυμάται τι άφησες (ανά συσκευή). Δουλεύει και για κάρτες που ξαναχτίζονται (αναπληρώσεις κ.λπ.). ── */
+const FOLD_TABS=['tab-training','tab-roster','tab-athletes','tab-attendance'];
+function foldKey(t){ return 'cbfold:'+(club?club.slug:'')+':'+t; }
+function foldCard(card, first){
+    const title=[...card.querySelectorAll('p.font-bold')][0]; if(!title) return;
+    const head = title.parentElement===card ? title : title.parentElement;
+    if(head.parentElement!==card) return;
+    const name=(title.childNodes[0]&&title.childNodes[0].textContent||title.textContent).trim().slice(0,40); if(!name) return;
+    const k=foldKey(name);
+    card.classList.add('cb-fold'); head.classList.add('cb-fold-head');
+    if(!title.querySelector('.cb-chev')){ const s=document.createElement('span'); s.className='cb-chev'; s.textContent='▼'; title.appendChild(s); }
+    let st=null; try{ st=localStorage.getItem(k); }catch(e){}
+    const closed = st!==null ? st==='1' : !first;
+    if(closed!==card.hasAttribute('data-closed')) card.toggleAttribute('data-closed', closed);
+    if(!head._cbFold){ head._cbFold=true;
+        head.addEventListener('click', e=>{ if(e.target.closest('button,a,input,select,textarea,label')) return;
+            const c=!card.hasAttribute('data-closed'); card.toggleAttribute('data-closed',c); try{ localStorage.setItem(k,c?'1':'0'); }catch(e){} }); }
+}
+function foldPanel(id){
+    const p=document.getElementById(id); if(!p) return;
+    // κάρτα = παιδί της καρτέλας με rounded-2xl, ή το πρώτο παιδί ενός «κουτιού» που γεμίζει δυναμικά (π.χ. αναπληρώσεις)
+    const cards=[...p.children].map(c=>c.matches('.rounded-2xl') ? c : (c.firstElementChild && c.firstElementChild.matches('.rounded-2xl') ? c.firstElementChild : null))
+        .filter(c=>c && !c.classList.contains('hidden') && !(c.parentElement!==p && c.parentElement.classList.contains('hidden')));
+    cards.forEach((c,i)=>foldCard(c, i===0));
+}
+let _foldT=null;
+function foldAll(){ clearTimeout(_foldT); _foldT=setTimeout(()=>FOLD_TABS.forEach(foldPanel), 60); }
+document.addEventListener('DOMContentLoaded', ()=>{
+    const mo=new MutationObserver(()=>foldAll());
+    FOLD_TABS.forEach(id=>{ const p=document.getElementById(id); if(p) mo.observe(p,{ childList:true, subtree:true, attributes:true, attributeFilter:['class'] }); });
+});
 
 /* ══════════════ TABS ══════════════ */
 function switchTab(tab){
@@ -1918,8 +2054,15 @@ function renderSlots(){
     const ct=document.getElementById('slots'); ct.innerHTML='';
     const today=cbToday();
     renderRainBar();
+    _hDate=date; buildSlots();
+    const _dh=dayHours(date), _hn=document.getElementById('hoursNote');
+    if(_hn) _hn.innerHTML = _dh.special ? `<div class="mt-3 px-3 py-2 rounded-xl text-xs font-semibold ${_dh.closed?'bg-red-50 text-red-700 border border-red-200':'bg-blue-50 text-blue-700 border border-blue-200'}">
+        ${_dh.closed?'Κλειστά αυτή τη μέρα':`Ειδικό ωράριο: ${cbM2T(_dh.open)}–${cbM2T(_dh.close%1440)}`}${_dh.note?' · '+cbEsc(_dh.note):''}</div>` : '';
+    if(_dh.closed){ ct.innerHTML=`<p class="col-span-full text-center text-slate-400 text-sm py-6">Το club είναι κλειστό αυτή τη μέρα${_dh.note?' ('+cbEsc(_dh.note)+')':''}.</p>`; return; }
     const desk = isOwner && pilotOn();   // γραμματεία: όνομα πελάτη αντί για «Δική μου»
-    if(desk){ const a=document.getElementById('legMine'), b=document.getElementById('legOther');
+    if(!bookingsOn){ const a=document.getElementById('legMine'), b=document.getElementById('legOther');
+        if(a && a.parentElement) a.parentElement.classList.add('hidden'); if(b) b.textContent='Προπόνηση'; }
+    else if(desk){ const a=document.getElementById('legMine'), b=document.getElementById('legOther');
         if(a) a.textContent='Γραμματεία'; if(b) b.textContent='Online κράτηση'; }
 
     SLOTS.forEach(time=>{
@@ -3704,8 +3847,8 @@ async function loadLessonsOwner(){
     clubLessons=(l.data||[]).filter(x=>x.status==='confirmed' || (x.pay_until && new Date(x.pay_until)>new Date()));
 }
 function lsTimeOpts(sel, withEnd){
-    const out=[]; const end=clubCloseMin()+(withEnd?0:-30);
-    for(let m=clubOpenMin(); m<=end; m+=30) out.push(cbM2T(m));
+    const out=[]; const end=clubBaseClose()+(withEnd?0:-30);
+    for(let m=clubBaseOpen(); m<=end; m+=30) out.push(cbM2T(m));
     return out.map(t=>`<option value="${t}" ${t===sel?'selected':''}>${t}</option>`).join('');
 }
 function lsAvailRow(wd, s, e){
@@ -3966,7 +4109,8 @@ function renderBoard(){
     const date=boardDate||(boardDate=cbToday());
     document.getElementById('boardDate').value=date;
     document.getElementById('boardTitle').textContent=new Date(date+'T12:00:00').toLocaleDateString(cbLocale(),{ weekday:'long', day:'numeric', month:'long' });
-    let open=clubOpenMin(), close=clubCloseMin(); if(close<=open) close=24*60;
+    const _dh=dayHours(date);
+    let open=_dh.open, close=_dh.close; if(close<=open) close=24*60;
     open=Math.floor(open/60)*60;
     const rows=Math.ceil((close-open)/BD_STEP), H=rows*BD_ROW, Y=m=>(m-open)/BD_STEP*BD_ROW;
     const now=new Date(), nowM=now.getHours()*60+now.getMinutes(), isToday=date===cbToday(), past=date<cbToday();
@@ -4199,10 +4343,11 @@ function renderSettings(){
         if(cur>=a && cur<=b) set.add(cur);
         return [...set].sort((x,y)=>x-y).map(m=>`<option value="${m}">${hLbl(m)}</option>`).join('');
     };
-    document.getElementById('setOpen').innerHTML  = optsFrom(0, 1440-stepH, clubOpenMin());
-    document.getElementById('setClose').innerHTML = optsFrom(stepH, 28*60, clubCloseMin());
-    document.getElementById('setOpen').value  = clubOpenMin();
-    document.getElementById('setClose').value = clubCloseMin();
+    document.getElementById('setOpen').innerHTML  = optsFrom(0, 1440-stepH, clubBaseOpen());
+    document.getElementById('setClose').innerHTML = optsFrom(stepH, 28*60, clubBaseClose());
+    document.getElementById('setOpen').value  = clubBaseOpen();
+    document.getElementById('setClose').value = clubBaseClose();
+    renderHoursExtra();
     document.getElementById('setPartnerLink').value = club.partner_link || '';
     document.getElementById('setLoyaltyMsg').value  = club.loyalty_msg || '';
     document.getElementById('setLang').value = club.lang || 'el';
@@ -4432,7 +4577,8 @@ function buildQuickDates(){
         btn.className=`flex-shrink-0 px-3 py-2 rounded-xl text-xs font-semibold text-center min-w-[50px] ${on?'bg-brand text-white':'bg-slate-100 text-slate-600 hover:bg-slate-200'}`;
         btn.innerHTML=`<span class="block text-[10px] opacity-70">${days[d.getDay()]}</span>`
                      +`<span class="text-base font-extrabold">${d.getDate()}</span>`
-                     +`<span class="block text-[9px] opacity-60">${d.toLocaleDateString(cbLocale(),{month:'short'})}</span>`;
+                     +(dayHours(dStr).closed ? `<span class="block text-[9px] font-bold ${on?'text-white':'text-red-500'}">Κλειστά</span>`
+                                             : `<span class="block text-[9px] opacity-60">${d.toLocaleDateString(cbLocale(),{month:'short'})}</span>`);
         btn.onclick=()=>{ document.getElementById('datePicker').value=dStr; pickerSlot=null; buildQuickDates(); loadDay(); };
         strip.appendChild(btn);
     }
@@ -4470,7 +4616,7 @@ const _GRDAYS=['Κυριακή','Δευτέρα','Τρίτη','Τετάρτη','
 // ώρες μέσα στο ωράριο του club, ανά 30 λεπτά
 function trainingTimeOptions(){
     const out=[];
-    for(let mins=clubOpenMin(); mins<clubCloseMin(); mins+=30) out.push(cbM2T(mins));
+    for(let mins=clubBaseOpen(); mins<clubBaseClose(); mins+=30) out.push(cbM2T(mins));
     return out;
 }
 // όνομα προπονητή στο πρόγραμμα → ο λογαριασμός του (μόνο σε clubs με Clinics)
@@ -5658,7 +5804,7 @@ const T_BANDS = [['morning','Πρωί',8,12],['noon','Μεσημέρι',12,16],
 
 /* Μόνο οι ζώνες που πέφτουν μέσα στο ωράριο του club. */
 function clubBands(){
-    const o=clubOpenMin()/60, c=clubCloseMin()/60;
+    const o=clubBaseOpen()/60, c=clubBaseClose()/60;
     return T_BANDS.filter(b=> b[3]>o && b[2]<c)
                   .map(b=>[b[0], b[1]+' '+Math.max(b[2],Math.floor(o))+'–'+Math.min(b[3],Math.ceil(c))]);
 }
@@ -7250,7 +7396,8 @@ async function schedSlots(){
     if(_schedPick!==p || !document.getElementById('sch-'+p.mid)) return;
     const busy=[...(bk||[]).filter(b=>b.id!==cur).map(b=>[cbT2M(b.start_time), cbT2M(b.start_time)+(b.duration_min||60)]),
                 ...trainingItemsOnDate(p.date).filter(t=>t.court_id===p.court).map(t=>[cbT2M(t.start_time), cbT2M(t.start_time)+t.duration_min])];
-    const open=clubOpenMin(), close=clubCloseMin()>open?clubCloseMin():24*60, step=club.slot_minutes||30;
+    const _dh=dayHours(p.date); if(_dh.closed){ box.innerHTML='<span class="text-[11px] text-red-500">Το club είναι κλειστό εκείνη τη μέρα</span>'; return; }
+    const open=_dh.open, close=_dh.close>open?_dh.close:24*60, step=club.slot_minutes||30;
     const now=new Date(), nowM=p.date===cbToday()? now.getHours()*60+now.getMinutes() : -1;
     const chips=[];
     for(let s=open; s+p.dur<=close; s+=step){
