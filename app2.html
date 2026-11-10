@@ -4849,7 +4849,7 @@ async function renderGuestMakeups(){
             <span class="flex-1 min-w-0 truncate"><b>${cbEsc(x.player_name||'')}</b> → ${cbEsc(gName(x.group_id))} · ${cbFmtDate(x.the_date)} ${x.start_time}${s?' · '+cbEsc(courtName(s.court)):''}${x.missed_date?` <span class="text-slate-400">(για ${cbFmtDate(x.missed_date)})</span>`:''}</span>
             ${!myG || myG.has(x.missed_group_id) ? `<button onclick="delGuest('${x.id}')" class="text-red-400 flex-shrink-0">✕</button>` : `<span class="text-[10px] text-blue-600 flex-shrink-0">έρχεται σε εσένα</span>`}</div>`; }).join('');
     const players=playersFull.filter(p=>groups.some(g=>(!myG || myG.has(g.id)) && (g.memberIds||[]).includes(p.id))).sort((a,b)=>a.name.localeCompare(b.name));
-    el.innerHTML=`<div class="bg-white rounded-2xl p-5 shadow-sm anim-up border border-blue-100">
+    cbSetHtml(el, `<div class="bg-white rounded-2xl p-5 shadow-sm border border-blue-100">
         <p class="font-bold mb-1">Αναπληρώσεις αθλητών σε άλλο γκρουπ</p>
         <p class="text-[11px] text-slate-500 mb-3">${isOwner
             ? 'Εμφανίζονται μόνο προπονήσεις με ελεύθερη θέση, με βάση το όριο αθλητών κάθε τμήματος. Μιλάς με τον αθλητή και τον βάζεις ως επισκέπτη μία φορά· το βλέπει στο κινητό του και ο προπονητής στο παρουσιολόγιο.'
@@ -4872,7 +4872,7 @@ async function renderGuestMakeups(){
         ${_mgCand.length>5?`<button onclick="_mgAll=!_mgAll;renderGuestMakeups()" class="w-full mt-1 py-1.5 text-[11px] font-semibold text-brand bg-slate-50 rounded-lg">${_mgAll?'Δείξε λιγότερους':`Δείξε όλους (${_mgCand.length})`}</button>`:''}
         <p class="text-[10px] font-bold text-slate-500 uppercase mt-4 mb-1">Κανονισμένες (${shownGuests.length})</p>
         ${guestsHtml||'<p class="text-[11px] text-slate-400">Καμία ακόμα</p>'}
-    </div>`;
+    </div>`);
 }
 // ένα όριο σε όλα τα τμήματα που δεν έχουν (π.χ. ΑΟΑΠ με 100 τμήματα) — όσα έχουν ήδη δεν αλλάζουν
 async function bulkGroupMax(){
@@ -5148,14 +5148,19 @@ function pendingMakeups(){
         .sort((a,b)=>a.the_date.localeCompare(b.the_date));
 }
 
+// Γράφει μια κάρτα ΜΟΝΟ αν άλλαξε το περιεχόμενό της. Αλλιώς οι κάρτες αναπληρώσεων ξαναφτιάχνονταν σε κάθε
+// άνοιγμα των «Προπονήσεων» (ίδιο περιεχόμενο) κι «αναβόσβηναν»: εξαφάνιση + εφέ εμφάνισης, σαν να πάνε ν' ανοίξουν.
+// Κρατά και ό,τι έχει γράψει/διαλέξει ο χρήστης μέσα στην κάρτα όσο δεν αλλάζει τίποτα.
+function cbSetHtml(el,h){ if(el._cbHtml===h) return false; el._cbHtml=h; el.innerHTML=h; return true; }
+
 function toggleMakeup(id){ makeupOpenId=(makeupOpenId===id?null:id); renderMakeups(); }
 
 function renderMakeups(){
     const el=document.getElementById('makeupCard');
     if(!el) return;
     const pend=pendingMakeups();
-    if(!pend.length){ el.innerHTML=''; return; }
-    el.innerHTML=`<div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm anim-up">
+    if(!pend.length){ cbSetHtml(el,''); return; }
+    cbSetHtml(el, `<div class="bg-amber-50 border border-amber-200 rounded-2xl p-5 shadow-sm">
         <p class="font-bold mb-1">Εκκρεμείς αναπληρώσεις <span class="text-amber-600">(${pend.length})</span></p>
         <p class="text-[11px] text-slate-500 mb-4">Προπονήσεις που ακυρώθηκαν και δεν έχουν οριστεί ξανά. Πάτα «Όρισε αναπλήρωση» όταν αποφασίσεις πότε θα γίνει.</p>
         <div class="space-y-2">${pend.map(o=>{
@@ -5177,7 +5182,7 @@ function renderMakeups(){
                 ${o.id===makeupOpenId?makeupForm(o,s):''}
             </div>`;
         }).join('')}</div>
-    </div>`;
+    </div>`);
 }
 
 function makeupForm(o,s){
@@ -8406,7 +8411,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='ffb9937ec3', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='ab066e7262', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
