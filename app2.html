@@ -1838,7 +1838,8 @@ function foldCard(card, first){
     if(head.parentElement!==card) return;
     const name=(title.childNodes[0]&&title.childNodes[0].textContent||title.textContent).trim().slice(0,40); if(!name) return;
     const k=foldKey(name);
-    card.classList.add('cb-fold'); head.classList.add('cb-fold-head');
+    // μόνο αν λείπουν: κάθε classList.add γράφει το attribute → ο observer ξανατρέχει → ατέρμονος βρόχος
+    if(!card.classList.contains('cb-fold')) card.classList.add('cb-fold'); if(!head.classList.contains('cb-fold-head')) head.classList.add('cb-fold-head');
     if(!title.querySelector('.cb-chev')){ const s=document.createElement('span'); s.className='cb-chev'; s.textContent='▼'; title.appendChild(s); }
     let st=null; try{ st=localStorage.getItem(k); }catch(e){}
     const closed = st!==null ? st==='1' : !first;
@@ -8483,6 +8484,17 @@ async function saveAttendance(gid,date){
     if(isOwner){ await loadPlayerActivity(); renderPlayers(); }
     if(document.getElementById('ah-'+gid)?.closest('details')?.open) loadAttHistory(gid);   // ανανέωσε το ιστορικό
 }
+</script>
+<script>
+(function(){ var V='b21f3e42d5', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+  function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
+    d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
+    d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
+    d.querySelector('button').onclick=function(){ location.reload(); }; document.body.appendChild(d); }
+  function chk(){ fetch('/app-version.js?t='+Date.now(),{cache:'no-store'}).then(function(r){ return r.ok?r.text():''; })
+    .then(function(t){ var m=/'([0-9a-f]{6,})'/.exec(t||''); if(m && m[1]!==V) show(); }).catch(function(){}); }
+  setInterval(chk, 5*60*1000); document.addEventListener('visibilitychange', function(){ if(!document.hidden) chk(); });
+})();
 </script>
 </body>
 </html>

@@ -1690,7 +1690,8 @@ function foldCard(card, first){
     if(head.parentElement!==card) return;
     const name=(title.childNodes[0]&&title.childNodes[0].textContent||title.textContent).trim().slice(0,40); if(!name) return;
     const k=foldKey(name);
-    card.classList.add('cb-fold'); head.classList.add('cb-fold-head');
+    // μόνο αν λείπουν: κάθε classList.add γράφει το attribute → ο observer ξανατρέχει → ατέρμονος βρόχος
+    if(!card.classList.contains('cb-fold')) card.classList.add('cb-fold'); if(!head.classList.contains('cb-fold-head')) head.classList.add('cb-fold-head');
     if(!title.querySelector('.cb-chev')){ const s=document.createElement('span'); s.className='cb-chev'; s.textContent='▼'; title.appendChild(s); }
     let st=null; try{ st=localStorage.getItem(k); }catch(e){}
     const closed = st!==null ? st==='1' : !first;
