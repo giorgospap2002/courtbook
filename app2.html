@@ -1119,7 +1119,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=e4e007e7');
+    const ok=await loadScript('app-i18n.js?v=3a31ab21');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -3233,7 +3233,7 @@ async function exportDaily(){
                 'Γήπεδο':courtName(c.court_id), 'Ποσό (€)':money(p), 'Πληρωμή':e.pay_status==='paid'?'Online':e.pay_status==='pending'?'Αναμονή πληρωμής':'Στο ταμείο', 'Online (€)':money(on) }); }));
         const LES=lc.slice(0,nLes), CLI=lc.slice(nLes);
         // ── συνδρομές που πληρώθηκαν τη μέρα ──
-        const feeOf=pid=>{ const p=playersFull.find(x=>x.id===pid); const pp=p&&p.sub_plan_id?(pl.data||[]).find(x=>x.id===p.sub_plan_id):null;
+        const feeOf=pid=>{ const p=playersFull.find(x=>x.id===pid); if(p&&p.sub_amount!=null) return Number(p.sub_amount); const pp=p&&p.sub_plan_id?(pl.data||[]).find(x=>x.id===p.sub_plan_id):null;
                            return pp ? Number(pp.price) : (club.sub_fee!=null ? Number(club.sub_fee) : null); };
         const SUB=(mp.data||[]).filter(r=>r.paid_date===d).map(r=>{ const m=/([\d]+(?:[.,]\d+)?)\s*€/.exec(r.note||''); const amt=m?Number(m[1].replace(',','.')):feeOf(r.player_id);
             const on=/stripe|online/i.test(r.note||'');
@@ -4222,6 +4222,18 @@ function boardOpen(id){
    Το club ορίζει όνομα + ποσό· κάθε μέλος έχει (ή όχι) ένα πακέτο.
    Χωρίς πακέτο → βασικό ποσό του club. Ενεργά μόνο με online πληρωμές. */
 let subPlans=[];
+function subAmtOn(){ return !!(isOwner && subsOn && pilotOn()); }
+// μηνιαίο ποσό αθλητή: δικό του ποσό → πακέτο → βασική συνδρομή club
+function subAmt(p){ if(!p) return null; if(p.sub_amount!=null) return Number(p.sub_amount);
+    const pp=p.sub_plan_id?subPlans.find(x=>x.id===p.sub_plan_id):null; return pp?Number(pp.price):(club.sub_fee!=null?Number(club.sub_fee):null); }
+async function setSubAmount(pid,v){
+    const n=String(v).trim()===''?null:Number(String(v).replace(',','.'));
+    if(n!=null && !(n>=0)) return cbToast('Λάθος ποσό','err');
+    const { error }=await sb.from('players').update({ sub_amount:n }).eq('id',pid);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    const p=playersFull.find(x=>x.id===pid); if(p) p.sub_amount=n;
+    cbToast('✓ Αποθηκεύτηκε'); return true;
+}
 function subPlansOn(){ return !!(isOwner && subsOn && club && club.payments_enabled); }
 async function loadSubPlans(){
     if(!subPlansOn()){ subPlans=[]; return; }
@@ -7871,6 +7883,10 @@ function renderPending(){
             <div class="min-w-0">
                 <p class="text-sm font-semibold truncate">${cbEsc(p.name)}</p>
                 <p class="text-[11px] text-slate-400 truncate">${cbEsc(p.phone||'—')}${p.email?' · '+cbEsc(p.email):''}</p>
+                ${subAmtOn()?`<div class="flex flex-wrap items-center gap-1.5 mt-1.5">
+                    ${groups.length?`<select id="pg-${p.id}" class="px-2 py-1 border border-slate-200 rounded-lg text-xs bg-white max-w-[11rem]"><option value="">Γκρουπ…</option>${groups.map(g=>`<option value="${g.id}">${cbEsc(g.name)}</option>`).join('')}</select>`:''}
+                    <input id="pa-${p.id}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="${club.sub_fee!=null?club.sub_fee+'€':'€/μήνα'}" title="Μηνιαία συνδρομή" class="w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs"><span class="text-[10px] text-slate-400">€/μήνα</span>
+                </div>`:''}
             </div>
             <div class="flex gap-1.5 flex-shrink-0">
                 <button onclick="approvePlayer('${p.id}')" class="bg-green-600 text-white text-[11px] font-bold px-3 py-1.5 rounded-lg hover:bg-green-700">Έγκριση</button>
@@ -7882,6 +7898,9 @@ function renderPending(){
 async function approvePlayer(id){
     const { error }=await sb.from('players').update({ approved:true }).eq('id',id);
     if(error) return cbToast('Σφάλμα','err');
+    const pa=document.getElementById('pa-'+id)?.value, pg=document.getElementById('pg-'+id)?.value;
+    if(pa!=null && String(pa).trim()!=='') await setSubAmount(id,pa);
+    if(pg){ const { error:ge }=await sb.from('group_members').insert({ group_id:pg, player_id:id }); if(ge) cbToast('Δεν μπήκε στο γκρουπ','err'); else await loadGroups(); }
     cbToast('✓ Εγκρίθηκε');
     await loadPlayersFull(); renderPending(); renderPlayers();
 }
@@ -7919,7 +7938,10 @@ function renderPlayers(){
         const m=subMonthValue(), payers=members.filter(paysSub);
         const n=payers.filter(p=>payments.has(p.id+'|'+m)).length;
         const c=document.getElementById('subsCount');
-        if(c) c.textContent=`${n} από ${payers.length} πλήρωσαν`;
+        let tot='';
+        if(subAmtOn()){ const sum=a=>a.reduce((x,p)=>x+(subAmt(p)||0),0), due=sum(payers), got=sum(payers.filter(p=>payments.has(p.id+'|'+m)));
+            if(due) tot=` · ${got}€ από ${due}€`; }
+        if(c) c.textContent=`${n} από ${payers.length} πλήρωσαν${tot}`;
     }
     // ο αριθμός στον τίτλο: «12» ή «3 από 12» όταν υπάρχει φίλτρο
     const cEl=document.getElementById('playersCount');
@@ -7946,7 +7968,7 @@ function memberRow(p,nowKey){
         <div class="bg-slate-50 rounded-xl border overflow-hidden mb-2">
             <div class="flex items-center justify-between gap-2 p-3 cursor-pointer" onclick="togglePlayer('${p.id}')">
                 <div class="min-w-0">
-                    <p class="text-sm font-semibold flex items-center gap-1.5 min-w-0"><span class="truncate">${p.name}</span>${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}<span id="powe-${p.id}" class="${tabOwed[p.id]?'':'hidden'} text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">${tabOwed[p.id]?'Χρωστάει '+eur(tabOwed[p.id]):''}</span></p>
+                    <p class="text-sm font-semibold flex items-center gap-1.5 min-w-0"><span class="truncate">${p.name}</span>${subM&&subAmtOn()&&subAmt(p)!=null?`<span class="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">${subAmt(p)}€/μήνα</span>`:''}${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}<span id="powe-${p.id}" class="${tabOwed[p.id]?'':'hidden'} text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">${tabOwed[p.id]?'Χρωστάει '+eur(tabOwed[p.id]):''}</span></p>
                     <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
                     <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`${gM} παιχνίδια · `:''}${tM} προπονήσεις</p>
                 </div>
@@ -8049,6 +8071,7 @@ function playerDetailHtml(id){
         const smLabel=new Date(sm+'-01T12:00:00').toLocaleDateString(cbLocale(),{month:'long',year:'numeric'});
         subBox=`<div class="bg-white rounded-lg p-2 mb-2">
             <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Συνδρομή <span style="text-transform:capitalize">${smLabel}</span></p>
+            ${subAmtOn()?`<div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] text-slate-500">Μηνιαίο ποσό:</span><input type="number" min="0" step="0.5" inputmode="decimal" value="${(playersFull.find(x=>x.id===id)||{}).sub_amount??''}" placeholder="${club.sub_fee!=null?club.sub_fee:'€'}" onchange="setSubAmount('${id}',this.value).then(ok=>ok&&renderPlayers())" class="w-20 px-2 py-1 border border-slate-200 rounded-lg text-xs"><span class="text-[11px] text-slate-400">€</span></div>`:''}
             ${subPlansOn()?`<div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] text-slate-500">Πακέτο:</span>${planSelect((playersFull.find(x=>x.id===id)||{}).sub_plan_id, `setPlayerPlan('${id}',this.value)`)}</div>`:''}
             ${sd
                 ? `<p class="text-[11px] text-green-700">✓ Πληρώθηκε ${cbFmtDate(sd.paid_date)}${sd.note?' · '+cbEsc(sd.note):''}</p>`
@@ -8242,7 +8265,8 @@ function renderGroups(){
         const open=openGroups.has(g.id);
         const chips=g.memberIds.map(pid=>{
             const p=playersFull.find(x=>x.id===pid); if(!p) return '';
-            return `<span class="inline-flex items-center gap-1 bg-white border rounded-full px-2 py-0.5 text-xs">${p.name}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
+            const fa=subAmtOn()?subAmt(p):null;
+            return `<span class="inline-flex items-center gap-1 bg-white border rounded-full px-2 py-0.5 text-xs">${p.name}${fa!=null?`<span class="text-[10px] text-green-700 font-semibold">${fa}€</span>`:''}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
         }).join('');
         const opts=playersFull.filter(p=>!g.memberIds.includes(p.id)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
         return `
@@ -8264,6 +8288,7 @@ function renderGroups(){
             ${(subPlansOn() && g.memberIds.length)?`<div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500">Πακέτο συνδρομής για όλο το γκρουπ:</span>${planSelect('__none', `setGroupPlan('${g.id}',this.value)`, '<option value="__keep" selected>— διάλεξε —</option>')}</div>`:''}
             <div class="flex gap-2 mb-3">
                 <select id="am-${g.id}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"><option value="">+ Προσθήκη μέλους…</option>${opts}</select>
+                ${subAmtOn()?`<input id="amf-${g.id}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="€/μήνα" title="Μηνιαία συνδρομή" class="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">`:''}
                 <button onclick="addMember('${g.id}')" class="bg-brand text-white px-3 rounded-lg text-xs font-bold">OK</button>
             </div>
             <div class="bg-slate-50 rounded-lg p-2 mb-2">
@@ -8321,6 +8346,8 @@ async function addMember(gid){
     if(!pid) return;
     const { error }=await sb.from('group_members').insert({ group_id:gid, player_id:pid });
     if(error) return cbToast('Σφάλμα','err');
+    const fv=document.getElementById('amf-'+gid)?.value;
+    if(fv!=null && String(fv).trim()!=='') await setSubAmount(pid,fv);
     await loadGroups(); renderGroups();
 }
 async function removeMember(gid,pid){
