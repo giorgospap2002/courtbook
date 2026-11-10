@@ -445,6 +445,14 @@
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-indigo-500" id="statWeek">0</p><p id="statWeekTr" class="text-[10px] text-purple-500 font-semibold"></p><p class="text-[10px] text-slate-400 mt-0.5 font-medium">Επόμενες 7μ.</p></div>
             <div class="bg-white rounded-2xl p-4 shadow-sm text-center"><p class="text-2xl font-extrabold text-amber-500" id="statTotal">0</p><p id="statTotalTr" class="text-[10px] text-purple-500 font-semibold"></p><p id="statTotalLbl" class="text-[10px] text-slate-400 mt-0.5 font-medium">Αυτόν τον μήνα</p></div>
         </div>
+        <div id="chCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <p class="font-bold">⏱️ Ώρες προπονητών</p>
+                <input type="month" id="chMonth" onchange="renderCoachHours('ch')" class="px-2 py-1.5 border border-slate-200 rounded-xl text-xs">
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Πόσες ώρες, σε ποιο γκρουπ και πότε. Από το πρόγραμμα του μήνα, με ακυρώσεις, αντικαταστάσεις και έκτακτες.</p>
+            <div id="chBox"></div>
+        </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-4">
                 <p id="upcomingTitle" class="font-bold">Επερχόμενες Κρατήσεις</p>
@@ -472,14 +480,6 @@
                 <input type="date" id="adminDate" class="px-3 py-1.5 border border-slate-200 rounded-xl text-xs">
             </div>
             <div id="adminDayList"></div>
-        </div>
-        <div id="chCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
-            <div class="flex items-center justify-between gap-2 mb-1">
-                <p class="font-bold">⏱️ Ώρες προπονητών</p>
-                <input type="month" id="chMonth" onchange="renderCoachHours('ch')" class="px-2 py-1.5 border border-slate-200 rounded-xl text-xs">
-            </div>
-            <p class="text-[11px] text-slate-400 mb-3">Πόσες ώρες, σε ποιο γκρουπ και πότε. Από το πρόγραμμα του μήνα, με ακυρώσεις, αντικαταστάσεις και έκτακτες.</p>
-            <div id="chBox"></div>
         </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-2">🔗 Το link του club σου</p>
