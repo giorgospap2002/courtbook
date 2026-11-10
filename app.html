@@ -473,6 +473,14 @@
             </div>
             <div id="adminDayList"></div>
         </div>
+        <div id="chCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <p class="font-bold">⏱️ Ώρες προπονητών</p>
+                <input type="month" id="chMonth" onchange="renderCoachHours('ch')" class="px-2 py-1.5 border border-slate-200 rounded-xl text-xs">
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Πόσες ώρες, σε ποιο γκρουπ και πότε. Από το πρόγραμμα του μήνα, με ακυρώσεις, αντικαταστάσεις και έκτακτες.</p>
+            <div id="chBox"></div>
+        </div>
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-2">🔗 Το link του club σου</p>
             <p class="text-xs text-slate-500 mb-3">Μοιράσου το με τους πελάτες σου</p>
@@ -661,6 +669,14 @@
             <p class="font-bold mb-1">Το πρόγραμμά μου</p>
             <p class="text-[11px] text-slate-400 mb-4">Οι προπονήσεις των γκρουπ σου, ανά μέρα.</p>
             <div id="myScheduleList"></div>
+        </div>
+        <div id="mchCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
+            <div class="flex items-center justify-between gap-2 mb-1">
+                <p class="font-bold">⏱️ Οι ώρες μου</p>
+                <input type="month" id="mchMonth" onchange="renderCoachHours('mch')" class="px-2 py-1.5 border border-slate-200 rounded-xl text-xs">
+            </div>
+            <p class="text-[11px] text-slate-400 mb-3">Οι προπονήσεις σου τον μήνα: πόσες ώρες, σε ποιο γκρουπ και πότε.</p>
+            <div id="mchBox"></div>
         </div>
         <div id="myLessonsCard" class="hidden bg-white rounded-2xl p-5 shadow-sm anim-up">
             <p class="font-bold mb-1">Clinics, ιδιαίτερα & έκτακτες</p>
@@ -975,7 +991,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=c71969c3');
+    const ok=await loadScript('app-i18n.js?v=7ba7bce7');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1718,7 +1734,7 @@ function switchTab(tab){
     if(tab==='roster'||tab==='training') renderRoster();
     if(tab==='athletes') renderAthletesTab();
     if(tab==='top') renderTop();
-    if(tab==='myschedule'){ renderMySchedule(); if(clinicsOn) renderMyLessons(); }
+    if(tab==='myschedule'){ renderMySchedule(); if(clinicsOn) renderMyLessons(); renderCoachHours('mch'); }
     if(tab==='attendance') renderCoachAttendance();
     if(tab==='tournaments') renderTournaments();
     if(tab==='clinics'){ renderLessons(); renderClinics(); }
@@ -2763,17 +2779,83 @@ function toggleBooking(id){ _openBooking = _openBooking===id ? null : id; render
    την ημερομηνία (αναπληρώσεις, ιδιαίτερα). */
 function trainingItemsOnDate(date){
     const out=trainingsOnDate(date).map(t=>({
-        date, start_time:t.start_time, duration_min:t.duration_min, court_id:schedCourt(t,date),
+        date, start_time:t.start_time, duration_min:t.duration_min, court_id:schedCourt(t,date), group_id:t.group_id,
         title:(t.training_groups?.name||'Προπόνηση'),
         coach:(coachSubFor(t.id,date)?.coach || t.coach||t.training_groups?.coach||''), kind:coachSubFor(t.id,date)?'αντικατάσταση':'εβδομαδιαία'
     }));
     trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>out.push({
-        date, start_time:o.start_time, duration_min:o.duration_min, court_id:o.court_id,
+        date, start_time:o.start_time, duration_min:o.duration_min, court_id:o.court_id, group_id:o.group_id,
         title:(o.clinic_id ? 'Clinic: '+o.client_name : o.client_name ? 'Ιδιαίτερο: '+o.client_name : (o.training_groups?.name||'Προπόνηση')),
         coach:(o.coach||o.training_groups?.coach||''),
         kind:(o.clinic_id?'clinic':o.lesson_id?'online':o.makeup_for?'αναπλήρωση':'έκτακτη')
     }));
     return out.sort((a,b)=>a.start_time.localeCompare(b.start_time));
+}
+
+/* ── Ώρες προπονητών ανά μήνα (pilot) ── */
+let _chData={};
+const chFmtH = m => (Math.round(m/6)/10).toLocaleString(cbLocale());
+const chNorm = s => String(s||'').trim().toLowerCase();
+async function renderCoachHours(pfx){
+    const card=document.getElementById(pfx+'Card'), box=document.getElementById(pfx+'Box'); if(!card||!box) return;
+    const mine = pfx==='mch';
+    const on = pilotOn() && (mine ? (isCoach && myCoach) : isOwner);
+    card.classList.toggle('hidden', !on); if(!on) return;
+    const mEl=document.getElementById(pfx+'Month'); if(!mEl.value) mEl.value=cbToday().slice(0,7);
+    const ym=mEl.value, [y,m]=ym.split('-').map(Number), last=ym+'-'+String(new Date(y,m,0).getDate()).padStart(2,'0');
+    let items=trainingItemsRange(ym+'-01', new Date(y,m,0).getDate()).filter(i=>i.coach);
+    if(mine) items=items.filter(i=>chNorm(i.coach)===chNorm(myCoach.name));
+    const gids=[...new Set(items.map(i=>i.group_id).filter(Boolean))];
+    const held=new Set();
+    if(gids.length){
+        const { data }=await sb.from('training_sessions').select('group_id,session_date').in('group_id',gids).gte('session_date',ym+'-01').lte('session_date',last);
+        (data||[]).forEach(r=>held.add(r.group_id+'|'+r.session_date));
+    }
+    const today=cbToday(), by={};
+    items.forEach(i=>{ const c=by[i.coach]=by[i.coach]||{ name:i.coach, done:0, plan:0, n:0, groups:{}, list:[] };
+        const past=i.date<=today; c.n++; if(past) c.done+=i.duration_min; else c.plan+=i.duration_min;
+        const g=c.groups[i.title]=c.groups[i.title]||{ n:0, min:0 }; g.n++; g.min+=i.duration_min;
+        c.list.push({ ...i, past, att: i.group_id && held.has(i.group_id+'|'+i.date) }); });
+    const rows=Object.values(by).sort((a,b)=>(b.done+b.plan)-(a.done+a.plan));
+    _chData[pfx]={ ym, rows };
+    if(!rows.length){ box.innerHTML=`<p class="text-center text-slate-400 text-sm py-4">${mine?'Καμία προπόνηση αυτόν τον μήνα':'Καμία προπόνηση με προπονητή αυτόν τον μήνα'}</p>`; return; }
+    const wd=d=>new Date(d+'T12:00:00').toLocaleDateString(cbLocale(),{ weekday:'short', day:'numeric', month:'numeric' });
+    const tot=rows.reduce((a,c)=>a+c.done+c.plan,0);
+    box.innerHTML=rows.map((c,ci)=>{
+        const groups=Object.entries(c.groups).sort((a,b)=>b[1].min-a[1].min).map(([g,x])=>
+            `<div class="flex justify-between gap-2 text-[11px] py-0.5"><span class="truncate">${cbEsc(g)}</span><span class="text-slate-500 flex-shrink-0">${x.n} × · ${chFmtH(x.min)} ώρ.</span></div>`).join('');
+        const list=c.list.sort((a,b)=>(a.date+a.start_time).localeCompare(b.date+b.start_time)).map(i=>
+            `<div class="flex justify-between gap-2 text-[11px] py-0.5 ${i.past?'':'text-slate-400'}"><span class="truncate">${wd(i.date)} · ${i.start_time} · ${cbEsc(i.title)}${i.kind&&i.kind!=='εβδομαδιαία'?` <span class="text-purple-600">(${cbEsc(i.kind)})</span>`:''}</span>
+             <span class="flex-shrink-0">${i.duration_min}′ ${!i.past?'':i.att?'<span class="text-green-600" title="Πέρασε παρουσιολόγιο">✓</span>':i.group_id?'<span class="text-amber-600" title="Χωρίς παρουσιολόγιο">–</span>':''}</span></div>`).join('');
+        const open=mine||rows.length===1;
+        return `<div class="border rounded-xl mb-2">
+            <div onclick="document.getElementById('${pfx}d${ci}').classList.toggle('hidden')" class="flex items-center justify-between gap-2 p-3 cursor-pointer hover:bg-slate-50 rounded-xl">
+                <div class="min-w-0"><p class="font-semibold text-sm truncate">${cbEsc(c.name)}</p>
+                    <p class="text-[11px] text-slate-500">${c.n} ${c.n===1?'προπόνηση':'προπονήσεις'}${c.plan?` · ${chFmtH(c.plan)} ώρ. ακόμα προγραμματισμένες`:''}</p></div>
+                <span class="text-sm font-extrabold text-brand flex-shrink-0">${chFmtH(c.done)} ώρ.</span>
+            </div>
+            <div id="${pfx}d${ci}" class="${open?'':'hidden'} px-3 pb-3 border-t pt-2">
+                <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Ανά γκρουπ</p>${groups}
+                <p class="text-[10px] font-bold text-slate-500 uppercase mt-2 mb-1">Αναλυτικά</p>${list}
+            </div></div>`; }).join('')
+      + `<div class="flex items-center justify-between gap-2 mt-3">
+            <p class="text-[10px] text-slate-400">Ώρες = όσες έγιναν ως σήμερα. ✓ = πέρασε παρουσιολόγιο · – = όχι ακόμα.</p>
+            ${mine?'':`<button onclick="exportCoachHours('${pfx}')" class="text-xs font-semibold text-brand border border-slate-200 px-3 py-1.5 rounded-lg hover:bg-slate-50 flex-shrink-0">Excel</button>`}
+         </div>`
+      + (mine?'':`<p class="text-[11px] text-slate-500 mt-1">Σύνολο μήνα: <b>${chFmtH(rows.reduce((a,c)=>a+c.done,0))} ώρ.</b> έγιναν${tot>rows.reduce((a,c)=>a+c.done,0)?` · ${chFmtH(rows.reduce((a,c)=>a+c.plan,0))} ώρ. προγραμματισμένες`:''}</p>`);
+}
+function exportCoachHours(pfx){
+    const d=_chData[pfx]; if(typeof XLSX==='undefined' || !d || !d.rows.length) return cbToast('Δεν υπάρχουν δεδομένα','err');
+    const wb=XLSX.utils.book_new();
+    const sum=d.rows.map(c=>({ 'Προπονητής':c.name, 'Προπονήσεις':c.n, 'Ώρες (έγιναν)':Math.round(c.done/6)/10, 'Ώρες (προγραμματισμένες)':Math.round(c.plan/6)/10,
+        ...Object.fromEntries(Object.entries(c.groups).map(([g,x])=>[g, Math.round(x.min/6)/10])) }));
+    const ws1=XLSX.utils.json_to_sheet(sum); ws1['!cols']=[{wch:24},{wch:12},{wch:14},{wch:22}];
+    XLSX.utils.book_append_sheet(wb, ws1, 'Σύνοψη');
+    const det=[]; d.rows.forEach(c=>c.list.forEach(i=>det.push({ 'Προπονητής':c.name, 'Ημερομηνία':i.date, 'Ώρα':i.start_time, 'Λεπτά':i.duration_min,
+        'Γκρουπ':i.title, 'Είδος':i.kind||'', 'Κατάσταση':!i.past?'Προγραμματισμένη':i.att?'Έγινε · παρουσιολόγιο':'Έγινε' })));
+    const ws2=XLSX.utils.json_to_sheet(det); ws2['!cols']=[{wch:24},{wch:12},{wch:7},{wch:7},{wch:24},{wch:14},{wch:22}];
+    XLSX.utils.book_append_sheet(wb, ws2, 'Αναλυτικά');
+    XLSX.writeFile(xlsxLocalize(wb), `${club.slug}-ores-proponiton-${d.ym}.xlsx`);
 }
 
 function trainingItemsRange(fromDate,days){
@@ -2802,6 +2884,7 @@ function trainingCard(it,showDate){
 
 function renderAdmin(){
     if(!bookingsOn) return renderAdminTrainings();
+    renderCoachHours('ch');
     const today=cbToday();
     const wEnd=new Date(); wEnd.setDate(wEnd.getDate()+7); const wStr=cbDateStr(wEnd);
     // Ο τρίτος μετρητής δείχνει ΤΟΝ ΜΗΝΑ, όχι ό,τι έγινε ποτέ — ένα
@@ -2879,6 +2962,7 @@ function renderAdminTrainings(){
                                byDay[d].map(it=>trainingCard(it,false)).join(''))).join('')
         : `<p class="text-center text-slate-400 text-sm py-6">Καμία προπόνηση τις επόμενες 7 μέρες</p>`;
     renderAdminDay();
+    renderCoachHours('ch');
 }
 
 function renderAdminDay(){
