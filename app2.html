@@ -556,14 +556,14 @@ hr,.border-t,.border-b{border-color:var(--line)}
             <div id="boardStats" class="ml-auto flex flex-wrap gap-1.5 text-[11px]"></div>
         </div>
         <div class="flex flex-wrap gap-x-4 gap-y-1 text-[11px] text-slate-500 px-1">
-            <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#3b5bdb"></i>Κράτηση</span>
-            <span class="flex items-center gap-1.5"><i class="bd-dot" style="background:#10b981"></i>Ανοιχτό ματς</span>
+            <span id="bdLeg-book" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#3b5bdb"></i>Κράτηση</span>
+            <span id="bdLeg-open" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#10b981"></i>Ανοιχτό ματς</span>
             <span id="bdLeg-pend" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#f59e0b"></i>Αναμονή πληρωμής</span>
             <span id="bdLeg-train" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#7c3aed"></i>Προπόνηση</span>
             <span id="bdLeg-lesson" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#0d9488"></i>Ιδιαίτερο</span>
             <span id="bdLeg-clinic" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#d97706"></i>Clinic</span>
             <span id="bdLeg-cancel" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#cbd5e1"></i>Ακυρωμένη</span>
-            <span class="ml-auto text-slate-400">Πάτα σε κενό για κράτηση · σε κουτάκι για λεπτομέρειες</span>
+            <span id="bdHint" class="ml-auto text-slate-400">Πάτα σε κενό για κράτηση · σε κουτάκι για λεπτομέρειες</span>
         </div>
         <div class="bg-white rounded-2xl shadow-sm overflow-hidden anim-up"><div id="boardGrid" class="overflow-auto" style="max-height:78vh"></div></div>
         <div id="boardModal" class="hidden fixed inset-0 z-50 bg-black/40 flex items-end sm:items-center justify-center p-3" onclick="if(event.target===this)boardClose()">
@@ -1119,7 +1119,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=3a31ab21');
+    const ok=await loadScript('app-i18n.js?v=c71969c3');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1594,7 +1594,8 @@ async function enterApp(){
         document.getElementById('rosterTabBtn').classList.remove('hidden');
         if(TOP_CLUBS.has(club.slug)) document.getElementById('topTabBtn').classList.remove('hidden');
         document.getElementById('trainingTabBtn').classList.remove('hidden');
-        if(bookingsOn) document.getElementById('boardTabBtn').classList.remove('hidden');
+        // «Όλα τα γήπεδα» δίπλα-δίπλα: και σε σύλλογο μόνο-προπονήσεων (pilot, π.χ. ΑΟΑΠ) — χωρίς κράτηση από τα κενά
+        if(bookingsOn || pilotOn()) document.getElementById('boardTabBtn').classList.remove('hidden');
         // «Αθλητές»: μόνο σε συλλόγους με κρατήσεις ΚΑΙ γκρουπ προπόνησης. Σε σύλλογο μόνο
         // προπονήσεων (π.χ. ΑΟΑΠ) όλοι οι πελάτες είναι αθλητές — οι «Πελάτες» αρκούν.
         if(bookingsOn)
@@ -4143,14 +4144,15 @@ function renderBoard(){
     items.forEach(it=>_boardItems[it.id]=it);
     // υπόμνημα: μόνο ό,τι έχει αυτό το club (όχι clinics / online πληρωμές όπου δεν υπάρχουν)
     const hasTrain=trainingSchedule.length>0 || trainingOverrides.some(o=>o.kind==='extra') || items.some(i=>i.type!=='booking');
-    const leg={ pend: payActive(), train: hasTrain, lesson: hasTrain || clinicsOn, clinic: clinicsOn, cancel: hasTrain };
+    const leg={ book: bookingsOn, open: bookingsOn, pend: payActive(), train: hasTrain, lesson: hasTrain || clinicsOn, clinic: clinicsOn, cancel: hasTrain };
+    { const h=document.getElementById('bdHint'); if(h) h.textContent=bookingsOn?'Πάτα σε κενό για κράτηση · σε κουτάκι για λεπτομέρειες':'Πάτα σε κουτάκι για λεπτομέρειες'; }
     Object.entries(leg).forEach(([k,on])=>{ const el=document.getElementById('bdLeg-'+k); if(el) el.style.display=on?'':'none'; });
     // ── σύνοψη ──
     const live=items.filter(i=>i.type!=='cancelled');
     const nb=live.filter(i=>i.type==='booking').length, nt=live.length-nb;
     const busyMin=live.reduce((a,i)=>a+i.d,0), occ=Math.min(100,Math.round(busyMin/(courts.length*(close-clubOpenMin()))*100));
     const pill=(t,c)=>`<span class="px-2.5 py-1 rounded-full font-bold" style="background:${c}1a;color:${c}">${t}</span>`;
-    document.getElementById('boardStats').innerHTML=pill(`${nb} κρατήσεις`,'#3b5bdb')+(hasTrain?pill(`${nt} προπονήσεις`,'#7c3aed'):'')+pill(`πληρότητα ${occ}%`,'#0f172a');
+    document.getElementById('boardStats').innerHTML=(bookingsOn?pill(`${nb} κρατήσεις`,'#3b5bdb'):'')+(hasTrain?pill(`${nt} προπονήσεις`,'#7c3aed'):'')+pill(`πληρότητα ${occ}%`,'#0f172a');
     // ── πλέγμα ──
     const cols=`56px repeat(${courts.length}, minmax(118px,1fr))`;
     let html=`<div class="bd-wrap" style="grid-template-columns:${cols}">`;
@@ -4166,7 +4168,7 @@ function renderBoard(){
         // κενά → κράτηση (μόνο από τώρα και μετά, και εντός ωραρίου)
         for(let r=0;r<rows;r++){
             const m=open+r*BD_STEP;
-            if(m<clubOpenMin() || m+BD_STEP>close || past || (isToday && m+BD_STEP<=nowM)) continue;
+            if(!bookingsOn || m<clubOpenMin() || m+BD_STEP>close || past || (isToday && m+BD_STEP<=nowM)) continue;
             if(mine.some(i=>i.type!=='cancelled' && i.s<m+BD_STEP && i.s+i.d>m)) continue;
             html+=`<div class="bd-free" style="top:${r*BD_ROW}px;height:${BD_ROW}px" onclick="boardBook('${c.id}','${cbM2T(m)}')" title="${cbEsc(c.name)} · ${cbM2T(m)}"></div>`;
         }
@@ -4186,6 +4188,7 @@ function renderBoard(){
 }
 // κενό κελί → η γνωστή φόρμα κράτησης, έτοιμη για εκείνο το γήπεδο/ώρα
 async function boardBook(court,time){
+    if(!bookingsOn) return;
     document.getElementById('datePicker').value=boardDate;
     document.getElementById('courtPicker').value=court;
     switchTab('booking');
