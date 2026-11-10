@@ -1842,7 +1842,11 @@ function foldPanel(id){
 let _foldT=null;
 function foldAll(){ clearTimeout(_foldT); _foldT=setTimeout(()=>FOLD_TABS.forEach(foldPanel), 60); }
 document.addEventListener('DOMContentLoaded', ()=>{
-    const mo=new MutationObserver(()=>foldAll());
+    // Συγχρονισμένα, όχι με καθυστέρηση: ο observer τρέχει πριν ζωγραφιστεί η οθόνη, άρα μια κάρτα που μόλις
+    // ξαναφτιάχτηκε (π.χ. «Εκκρεμείς αναπληρώσεις») κλείνει ΠΡΙΝ φανεί ανοιχτή — αλλιώς άνοιγε για μια στιγμή
+    // με όλο το περιεχόμενο κι έκλεινε (τρεμόπαιγμα). Το foldCard αλλάζει κάτι μόνο όταν χρειάζεται, οπότε
+    // ο observer ηρεμεί μετά από ένα πέρασμα.
+    const mo=new MutationObserver(()=>FOLD_TABS.forEach(foldPanel));
     FOLD_TABS.forEach(id=>{ const p=document.getElementById(id); if(p) mo.observe(p,{ childList:true, subtree:true, attributes:true, attributeFilter:['class'] }); });
 });
 
@@ -8402,7 +8406,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='a1acffdad2', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='ffb9937ec3', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
