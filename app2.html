@@ -863,6 +863,7 @@ hr,.border-t,.border-b{border-color:var(--line)}
                 </div>
                 <p class="text-right flex-shrink-0"><span id="planTotal" class="text-2xl font-extrabold"></span><span class="text-xs text-slate-400"> /μήνα</span></p>
             </div>
+            <div id="planPromo" class="hidden mt-3 px-3 py-2.5 rounded-xl bg-green-50 border border-green-200 text-green-800 text-sm font-semibold flex items-center justify-between gap-3"></div>
             <div id="planLines" class="mt-4 divide-y divide-slate-100"></div>
             <a id="planUpgrade" href="mailto:info@court-book.gr" class="block w-full mt-4 text-center py-2.5 rounded-xl border border-slate-200 text-sm font-semibold hover:bg-slate-50">Αλλαγή πακέτου ή extras</a>
             <p class="text-[10px] text-slate-400 mt-2 text-center">Γράψε μας τι θέλεις να αλλάξει και το ενεργοποιούμε.</p>
@@ -1119,7 +1120,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=02743041');
+    const ok=await loadScript('app-i18n.js?v=bf9a3d2f');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -4302,6 +4303,10 @@ function renderPlanCard(){
     card.classList.remove('hidden');
     const p=cbPlanPrice(club), A=CB_PLANS.addons, max=cbTierMax(club.plan_tier);
     document.getElementById('planTotal').textContent=p.total+'€';
+    // ειδική τιμή για αυτό το club (π.χ. «80€ τον πρώτο χρόνο») — η κανονική τιμή μένει ορατή
+    const pr=document.getElementById('planPromo'), promo=club.promo_price!=null ? Number(club.promo_price) : null;
+    if(pr){ pr.classList.toggle('hidden', promo==null);
+        if(promo!=null) pr.innerHTML=`<span>Η τιμή σου${club.promo_note?' '+cbEsc(club.promo_note):''}</span><span class="text-lg font-extrabold whitespace-nowrap">${promo}€<span class="text-xs font-semibold"> /μήνα</span></span>`; }
     const st=club.plan_status||'active';
     document.getElementById('planStatus').textContent = st==='trial'
         ? 'Δωρεάν δοκιμή'+(club.trial_until?' έως '+cbFmtDate(club.trial_until):'')
@@ -8411,7 +8416,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='ab066e7262', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='00929ec922', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
