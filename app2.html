@@ -1166,6 +1166,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     if (error || !data) { await startLang(); document.getElementById('notFound').classList.remove('hidden'); return; }
     club = data;
     prettyUrl();
+    installMeta();
     await startLang();
     // σύλλογος σε παύση από το CourtBook: κλειδωμένος για όλους μέχρι να ενεργοποιηθεί ξανά
     if (club.plan_status === 'paused') { showPaused(); return; }
@@ -1231,6 +1232,21 @@ function buildSlots() {
     SLOTS = [];
     const step = club.slot_minutes || 30;
     for (let m = clubOpenMin(); m < clubCloseMin(); m += step) SLOTS.push(cbM2T(m));
+}
+
+/* «Εγκατάσταση» στην αρχική οθόνη του κινητού (Κοινοποίηση → Προσθήκη στην οθόνη Αφετηρίας / Chrome ⋮ → Εγκατάσταση):
+   ανοίγει σαν εφαρμογή, σε πλήρη οθόνη, κατευθείαν στο club, με το όνομά του κάτω από το εικονίδιο.
+   Μόνο στα νέα clubs — οι παλιοί σύλλογοι δεν αλλάζουν χωρίς έγκριση. */
+function installMeta(){
+    if(!club || OLD_CLUBS.has(club.slug) || document.querySelector('link[rel="manifest"]')) return;
+    const add=(tag,attrs)=>{ const e=document.createElement(tag); Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v)); document.head.appendChild(e); };
+    add('meta',{ name:'apple-mobile-web-app-capable', content:'yes' });
+    add('meta',{ name:'mobile-web-app-capable', content:'yes' });
+    add('meta',{ name:'apple-mobile-web-app-title', content:club.name });
+    add('meta',{ name:'apple-mobile-web-app-status-bar-style', content:'default' });
+    const man={ name:club.name, short_name:club.name, start_url:location.origin+clubHref(), scope:location.origin+'/', display:'standalone',
+        background_color:'#f4f2ee', theme_color:'#f4f2ee', icons:[{ src:location.origin+'/img/apple-touch-icon.png', sizes:'180x180', type:'image/png', purpose:'any' }] };
+    add('link',{ rel:'manifest', href:'data:application/manifest+json,'+encodeURIComponent(JSON.stringify(man)) });
 }
 
 function applyBranding() {
@@ -8416,7 +8432,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='00929ec922', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='7af7cca931', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
