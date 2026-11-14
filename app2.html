@@ -684,9 +684,30 @@ hr,.border-t,.border-b{border-color:var(--line)}
         <div class="bg-white rounded-2xl p-5 shadow-sm anim-up">
             <div class="flex items-center justify-between mb-1">
                 <p class="font-bold">Πελάτες / Μέλη <span id="playersCount" class="text-slate-400 font-normal text-sm"></span></p>
-                <button id="playersToggleBtn" onclick="togglePlayers()" class="text-brand text-sm font-semibold">Άνοιγμα</button>
+                <div class="flex items-center gap-3">
+                    <button id="newMemberBtn" onclick="toggleNewMember()" class="hidden text-brand text-sm font-semibold">+ Νέο μέλος</button>
+                    <button id="playersToggleBtn" onclick="togglePlayers()" class="text-brand text-sm font-semibold">Άνοιγμα</button>
+                </div>
             </div>
-            <p class="text-[11px] text-slate-400">Τα μέλη μπαίνουν εδώ <b>αυτόματα όταν κάνουν εγγραφή</b>. Κλικ σε μέλος για αναλυτικά στοιχεία.</p>
+            <p id="rosterHint" class="text-[11px] text-slate-400">Τα μέλη μπαίνουν εδώ <b>αυτόματα όταν κάνουν εγγραφή</b>. Κλικ σε μέλος για αναλυτικά στοιχεία.</p>
+            <div id="newMemberBox" class="hidden mt-4 bg-slate-50 border border-slate-200 rounded-xl p-3">
+                <p class="text-xs font-bold mb-2">Νέο μέλος</p>
+                <div class="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                    <input id="nmName" placeholder="Ονοματεπώνυμο *" class="px-3 py-2 border border-slate-200 rounded-xl text-sm">
+                    <input id="nmEmail" type="email" autocomplete="off" placeholder="Email (για να μπαίνει στην εφαρμογή)" class="px-3 py-2 border border-slate-200 rounded-xl text-sm">
+                    <input id="nmPhone" type="tel" placeholder="Τηλέφωνο" class="px-3 py-2 border border-slate-200 rounded-xl text-sm">
+                    <div class="flex gap-2">
+                        <select id="nmGroup" onchange="nmGroupFee()" class="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white"></select>
+                        <input id="nmFee" type="number" min="0" step="0.5" inputmode="decimal" placeholder="€/μήνα" class="w-24 px-3 py-2 border border-slate-200 rounded-xl text-sm">
+                    </div>
+                </div>
+                <label class="flex items-center gap-2 text-xs text-slate-600 mt-2"><input type="checkbox" id="nmAccount" checked> Φτιάξε και λογαριασμό με κωδικό (για να τον δώσεις στο μέλος)</label>
+                <p class="text-[10px] text-slate-400 mt-1">Αδέρφια: γράψε το όνομα του κάθε παιδιού και το email του γονιού — ο γονιός βλέπει όλα τα παιδιά με έναν κωδικό.</p>
+                <div class="flex gap-2 mt-3">
+                    <button onclick="addNewMember()" class="flex-1 bg-brand text-white py-2 rounded-xl text-sm font-bold">Προσθήκη μέλους</button>
+                    <button onclick="toggleNewMember(false)" class="px-4 bg-white border border-slate-200 text-slate-600 py-2 rounded-xl text-sm font-semibold">Άκυρο</button>
+                </div>
+            </div>
 
             <div id="playersBox" class="hidden mt-4">
                 <div class="flex flex-wrap items-center gap-2 mb-2">
@@ -1160,7 +1181,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=0c6dd5e7');
+    const ok=await loadScript('app-i18n.js?v=bd26184e');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1676,6 +1697,9 @@ async function enterApp(){
         document.getElementById('settingsTabBtn').classList.remove('hidden');
         if(pilotOn()){
             document.getElementById('inventoryTabBtn').classList.remove('hidden');
+            document.getElementById('newMemberBtn').classList.remove('hidden');
+            const rh=document.getElementById('rosterHint');
+            if(rh) rh.innerHTML='Η γραμματεία περνά τα μέλη με <b>«+ Νέο μέλος»</b> (ή γράφονται μόνοι τους). Κλικ σε μέλος για αναλυτικά στοιχεία.';
             // ο αριθμός στις «Προπονήσεις» να φαίνεται χωρίς να ανοίξει η καρτέλα
             setTimeout(()=>Promise.all([playersFull.length?0:loadPlayersFull(), groups.length?0:loadGroups()]).then(()=>renderAbsAlerts('absAlerts')).catch(()=>{}), 1500);
         }
@@ -8272,6 +8296,44 @@ function playerDetailHtml(id){
         </div>`;
 }
 
+/* ── Νέο μέλος από τη γραμματεία (pilot) ── */
+async function toggleNewMember(show){
+    const box=document.getElementById('newMemberBox');
+    const open = show===undefined ? box.classList.contains('hidden') : show;
+    box.classList.toggle('hidden', !open);
+    if(!open) return;
+    if(!groups.length) await loadGroups();
+    const sel=document.getElementById('nmGroup');
+    sel.innerHTML=`<option value="">Χωρίς γκρουπ</option>`+[...groups].sort((a,b)=>(a.name||'').localeCompare(b.name||'','el'))
+        .map(g=>`<option value="${g.id}">${cbEsc(g.name)}</option>`).join('');
+    document.getElementById('nmName').focus();
+}
+function nmGroupFee(){
+    const g=groups.find(x=>x.id===document.getElementById('nmGroup').value), f=document.getElementById('nmFee');
+    if(g && g.sub_amount!=null && !f.value) f.value=g.sub_amount;
+}
+async function addNewMember(){
+    const v=k=>document.getElementById(k).value.trim();
+    const name=v('nmName'); if(!name) return cbToast('Βάλε όνομα','err');
+    const email=v('nmEmail').toLowerCase()||null, phone=v('nmPhone')||null, gid=v('nmGroup')||null, feeRaw=v('nmFee').replace(',','.');
+    if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return cbToast('Λάθος email','err');
+    const fold=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
+    const dup=playersFull.find(p=>fold(p.name)===fold(name) && (!email || (p.email||'').toLowerCase()===email));
+    if(dup && !confirm('Υπάρχει ήδη μέλος «'+dup.name+'»'+(dup.email?' ('+dup.email+')':'')+'. Να προστεθεί ξανά;')) return;
+    const row={ club_id:club.id, name, email, phone, approved:true };
+    if(feeRaw!=='' && !isNaN(Number(feeRaw))) row.sub_amount=Number(feeRaw);
+    const { data:ins, error }=await sb.from('players').insert(row).select('id').single();
+    if(error) return cbToast('Σφάλμα','err');
+    if(gid){ const { error:ge }=await sb.from('group_members').insert({ group_id:gid, player_id:ins.id }); if(ge) cbToast('Δεν μπήκε στο γκρουπ','err'); }
+    const wantAcc=email && document.getElementById('nmAccount').checked;
+    ['nmName','nmEmail','nmPhone','nmFee'].forEach(k=>document.getElementById(k).value='');
+    cbToast('✓ Προστέθηκε: '+name);
+    await Promise.all([loadPlayersFull(), loadGroups()]);
+    _acct=null; renderPlayers();
+    if(wantAcc) createMemberAccount(ins.id);
+    document.getElementById('nmName').focus();
+}
+
 /* ── Λογαριασμός μέλους (pilot): τον φτιάχνει η γραμματεία, δίνει email + κωδικό στο μέλος ── */
 let _acct=null;
 async function loadPlayerAccount(id, fresh){
@@ -8811,7 +8873,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='b236b012e8', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='30e967ff07', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
