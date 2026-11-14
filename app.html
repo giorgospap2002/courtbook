@@ -544,13 +544,16 @@
             <p class="text-[11px] text-slate-400">Τα μέλη μπαίνουν εδώ <b>αυτόματα όταν κάνουν εγγραφή</b>. Κλικ σε μέλος για αναλυτικά στοιχεία.</p>
 
             <div id="playersBox" class="hidden mt-4">
-                <div class="flex items-center gap-2 mb-2">
-                    <input id="rosterSearch" placeholder="Αναζήτηση ονόματος…" oninput="renderPlayers()" class="flex-1 min-w-0 px-3 py-2 border border-slate-200 rounded-xl text-sm">
+                <div class="flex flex-wrap items-center gap-2 mb-2">
+                    <input id="rosterSearch" placeholder="Αναζήτηση ονόματος…" oninput="renderPlayers()" class="flex-1 min-w-[55%] px-3 py-2 border border-slate-200 rounded-xl text-sm">
                     <select id="rosterLevel" onchange="renderPlayers()" class="max-w-[45%] px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
                         <option value="">Όλα τα επίπεδα</option>
                         <option value="0">Επ. 0</option><option value="1">Επ. 1</option><option value="2">Επ. 2</option>
                         <option value="3">Επ. 3</option><option value="4">Επ. 4</option><option value="5">Επ. 5</option>
                         <option value="none">Χωρίς επίπεδο</option>
+                    </select>
+                    <select id="rosterOwe" onchange="renderPlayers()" class="hidden flex-1 min-w-[40%] px-3 py-2 border border-slate-200 rounded-xl text-sm bg-white">
+                        <option value="">Όλοι</option><option value="owe">Χρωστάνε</option><option value="ok">Δεν χρωστάνε</option>
                     </select>
                 </div>
                 <div class="flex gap-2 mb-4">
@@ -562,6 +565,7 @@
                     <input type="month" id="subMonth" onchange="renderPlayers()" class="px-2 py-1.5 border border-slate-200 rounded-lg text-xs">
                     <span id="subsCount" class="text-[11px] text-slate-400"></span>
                 </div>
+                <div id="oweSummary" class="hidden mb-3 px-3 py-2.5 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 text-xs"></div>
                 <div id="playersList" class="space-y-2"></div>
             </div>
         </div>
@@ -990,7 +994,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=bc552583');
+    const ok=await loadScript('app-i18n.js?v=b1e9a04c');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -7879,6 +7883,21 @@ function renderPlayers(){
     if(q) list=list.filter(p=>(p.name||'').toLowerCase().includes(q));
     if(lv==='none') list=list.filter(p=>p.level==null);
     else if(lv!=='') list=list.filter(p=>String(p.level)===lv);
+    // ποιοι χρωστάνε (συνδρομή μήνα + καρτέλα) — νέα clubs
+    const owSel=document.getElementById('rosterOwe'), owOn=newFeature() && isOwner;
+    if(owSel) owSel.classList.toggle('hidden', !owOn);
+    const ow=owOn ? (owSel.value||'') : '';
+    if(ow==='owe') list=list.filter(p=>owedOf(p).total>0).sort((a,b)=>owedOf(b).total-owedOf(a).total);
+    else if(ow==='ok') list=list.filter(p=>!owedOf(p).total);
+    const osum=document.getElementById('oweSummary');
+    if(osum){
+        const debtors=owOn ? members.filter(p=>owedOf(p).total>0) : [];
+        const tSub=debtors.reduce((a,p)=>a+owedOf(p).sub,0), tTab=debtors.reduce((a,p)=>a+owedOf(p).tab,0);
+        osum.classList.toggle('hidden', !owOn || !debtors.length);
+        if(owOn && debtors.length) osum.innerHTML=`<b>${debtors.length} ${debtors.length===1?'χρωστάει':'χρωστάνε'} · ${eur(tSub+tTab)}</b>`
+            +`<span class="text-amber-800/80"> — ${[tSub?'συνδρομές '+eur(tSub):'', tTab?'καρτέλα '+eur(tTab):''].filter(Boolean).join(' + ')}</span>`
+            +(ow!=='owe'?` <button onclick="document.getElementById('rosterOwe').value='owe';renderPlayers()" class="ml-1 underline font-semibold">Δες τους</button>`:'');
+    }
     el.innerHTML = !members.length
         ? `<p class="text-slate-400 text-sm py-1">Κανένα μέλος ακόμα. Οι εγγεγραμμένοι χρήστες μπαίνουν αυτόματα.</p>`
         : (list.length ? list.map(p=>memberRow(p,nowKey)).join('')
@@ -7917,7 +7936,7 @@ function memberRow(p,nowKey){
         <div class="bg-slate-50 rounded-xl border overflow-hidden mb-2">
             <div class="flex items-center justify-between gap-2 p-3 cursor-pointer" onclick="togglePlayer('${p.id}')">
                 <div class="min-w-0">
-                    <p class="text-sm font-semibold flex items-center gap-1.5 min-w-0"><span class="truncate">${p.name}</span>${subM&&subAmtOn()&&subAmt(p)!=null?`<span class="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">${subAmt(p)}€/μήνα</span>`:''}${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}<span id="powe-${p.id}" title="${oweTitle(owedOf(p))}" class="${owedOf(p).total?'':'hidden'} text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">${oweLabel(owedOf(p))}</span></p>
+                    <p class="text-sm font-semibold flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0"><span class="truncate max-w-full">${p.name}</span>${subM&&subAmtOn()&&subAmt(p)!=null?`<span class="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">${subAmt(p)}€/μήνα</span>`:''}${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}<span id="powe-${p.id}" title="${oweTitle(owedOf(p))}" class="${owedOf(p).total?'':'hidden'} text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">${oweLabel(owedOf(p))}</span></p>
                     <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
                     <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`🎾 ${gM} · `:''}🏃 ${tM}</p>
                 </div>
