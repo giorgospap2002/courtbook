@@ -1138,7 +1138,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=b1e9a04c');
+    const ok=await loadScript('app-i18n.js?v=658d998b');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -8308,6 +8308,24 @@ async function renameGroup(id){
     cbToast('Αποθηκεύτηκε'); await loadGroups(); renderGroups();
 }
 
+// συνδρομή ανά γκρουπ: γράφεται στο γκρουπ (πρόταση για νέα μέλη) και σε όλα τα τωρινά μέλη
+async function setGroupFee(gid){
+    const g=groups.find(x=>x.id===gid); if(!g) return;
+    const raw=(document.getElementById('gfee-'+gid)?.value||'').trim();
+    const n=raw===''?null:Number(raw.replace(',','.'));
+    if(n!=null && !(n>=0)) return cbToast('Λάθος ποσό','err');
+    const diff=g.memberIds.filter(pid=>{ const p=playersFull.find(x=>x.id===pid); return p && p.sub_amount!=null && Number(p.sub_amount)!==n; }).length;
+    const msg = n==null
+        ? `Να σβηστεί η συνδρομή του «${g.name}» και από τα ${g.memberIds.length} μέλη του;`
+        : `Συνδρομή ${n}€/μήνα σε όλα τα μέλη του «${g.name}» (${g.memberIds.length});`+(diff?`\n\n${diff} ${diff===1?'έχει':'έχουν'} τώρα άλλο ποσό και θα αλλάξει.`:'');
+    if(!confirm(msg)) return;
+    const { error }=await sb.from('training_groups').update({ sub_amount:n }).eq('id',gid);
+    if(error) return cbToast('Δεν αποθηκεύτηκε','err');
+    if(g.memberIds.length){ const { error:e2 }=await sb.from('players').update({ sub_amount:n }).in('id',g.memberIds); if(e2) return cbToast('Δεν αποθηκεύτηκε στα μέλη','err'); }
+    g.sub_amount=n; g.memberIds.forEach(pid=>{ const p=playersFull.find(x=>x.id===pid); if(p) p.sub_amount=n; });
+    cbToast(n==null?'✓ Σβήστηκε':`✓ ${n}€/μήνα σε ${g.memberIds.length} μέλη`);
+    renderGroups(); if(typeof renderPlayers==='function') renderPlayers();
+}
 async function setGroupMax(gid, v){
     const n = v==='' ? null : parseInt(v,10);
     if(n!==null && !(n>=1 && n<=500)) return cbToast('Βάλε αριθμό από 1 έως 500','err');
@@ -8385,7 +8403,7 @@ function renderGroups(){
             const p=playersFull.find(x=>x.id===pid); if(!p) return '';
             const fa=subAmtOn()?subAmt(p):null;
             const pd=payM ? payments.has(pid+'|'+payM) : null;
-            return `<span class="inline-flex items-center gap-1 bg-white border ${pd===true?'border-green-300':''} rounded-full px-2 py-0.5 text-xs">${pd===true?'<span class="text-green-600 font-bold" title="Πλήρωσε τον μήνα">✓</span>':pd===false?'<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" title="Δεν έχει πληρώσει τον μήνα"></span>':''}${p.name}${fa!=null?`<span class="text-[10px] text-green-700 font-semibold">${fa}€</span>`:''}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
+            return `<span class="inline-flex items-center gap-1 bg-white border ${pd===true?'border-green-300':''} rounded-full px-2 py-0.5 text-xs">${pd===true?'<span class="text-green-600 font-bold" title="Πλήρωσε τον μήνα">✓</span>':pd===false?'<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" title="Δεν έχει πληρώσει τον μήνα"></span>':''}${p.name}${fa!=null?`<span class="text-[10px] text-slate-500 font-semibold">${fa}€</span>`:''}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
         }).join('');
         const opts=playersFull.filter(p=>!g.memberIds.includes(p.id)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
         return `
@@ -8403,11 +8421,12 @@ function renderGroups(){
                 <button onclick="delGroup('${g.id}')" class="text-red-500 text-[11px] font-semibold border border-red-200 px-2 py-1 rounded-lg hover:bg-red-50">Διαγραφή</button>
             </div>
             ${pilotOn()?`<div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500">Όριο αθλητών:</span><input type="number" min="1" max="500" value="${g.max_athletes||''}" placeholder="—" onchange="setGroupMax('${g.id}',this.value)" class="w-16 px-2 py-1 border border-slate-200 rounded-lg text-xs"><span class="text-[10px] text-slate-400">αναπλήρωση μόνο αν υπάρχει ελεύθερη θέση</span></div>`:''}
+            ${subAmtOn()?`<div class="flex items-center gap-2 mb-2 flex-wrap"><span class="text-[11px] text-slate-500">Συνδρομή γκρουπ:</span><input id="gfee-${g.id}" type="number" min="0" step="0.5" inputmode="decimal" value="${g.sub_amount??''}" placeholder="€" class="w-16 px-2 py-1 border border-slate-200 rounded-lg text-xs"><span class="text-[11px] text-slate-400">€/μήνα</span><button onclick="setGroupFee('${g.id}')" class="text-[11px] font-semibold text-brand border border-slate-200 px-2 py-1 rounded-lg hover:bg-slate-50">Εφαρμογή σε όλα τα μέλη</button></div>`:''}
             <div class="flex flex-wrap gap-1.5 mb-2">${chips||'<span class="text-[11px] text-slate-400">Χωρίς μέλη</span>'}</div>
             ${(subPlansOn() && g.memberIds.length)?`<div class="flex items-center gap-2 mb-2"><span class="text-[11px] text-slate-500">Πακέτο συνδρομής για όλο το γκρουπ:</span>${planSelect('__none', `setGroupPlan('${g.id}',this.value)`, '<option value="__keep" selected>— διάλεξε —</option>')}</div>`:''}
             <div class="flex gap-2 mb-3">
                 <select id="am-${g.id}" class="flex-1 px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"><option value="">+ Προσθήκη μέλους…</option>${opts}</select>
-                ${subAmtOn()?`<input id="amf-${g.id}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="€/μήνα" title="Μηνιαία συνδρομή" class="w-20 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">`:''}
+                ${subAmtOn()?`<input id="amf-${g.id}" type="number" min="0" step="0.5" inputmode="decimal" placeholder="€/μήνα" title="Μηνιαία συνδρομή" value="${g.sub_amount??''}" class="w-16 px-2 py-1.5 border border-slate-200 rounded-lg text-xs">`:''}
                 <button onclick="addMember('${g.id}')" class="bg-brand text-white px-3 rounded-lg text-xs font-bold">OK</button>
             </div>
             <div class="bg-slate-50 rounded-lg p-2 mb-2">
@@ -8517,7 +8536,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='3bb766dcb2', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='bb372c4ef1', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
