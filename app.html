@@ -416,6 +416,7 @@
             <span id="bdLeg-open" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#10b981"></i>Ανοιχτό ματς</span>
             <span id="bdLeg-pend" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#f59e0b"></i>Αναμονή πληρωμής</span>
             <span id="bdLeg-train" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#7c3aed"></i>Προπόνηση</span>
+            <span id="bdLeg-trial" class="flex items-center gap-1.5" style="display:none"><i class="bd-dot" style="background:#db2777"></i>Δοκιμαστικό</span>
             <span id="bdLeg-lesson" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#0d9488"></i>Ιδιαίτερο</span>
             <span id="bdLeg-clinic" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#d97706"></i>Clinic</span>
             <span id="bdLeg-cancel" class="flex items-center gap-1.5"><i class="bd-dot" style="background:#cbd5e1"></i>Ακυρωμένη</span>
@@ -643,6 +644,19 @@
                         <select id="lsDur" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
                         <select id="lsCourt" class="col-span-8 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
                         <button id="addLessonBtn" class="col-span-4 bg-emerald-600 text-white rounded-lg text-sm font-bold py-2">Προσθήκη</button>
+                    </div>
+                    <div id="trialBox" class="hidden">
+                        <p class="text-[11px] font-bold text-slate-500 uppercase mb-1 mt-5">Δοκιμαστικό</p>
+                        <p class="text-[11px] text-slate-400 mb-2">Για κάποιον που ξεκινά ή ξαναρχίζει: ο προπονητής βλέπει το επίπεδό του. Μία φορά, π.χ. 15 λεπτά.</p>
+                        <div class="grid grid-cols-12 gap-2 mb-2">
+                            <input id="trName" placeholder="Όνομα αθλούμενου" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                            <input id="trCoach" list="trCoachNames" placeholder="Προπονητής" class="col-span-6 px-2 py-2 border border-slate-200 rounded-lg text-sm"><datalist id="trCoachNames"></datalist>
+                            <input id="trDate" type="date" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm">
+                            <select id="trTime" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                            <select id="trDur" class="col-span-4 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                            <select id="trCourt" class="col-span-8 px-2 py-2 border border-slate-200 rounded-lg text-sm bg-white"></select>
+                            <button onclick="addTrial()" class="col-span-4 bg-pink-600 text-white rounded-lg text-sm font-bold py-2">Προσθήκη</button>
+                        </div>
                     </div>
                 </div>
 
@@ -976,7 +990,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=bf9a3d2f');
+    const ok=await loadScript('app-i18n.js?v=0230542d');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1779,9 +1793,9 @@ async function loadDay(silent){
             const label = o.clinic_id
                 ? 'Clinic: '+o.client_name+(o.coach?(' / '+o.coach):'')
                 : o.client_name
-                ? 'Ιδιαίτερο: '+o.client_name+(o.coach?(' / '+o.coach):'')
+                ? (o.trial?'Δοκιμαστικό: ':'Ιδιαίτερο: ')+o.client_name+(o.coach?(' / '+o.coach):'')
                 : (o.training_groups?.name||'Προπόνηση')+(oCoach?(' · '+oCoach):'')+(o.makeup_for?' (αναπλήρωση)':' (έκτακτη)');
-            dayData.push({ court_id:o.court_id, start_time:o.start_time, duration_min:o.duration_min, mine:false, training:true, group_name:label, override_id:o.id });
+            dayData.push({ court_id:o.court_id, start_time:o.start_time, duration_min:o.duration_min, mine:false, training:true, group_name:label, override_id:o.id, trial:!!o.trial });
         });
     }catch(e){ if(!silent)cbToast('Σφάλμα φόρτωσης','err'); }
     finally{ if(!silent)cbLoading(false); renderSlots(); }
@@ -1870,7 +1884,7 @@ async function courtClash(court_id, date, start_time, duration_min, ign={}){
     if(t) return `προπόνηση «${t.training_groups?.name||'γκρουπ'}» ${t.start_time}`;
     const o=trainingOverrides.find(o=>o.kind==='extra' && o.the_date===date && o.court_id===court_id
         && o.id!==ign.overrideId && hits(o.start_time,o.duration_min));
-    if(o) return o.client_name ? `ιδιαίτερο «${o.client_name}» ${o.start_time}` : `προπόνηση «${o.training_groups?.name||'γκρουπ'}» ${o.start_time}`;
+    if(o) return o.client_name ? `${o.trial?'δοκιμαστικό':'ιδιαίτερο'} «${o.client_name}» ${o.start_time}` : `προπόνηση «${o.training_groups?.name||'γκρουπ'}» ${o.start_time}`;
     return null;
 }
 // ρωτάει πριν γράψει πάνω σε πιασμένο γήπεδο· true = προχώρα
@@ -1896,6 +1910,11 @@ function covering(court_id,time){
         if(b.court_id!==court_id) continue;
         const s=cbT2M(b.start_time), e=s+(b.duration_min||60);
         if(tM>=s && tM<e) return b;
+    }
+    // π.χ. δοκιμαστικό 17:15–17:30: δεν «καλύπτει» το 17:00 ούτε το 17:30 — φαίνεται στο μισάωρο όπου ξεκινά
+    if(typeof newFeature==='function' && newFeature()){
+        const step=(club&&club.slot_minutes)||30;
+        for(const b of dayData){ if(b.court_id!==court_id) continue; const s=cbT2M(b.start_time); if(s>tM && s<tM+step) return b; }
     }
     return null;
 }
@@ -1948,8 +1967,8 @@ function renderSlots(){
 
     SLOTS.forEach(time=>{
         const cov=covering(court,time);
-        const isStart=cov && cov.start_time===time;
-        const isCont=cov && cov.start_time!==time;
+        const isStart=cov && cbT2M(cov.start_time)>=cbT2M(time);   // ή ξεκινά μέσα στο μισάωρο (π.χ. δοκιμαστικό 17:15)
+        const isCont=cov && cbT2M(cov.start_time)<cbT2M(time);
         const isPast=date<today || (date===today && slotPast(time));
         const isPick=pickerSlot && pickerSlot.court===court && pickerSlot.time===time;
         const card=document.createElement('div');
@@ -1967,7 +1986,7 @@ function renderSlots(){
                 cov.schedule_id ? `<button onclick="cancelTrainingDate('${cov.schedule_id}','${date}')" class="w-full mt-2 py-1.5 bg-amber-500 text-white text-xs rounded-lg font-semibold hover:bg-amber-600 transition">Ακύρωση αυτής της μέρας</button>`
               : cov.override_id ? `<button onclick="delOverride('${cov.override_id}')" class="w-full mt-2 py-1.5 bg-red-500 text-white text-xs rounded-lg font-semibold hover:bg-red-600 transition">Διαγραφή</button>`
               : '') : '';
-            card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${time}</span><span class="text-[10px] bg-purple-100 text-purple-700 px-1.5 py-0.5 rounded-full font-medium">Προπόνηση</span></div>
+            card.innerHTML=`<div class="flex items-center justify-between mb-1"><span class="font-bold text-sm text-slate-700">${cov.start_time!==time?cov.start_time:time}</span><span class="text-[10px] ${cov.trial?'bg-pink-100 text-pink-700':'bg-purple-100 text-purple-700'} px-1.5 py-0.5 rounded-full font-medium">${cov.trial?'Δοκιμαστικό':'Προπόνηση'}</span></div>
                 <p class="text-xs font-medium text-purple-700 truncate">${cov.group_name}</p>
                 <p class="text-[11px] text-slate-400">${cov.duration_min}′${isOwner&&cov.schedule_id?' · επαναλαμβανόμενη':''}</p>${ownerBtn}`;
         } else if(isStart){
@@ -2791,9 +2810,9 @@ function trainingItemsOnDate(date){
     }));
     trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>out.push({
         date, start_time:o.start_time, duration_min:o.duration_min, court_id:o.court_id,
-        title:(o.clinic_id ? 'Clinic: '+o.client_name : o.client_name ? 'Ιδιαίτερο: '+o.client_name : (o.training_groups?.name||'Προπόνηση')),
+        title:(o.clinic_id ? 'Clinic: '+o.client_name : o.client_name ? (o.trial?'Δοκιμαστικό: ':'Ιδιαίτερο: ')+o.client_name : (o.training_groups?.name||'Προπόνηση')),
         coach:(o.coach||o.training_groups?.coach||''),
-        kind:(o.clinic_id?'clinic':o.lesson_id?'online':o.makeup_for?'αναπλήρωση':'έκτακτη')
+        kind:(o.clinic_id?'clinic':o.lesson_id?'online':o.trial?'δοκιμαστικό':o.makeup_for?'αναπλήρωση':'έκτακτη')
     }));
     return out.sort((a,b)=>a.start_time.localeCompare(b.start_time));
 }
@@ -3963,7 +3982,7 @@ async function renderMyLessons(){
         ...(l.data||[]).filter(x=>x.status==='confirmed' || (x.pay_until && new Date(x.pay_until)>new Date()))
             .map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id, title:'Ιδιαίτερο: '+x.name, sub:x.phone||'', tel:x.phone, cls:'bg-green-50 border-green-100' })),
         ...(o.data||[]).map(x=>({ d:x.the_date, t:x.start_time, dur:x.duration_min, court:x.court_id,
-            title:x.client_name?'Ιδιαίτερο: '+x.client_name:'Έκτακτη: '+(x.training_groups?.name||''), sub:'', cls:x.client_name?'bg-green-50 border-green-100':'bg-purple-50 border-purple-100' })),
+            title:x.client_name?(x.trial?'Δοκιμαστικό: ':'Ιδιαίτερο: ')+x.client_name:'Έκτακτη: '+(x.training_groups?.name||''), sub:'', cls:x.trial?'bg-pink-50 border-pink-100':x.client_name?'bg-green-50 border-green-100':'bg-purple-50 border-purple-100' })),
         ...subs.map(({o,s})=>({ d:o.the_date, t:s.start_time, dur:s.duration_min, court:schedCourt(s,o.the_date),
             title: o.coach_id===myCoach.id ? 'Αντικατάσταση: '+(s.training_groups?.name||'') : `${s.training_groups?.name||''} — σε αντικαθιστά ${o.coach||''}`,
             sub:'', cls:'bg-amber-50 border-amber-100' }))
@@ -4005,9 +4024,9 @@ function renderBoard(){
             sub:[b.pay_status==='paid'?'✓ πληρώθηκε':pend?'πληρώνει τώρα':'', openM?`ψάχνει ${b.open_spots}`:'', b.split_pay?'μοιρασμένη':''].filter(Boolean).join(' · ') });
     });
     trainingItemsOnDate(date).forEach((t,i)=>{
-        const k=t.kind==='clinic'?'clinic':(t.kind==='online'||/^Ιδιαίτερο/.test(t.title))?'lesson':'training';
+        const k=t.kind==='clinic'?'clinic':t.kind==='δοκιμαστικό'?'trial':(t.kind==='online'||/^Ιδιαίτερο/.test(t.title))?'lesson':'training';
         items.push({ id:'t'+i, court:t.court_id, s:cbT2M(t.start_time), d:t.duration_min, type:k, t,
-            color: k==='clinic'?'#d97706':k==='lesson'?'#0d9488':'#7c3aed', bg: k==='clinic'?'#fff7ed':k==='lesson'?'#f0fdfa':'#f5f3ff',
+            color: k==='clinic'?'#d97706':k==='trial'?'#db2777':k==='lesson'?'#0d9488':'#7c3aed', bg: k==='clinic'?'#fff7ed':k==='trial'?'#fdf2f8':k==='lesson'?'#f0fdfa':'#f5f3ff',
             title:t.title, sub:[t.coach, t.kind!=='εβδομαδιαία'?t.kind:''].filter(Boolean).join(' · ') });
     });
     // ακυρωμένες εβδομαδιαίες (αχνές — για να φαίνεται ότι το γήπεδο ελευθερώθηκε)
@@ -4018,7 +4037,7 @@ function renderBoard(){
     items.forEach(it=>_boardItems[it.id]=it);
     // υπόμνημα: μόνο ό,τι έχει αυτό το club (όχι clinics / online πληρωμές όπου δεν υπάρχουν)
     const hasTrain=trainingSchedule.length>0 || trainingOverrides.some(o=>o.kind==='extra') || items.some(i=>i.type!=='booking');
-    const leg={ book: bookingsOn, open: bookingsOn, pend: payActive(), train: hasTrain, lesson: hasTrain || clinicsOn, clinic: clinicsOn, cancel: hasTrain };
+    const leg={ trial: items.some(i=>i.type==='trial'), book: bookingsOn, open: bookingsOn, pend: payActive(), train: hasTrain, lesson: hasTrain || clinicsOn, clinic: clinicsOn, cancel: hasTrain };
     { const h=document.getElementById('bdHint'); if(h) h.textContent=bookingsOn?'Πάτα σε κενό για κράτηση · σε κουτάκι για λεπτομέρειες':'Πάτα σε κουτάκι για λεπτομέρειες'; }
     Object.entries(leg).forEach(([k,on])=>{ const el=document.getElementById('bdLeg-'+k); if(el) el.style.display=on?'':'none'; });
     // ── σύνοψη ──
@@ -4090,7 +4109,7 @@ function boardOpen(id){
         actions=`<button onclick="boardClose();switchTab('${i.type==='clinic'?'clinics':'training'}')" class="flex-1 py-2.5 rounded-xl text-sm font-bold border border-slate-200 hover:bg-slate-50">Άνοιγμα στις ${i.type==='clinic'?'Clinics':'Προπονήσεις'}</button>`;
     }
     document.getElementById('boardModalBox').innerHTML=`<div class="flex items-center gap-2 mb-3"><i class="bd-dot" style="background:${i.color};width:12px;height:12px"></i>
-        <p class="font-bold">${i.type==='booking'?'Κράτηση':i.type==='clinic'?'Clinic':i.type==='lesson'?'Ιδιαίτερο':i.type==='cancelled'?'Ακυρωμένη προπόνηση':'Προπόνηση'}</p>
+        <p class="font-bold">${i.type==='booking'?'Κράτηση':i.type==='clinic'?'Clinic':i.type==='lesson'?'Ιδιαίτερο':i.type==='trial'?'Δοκιμαστικό':i.type==='cancelled'?'Ακυρωμένη προπόνηση':'Προπόνηση'}</p>
         <button onclick="boardClose()" class="ml-auto text-slate-400 text-lg leading-none">✕</button></div>${body}<div class="flex gap-2 mt-4">${actions}</div>`;
     document.getElementById('boardModal').classList.remove('hidden');
 }
@@ -4553,6 +4572,18 @@ function renderTschedule(){
     document.getElementById('lsCourt').innerHTML=cSel.innerHTML;
     document.getElementById('lsTime').innerHTML=timeOpts;
     document.getElementById('lsDur').innerHTML=durSel.innerHTML;
+    // δοκιμαστικό: ώρες ανά τέταρτο, μικρές διάρκειες (μόνο νέα clubs)
+    const trBox=document.getElementById('trialBox');
+    if(trBox){ trBox.classList.toggle('hidden', !newFeature());
+        if(newFeature()){
+            const q=[]; for(let m=clubBaseOpen(); m<clubBaseClose(); m+=15) q.push(cbM2T(m));
+            const keepT=document.getElementById('trTime').value;
+            document.getElementById('trTime').innerHTML=q.map(t=>`<option value="${t}">${t}</option>`).join('');
+            if(keepT) document.getElementById('trTime').value=keepT;
+            const tdur=document.getElementById('trDur'); if(!tdur.options.length) tdur.innerHTML=[15,30,45,60].map(m=>`<option value="${m}">${m}′</option>`).join('');
+            const tc=document.getElementById('trCourt'), keepC=tc.value; tc.innerHTML=courts.map(c=>`<option value="${c.id}">${cbEsc(c.name)}</option>`).join(''); if(keepC) tc.value=keepC;
+            document.getElementById('trCoachNames').innerHTML=coaches.map(c=>`<option value="${cbEsc(c.name)}">`).join('');
+        } }
 
     const el=document.getElementById('tschedList');
     if(!trainingSchedule.length){ el.innerHTML=`<p class="text-slate-400 text-sm py-1">Καμία προπόνηση στο πρόγραμμα ακόμα</p>`; }
@@ -4616,7 +4647,7 @@ function renderTschedule(){
             detail=[s?.training_groups?.name||'Προπόνηση', `${tschedCoach(s||{})||'—'} → ${o.coach||'—'}`].filter(Boolean).join(' · ');
         } else if(o.client_name){
             when=`${cbFmtDate(o.the_date)} ${o.start_time||''}`;
-            type=o.clinic_id?'Clinic':'Ιδιαίτερο'; color=o.clinic_id?'text-orange-600':'text-emerald-600';
+            type=o.clinic_id?'Clinic':o.trial?'Δοκιμαστικό':'Ιδιαίτερο'; color=o.clinic_id?'text-orange-600':o.trial?'text-pink-600':'text-emerald-600';
             detail=[o.client_name+(o.coach?` (${o.coach})`:''), cName].filter(Boolean).join(' · ');
         } else {
             const oc=o.coach||o.training_groups?.coach||'';
@@ -5116,6 +5147,26 @@ async function addXtrain(){
     if(error) return cbToast('Σφάλμα','err');
     document.getElementById('xtDate').value=''; document.getElementById('xtTime').value=''; document.getElementById('xtCoach').value='';
     cbToast('Προστέθηκε έκτακτη');
+    await loadTrainingSchedule(); renderTschedule(); if(activeTab==='booking') loadDay(true);
+}
+
+async function addTrial(){
+    const name=document.getElementById('trName').value.trim();
+    const coach=document.getElementById('trCoach').value.trim();
+    const court_id=document.getElementById('trCourt').value;
+    const the_date=document.getElementById('trDate').value;
+    const start_time=document.getElementById('trTime').value;
+    const duration_min=parseInt(document.getElementById('trDur').value);
+    if(!name) return cbToast('Βάλε το όνομα του αθλούμενου','err');
+    if(!court_id||!the_date||!start_time||!duration_min) return cbToast('Συμπλήρωσε όλα τα πεδία','err');
+    if(!await confirmFreeCourt(court_id, the_date, start_time, duration_min)) return;
+    const k=coach.toLowerCase(), coach_id=(coaches.find(c=>c.name.trim().toLowerCase()===k)||{}).id||null;
+    if(!await coachBusyOk(coach_id, the_date, start_time, duration_min)) return;
+    const { error }=await sb.from('training_overrides').insert({ club_id:club.id, court_id, the_date, start_time, duration_min, kind:'extra', trial:true,
+        coach:coach||null, client_name:name, ...(coach_id?{coach_id}:{}) });
+    if(error) return cbToast('Σφάλμα','err');
+    document.getElementById('trName').value=''; document.getElementById('trCoach').value=''; document.getElementById('trDate').value='';
+    cbToast('Προστέθηκε δοκιμαστικό');
     await loadTrainingSchedule(); renderTschedule(); if(activeTab==='booking') loadDay(true);
 }
 
