@@ -2334,7 +2334,8 @@ function bfClear(){ pickerBookFor=null; const chip=document.getElementById('bfCh
 
 async function loadFindable(){
     const row=document.getElementById('umFindRow'); if(!row) return;
-    if(isOwner || isCoach || !club){ row.classList.add('hidden'); return; }
+    // χωρίς κρατήσεις δεν υπάρχει αναζήτηση συμπαίκτη (νέα clubs μόνο-προπονήσεων)
+    if(isOwner || isCoach || !club || (club.bookings_enabled===false && newFeature())){ row.classList.add('hidden'); return; }
     const { data, error }=await sb.rpc('my_findable',{ p_club_id:club.id });
     if(error || data===null){ row.classList.add('hidden'); return; }
     document.getElementById('umFind').checked = data!==false; row.classList.remove('hidden');

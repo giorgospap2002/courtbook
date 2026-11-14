@@ -2482,7 +2482,8 @@ function bfClear(){ pickerBookFor=null; const chip=document.getElementById('bfCh
 
 async function loadFindable(){
     const row=document.getElementById('umFindRow'); if(!row) return;
-    if(isOwner || isCoach || !club){ row.classList.add('hidden'); return; }
+    // χωρίς κρατήσεις δεν υπάρχει αναζήτηση συμπαίκτη (νέα clubs μόνο-προπονήσεων)
+    if(isOwner || isCoach || !club || (club.bookings_enabled===false && newFeature())){ row.classList.add('hidden'); return; }
     const { data, error }=await sb.rpc('my_findable',{ p_club_id:club.id });
     if(error || data===null){ row.classList.add('hidden'); return; }
     document.getElementById('umFind').checked = data!==false; row.classList.remove('hidden');
@@ -8553,7 +8554,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='2905bfdb58', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='2b51458094', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
