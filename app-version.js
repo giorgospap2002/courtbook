@@ -1,1 +1,1 @@
-window.CB_APP_VERSION='a8b23fc41c';
+window.CB_APP_VERSION='b236b012e8';
