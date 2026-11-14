@@ -581,7 +581,7 @@ hr,.border-t,.border-b{border-color:var(--line)}
         </div>
         <div id="dailyCard" class="hidden bg-white rounded-2xl p-4 shadow-sm anim-up flex items-center gap-2 flex-wrap">
             <p class="font-bold text-sm">Αναφορά ημέρας</p>
-            <span class="text-[11px] text-slate-400">έσοδα, συνδρομές και οφειλές της μέρας</span>
+            <span id="dailyHint" class="text-[11px] text-slate-400">έσοδα, συνδρομές και οφειλές της μέρας</span>
             <input type="date" id="dailyDate" class="px-3 py-1.5 border border-slate-200 rounded-lg text-xs ml-auto">
             <button onclick="exportDaily()" class="bg-green-600 text-white px-4 py-2 rounded-lg text-sm font-bold hover:bg-green-700 transition">Κατέβασε</button>
         </div>
@@ -1134,7 +1134,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=0230542d');
+    const ok=await loadScript('app-i18n.js?v=1f6e160f');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1731,6 +1731,8 @@ function applyClubMode(){
     if(t1) t1.textContent='Επερχόμενες Προπονήσεις';
     const t2=document.getElementById('statTotalLbl');
     if(t2) t2.textContent='Στο πρόγραμμα';
+    const dh=document.getElementById('dailyHint');
+    if(dh && newFeature()) dh.textContent='συνδρομές που πληρώθηκαν και ποιοι χρωστάνε';
     const eh=document.getElementById('exportHint');
     if(eh) eh.textContent='προπονήσεις του μήνα';
     // Τα φίλτρα γηπέδου/προπονητή αφορούν προπονήσεις, όχι κρατήσεις.
@@ -3277,9 +3279,11 @@ async function exportDaily(){
         // ── συνδρομές που πληρώθηκαν τη μέρα ──
         const feeOf=pid=>{ const p=playersFull.find(x=>x.id===pid); if(p&&p.sub_amount!=null) return Number(p.sub_amount); const pp=p&&p.sub_plan_id?(pl.data||[]).find(x=>x.id===p.sub_plan_id):null;
                            return pp ? Number(pp.price) : (club.sub_fee!=null ? Number(club.sub_fee) : null); };
+        if(newFeature() && subsOn && !groups.length) await loadGroups();
+        const grpOf=pid=>groups.filter(g=>(g.memberIds||[]).includes(pid)).map(g=>g.name).join(', ');
         const SUB=(mp.data||[]).filter(r=>r.paid_date===d).map(r=>{ const m=/([\d]+(?:[.,]\d+)?)\s*€/.exec(r.note||''); const amt=m?Number(m[1].replace(',','.')):feeOf(r.player_id);
             const on=/stripe|online/i.test(r.note||'');
-            return { 'Αθλητής':pName(r.player_id), 'Μήνας':r.month, 'Ποσό (€)':amt==null?'':money(amt), 'Τρόπος':on?'Online':'Στη γραμματεία', 'Σχόλιο':r.note||'' }; });
+            return { 'Αθλητής':pName(r.player_id), ...(newFeature()?{ 'Γκρουπ':grpOf(r.player_id) }:{}), 'Μήνας':r.month, 'Ποσό (€)':amt==null?'':money(amt), 'Τρόπος':on?'Online':'Στη γραμματεία', 'Σχόλιο':r.note||'' }; });
         // ── καρτέλα πελάτη ──
         const tab=tb.error?[]:(tb.data||[]);
         const TABP=tab.filter(t=>t.paid && t.paid_at===d).map(t=>({ 'Πελάτης':pName(t.player_id), 'Περιγραφή':t.text||'', 'Ποσό (€)':money(t.amount) }));
@@ -3306,15 +3310,14 @@ async function exportDaily(){
             ...(subsOn ? [['Συνδρομές που πληρώθηκαν', SUB.length, (SUB.length && SUB.every(r=>r['Ποσό (€)']==='')) ? '' : sSum]] : []),
             ['Χρεώσεις καρτέλας που εξοφλήθηκαν', TABP.length, tSum],
             ['ΣΥΝΟΛΟ ΗΜΕΡΑΣ', '', total],
-            ['από αυτά online με κάρτα', '', online],
-            ['στο ταμείο του club', '', money(total-online)],
+            ...((newFeature() && !club.payments_enabled) ? [] : [['από αυτά online με κάρτα', '', online], ['στο ταμείο του club', '', money(total-online)]]),
             [],
             ['Οφειλές', 'Πλήθος', 'Ποσό (€)'],
             ['Ανεξόφλητες χρεώσεις καρτέλας', owTab.length, sum(owTab,'Ποσό (€)')],
             ...(subsOn ? [['Συνδρομές μήνα που δεν πληρώθηκαν', owSub.length, (owSub.length && owSub.every(r=>r['Ποσό (€)']==='')) ? '' : sum(owSub,'Ποσό (€)')]] : []),
             [],
             ...((subsOn && [...SUB,...owSub].some(r=>r['Ποσό (€)']==='')) ? [['Οι συνδρομές χωρίς ποσό δεν έχουν ορισμένο ποσό ή πακέτο συνδρομής — μετράνε στο πλήθος, όχι στο σύνολο.']] : []),
-            ['Κρατήσεις, ιδιαίτερα και clinics μετράνε με την ημέρα που παίζονται· συνδρομές και καρτέλα με την ημέρα πληρωμής.']
+            [(newFeature() && !bookingsOn && !clinicsOn) ? 'Οι συνδρομές μετράνε με την ημέρα που πληρώθηκαν.' : 'Κρατήσεις, ιδιαίτερα και clinics μετράνε με την ημέρα που παίζονται· συνδρομές και καρτέλα με την ημέρα πληρωμής.']
         ];
         const wb=XLSX.utils.book_new();
         const s0=XLSX.utils.aoa_to_sheet(aoa); s0['!cols']=[{wch:44},{wch:12},{wch:14}];
@@ -8348,17 +8351,20 @@ function renderGroups(){
 
     el.innerHTML=list.map(g=>{
         const open=openGroups.has(g.id);
+        const payM=(newFeature() && subsOn && isOwner) ? subMonthValue() : null;
+        const paidN=payM ? g.memberIds.filter(pid=>payments.has(pid+'|'+payM)).length : 0;
         const chips=g.memberIds.map(pid=>{
             const p=playersFull.find(x=>x.id===pid); if(!p) return '';
             const fa=subAmtOn()?subAmt(p):null;
-            return `<span class="inline-flex items-center gap-1 bg-white border rounded-full px-2 py-0.5 text-xs">${p.name}${fa!=null?`<span class="text-[10px] text-green-700 font-semibold">${fa}€</span>`:''}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
+            const pd=payM ? payments.has(pid+'|'+payM) : null;
+            return `<span class="inline-flex items-center gap-1 bg-white border ${pd===true?'border-green-300':''} rounded-full px-2 py-0.5 text-xs">${pd===true?'<span class="text-green-600 font-bold" title="Πλήρωσε τον μήνα">✓</span>':pd===false?'<span class="w-1.5 h-1.5 rounded-full bg-amber-400 inline-block" title="Δεν έχει πληρώσει τον μήνα"></span>':''}${p.name}${fa!=null?`<span class="text-[10px] text-green-700 font-semibold">${fa}€</span>`:''}<button onclick="removeMember('${g.id}','${pid}')" class="text-red-400">✕</button></span>`;
         }).join('');
         const opts=playersFull.filter(p=>!g.memberIds.includes(p.id)).map(p=>`<option value="${p.id}">${p.name}</option>`).join('');
         return `
         <div class="border rounded-xl">
             <div onclick="toggleGroup('${g.id}')" class="flex items-center justify-between gap-2 p-3 cursor-pointer select-none hover:bg-slate-50 rounded-xl">
                 <div class="min-w-0">
-                    <p class="font-bold text-sm flex items-center gap-1.5 min-w-0"><span class="truncate">${g.name}</span><span class="text-[10px] ${pilotOn()&&g.max_athletes&&g.memberIds.length>g.max_athletes?'text-red-500':'text-slate-400'} font-normal flex-shrink-0">(${g.memberIds.length}${pilotOn()&&g.max_athletes?'/'+g.max_athletes:''} μέλη)</span><button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px] flex-shrink-0"><svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button></p>
+                    <p class="font-bold text-sm flex items-center gap-1.5 min-w-0"><span class="truncate">${g.name}</span><span class="text-[10px] ${pilotOn()&&g.max_athletes&&g.memberIds.length>g.max_athletes?'text-red-500':'text-slate-400'} font-normal flex-shrink-0">(${g.memberIds.length}${pilotOn()&&g.max_athletes?'/'+g.max_athletes:''} μέλη)</span>${payM&&g.memberIds.length?`<span class="text-[10px] font-semibold flex-shrink-0 ${paidN===g.memberIds.length?'text-green-600':'text-amber-600'}">· ${paidN}/${g.memberIds.length} πλήρωσαν</span>`:''}<button onclick="event.stopPropagation();renameGroup('${g.id}')" class="text-slate-300 hover:text-brand text-[11px] flex-shrink-0"><svg class="w-3.5 h-3.5 inline" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 20h4L19 9l-4-4L4 16z"/><path d="M14 6l4 4"/></svg></button></p>
                     <p class="text-[11px] text-slate-500 mt-0.5 truncate">${g.coach?('Προπονητής: '+g.coach):'Χωρίς προπονητή'}</p>
                 </div>
                 <span id="gchev-${g.id}" class="text-slate-400 text-[10px] flex-shrink-0 transition-transform" style="${open?'transform:rotate(180deg)':''}">▼</span>
@@ -8483,7 +8489,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='86224e9b2a', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='57ccefebc5', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
