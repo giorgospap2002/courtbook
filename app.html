@@ -557,7 +557,10 @@
                         <input id="nmFee" type="number" min="0" step="0.5" inputmode="decimal" placeholder="€/μήνα" class="w-24 px-3 py-2 border border-slate-200 rounded-xl text-sm">
                     </div>
                 </div>
-                <label class="flex items-center gap-2 text-xs text-slate-600 mt-2"><input type="checkbox" id="nmAccount" checked> Φτιάξε και λογαριασμό με κωδικό (για να τον δώσεις στο μέλος)</label>
+                <div class="flex flex-wrap items-center gap-2 mt-2">
+                    <label class="flex items-center gap-2 text-xs text-slate-600"><input type="checkbox" id="nmAccount" checked onchange="nmPass.disabled=!this.checked"> Φτιάξε και λογαριασμό με κωδικό</label>
+                    <input id="nmPass" autocomplete="new-password" placeholder="Κωδικός (κενό = αυτόματος)" class="flex-1 min-w-[180px] px-3 py-1.5 border border-slate-200 rounded-xl text-sm">
+                </div>
                 <p class="text-[10px] text-slate-400 mt-1">Αδέρφια: γράψε το όνομα του κάθε παιδιού και το email του γονιού — ο γονιός βλέπει όλα τα παιδιά με έναν κωδικό.</p>
                 <div class="flex gap-2 mt-3">
                     <button onclick="addNewMember()" class="flex-1 bg-brand text-white py-2 rounded-xl text-sm font-bold">Προσθήκη μέλους</button>
@@ -1037,7 +1040,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=bd26184e');
+    const ok=await loadScript('app-i18n.js?v=98de6912');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -8168,6 +8171,7 @@ async function addNewMember(){
     const v=k=>document.getElementById(k).value.trim();
     const name=v('nmName'); if(!name) return cbToast('Βάλε όνομα','err');
     const email=v('nmEmail').toLowerCase()||null, phone=v('nmPhone')||null, gid=v('nmGroup')||null, feeRaw=v('nmFee').replace(',','.');
+    const np=v('nmPass'); if(email && document.getElementById('nmAccount').checked && np && np.length<6) return cbToast('Ο κωδικός θέλει τουλάχιστον 6 χαρακτήρες','err');
     if(email && !/^[^@\s]+@[^@\s]+\.[^@\s]+$/.test(email)) return cbToast('Λάθος email','err');
     const fold=x=>String(x||'').normalize('NFD').replace(/[̀-ͯ]/g,'').toLowerCase().trim();
     const dup=playersFull.find(p=>fold(p.name)===fold(name) && (!email || (p.email||'').toLowerCase()===email));
@@ -8177,12 +8181,12 @@ async function addNewMember(){
     const { data:ins, error }=await sb.from('players').insert(row).select('id').single();
     if(error) return cbToast('Σφάλμα','err');
     if(gid){ const { error:ge }=await sb.from('group_members').insert({ group_id:gid, player_id:ins.id }); if(ge) cbToast('Δεν μπήκε στο γκρουπ','err'); }
-    const wantAcc=email && document.getElementById('nmAccount').checked;
-    ['nmName','nmEmail','nmPhone','nmFee'].forEach(k=>document.getElementById(k).value='');
+    const wantAcc=email && document.getElementById('nmAccount').checked, pass=document.getElementById('nmPass').value.trim();
+    ['nmName','nmEmail','nmPhone','nmFee','nmPass'].forEach(k=>document.getElementById(k).value='');
     cbToast('✓ Προστέθηκε: '+name);
     await Promise.all([loadPlayersFull(), loadGroups()]);
     _acct=null; renderPlayers();
-    if(wantAcc) createMemberAccount(ins.id);
+    if(wantAcc) createMemberAccount(ins.id, false, pass);
     document.getElementById('nmName').focus();
 }
 
@@ -8205,13 +8209,14 @@ async function loadPlayerAccount(id, fresh){
         <button onclick="createMemberAccount('${id}')" class="${btn} bg-brand text-white">🔑 Δημιουργία λογαριασμού</button></div>`;
     box.innerHTML=`<p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Λογαριασμός</p>`+html;
 }
-async function createMemberAccount(id, reset){
+async function createMemberAccount(id, reset, password){
     const p=playersFull.find(x=>x.id===id)||{};
     if(reset && !confirm('Νέος κωδικός για «'+(p.name||'')+'»; Ο παλιός δεν θα ισχύει πια.')) return;
     cbToast('Δημιουργία…');
-    const { data, error }=await sb.functions.invoke('club-member-account',{ body:{ player_id:id, reset:!!reset } });
+    const { data, error }=await sb.functions.invoke('club-member-account',{ body:{ player_id:id, reset:!!reset, ...(password?{ password }:{}) } });
     let d=data;
     if(error){ try{ d=await error.context.json(); }catch(e){ d={ error:'x' }; } }
+    if(d?.error==='bad_password') return cbToast('Ο κωδικός θέλει τουλάχιστον 6 χαρακτήρες','err');
     if(d?.error==='no_email') return cbToast('Βάλε πρώτα email στην καρτέλα','err');
     if(d?.error==='not_resettable') return cbToast('Έχει ήδη μπει ή ο λογαριασμός χρησιμοποιείται κι αλλού: «Ξέχασα τον κωδικό» από τη σελίδα εισόδου','err');
     if(d?.exists){ cbToast(d.signed_in?'Έχει ήδη λογαριασμό και έχει μπει':'Έχει ήδη λογαριασμό με αυτό το email'); return loadPlayerAccount(id,true); }
@@ -8226,7 +8231,7 @@ function showCredentials(name,email,pw,slug){
     ov.className='fixed inset-0 bg-black/50 z-50 flex items-end sm:items-center justify-center p-0 sm:p-4';
     ov.innerHTML=`<div class="bg-white w-full sm:max-w-md p-5 shadow-xl">
         <p class="font-bold text-lg mb-1">🔑 Ο λογαριασμός είναι έτοιμος</p>
-        <p class="text-[11px] text-slate-500 mb-3">Δώσε αυτά τα στοιχεία στο μέλος (μήνυμα, WhatsApp ή χαρτί). Ο κωδικός δεν θα ξαναφανεί.</p>
+        <p class="text-[11px] text-slate-500 mb-3">Δώσε αυτά τα στοιχεία στο μέλος (μήνυμα, WhatsApp ή χαρτί). Ο κωδικός δεν θα ξαναφανεί (αν τον ξεχάσει πριν μπει: «Νέος κωδικός» στην καρτέλα του).</p>
         <div class="bg-slate-50 rounded-xl p-3 text-sm space-y-1 mb-3">
             <p><span class="text-slate-500 text-xs">Μέλος:</span> <b>${cbEsc(name)}</b></p>
             <p><span class="text-slate-500 text-xs">Είσοδος:</span> <b>${cbEsc(link)}</b></p>
