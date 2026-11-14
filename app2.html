@@ -8084,7 +8084,7 @@ function memberRow(p,nowKey){
         <div class="bg-slate-50 rounded-xl border overflow-hidden mb-2">
             <div class="flex items-center justify-between gap-2 p-3 cursor-pointer" onclick="togglePlayer('${p.id}')">
                 <div class="min-w-0">
-                    <p class="text-sm font-semibold flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0"><span class="truncate max-w-full">${p.name}</span>${subM&&subAmtOn()&&subAmt(p)!=null?`<span class="text-[10px] bg-green-50 text-green-700 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0">${subAmt(p)}€/μήνα</span>`:''}${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}<span id="powe-${p.id}" title="${oweTitle(owedOf(p))}" class="${owedOf(p).total?'':'hidden'} text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">${oweLabel(owedOf(p))}</span></p>
+                    <p class="text-sm font-semibold flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0"><span class="truncate max-w-full">${p.name}</span>${subM&&subAmtOn()&&subAmt(p)!=null?`<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0" title="Μηνιαία συνδρομή">${subAmt(p)}€/μήνα</span>`:''}${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}<span id="powe-${p.id}" title="${oweTitle(owedOf(p))}" class="${owedOf(p).total?'':'hidden'} text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">${oweLabel(owedOf(p))}</span></p>
                     <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
                     <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`${gM} παιχνίδια · `:''}${tM} προπονήσεις</p>
                 </div>
@@ -8517,7 +8517,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='568757fb46', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='3bb766dcb2', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
