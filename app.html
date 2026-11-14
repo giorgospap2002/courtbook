@@ -254,18 +254,18 @@
         </div>
         <div class="text-sm text-slate-600 space-y-3 leading-relaxed">
             <p><b class="text-slate-800">Ποιος επεξεργάζεται τα δεδομένα σου</b><br>
-               Το <span id="pvClub">club</span>, μέσω της πλατφόρμας κρατήσεων CourtBook.</p>
+               <span id="pvArt">Το </span><span id="pvClub">club</span>, μέσω της πλατφόρμας <span id="pvKind">κρατήσεων </span>CourtBook.</p>
 
-            <p><b class="text-slate-800">Τι κρατάμε</b><br>
+            <p id="pvWhat"><b class="text-slate-800">Τι κρατάμε</b><br>
                Ονοματεπώνυμο, email, τηλέφωνο, και το ιστορικό των κρατήσεων και των προπονήσεών σου.
                Αν γράψεις σχόλιο σε κράτηση, το βλέπει το club.</p>
 
-            <p><b class="text-slate-800">Γιατί</b><br>
+            <p id="pvWhy"><b class="text-slate-800">Γιατί</b><br>
                Αποκλειστικά για να λειτουργεί η κράτηση γηπέδου: να ξέρει το club ποιος έκλεισε,
                να σε ειδοποιεί για αλλαγές, και να οργανώνει τις προπονήσεις.
                <b>Δεν πουλάμε και δεν μοιραζόμαστε</b> τα στοιχεία σου με τρίτους για διαφήμιση.</p>
 
-            <p><b class="text-slate-800">Τι βλέπουν οι άλλοι παίκτες</b><br>
+            <p id="pvOthers"><b class="text-slate-800">Τι βλέπουν οι άλλοι παίκτες</b><br>
                Στα «Ανοιχτά Ματς» φαίνεται το <b>μικρό σου όνομα</b> και το επίπεδό σου.
                Αν ανοίξεις ματς ψάχνοντας συμπαίκτες, τα άλλα <b>μέλη του club</b>
                βλέπουν και το τηλέφωνό σου, ώστε να μπορούν να συνεννοηθούν μαζί σου.
@@ -904,7 +904,7 @@
 
     <footer class="max-w-4xl w-full mx-auto px-4 py-6 text-center">
         <p class="text-[11px] text-slate-400">
-            Τα στοιχεία σου χρησιμοποιούνται μόνο για τη διαχείριση των κρατήσεων.
+            Τα στοιχεία σου χρησιμοποιούνται μόνο για τη διαχείριση των <span id="footKind">κρατήσεων</span>.
             <button onclick="showPrivacy()" class="text-brand font-semibold underline">Πολιτική Απορρήτου</button>
         </p>
         <p class="text-[11px] text-slate-300 mt-2">
@@ -994,7 +994,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=da4d84c8');
+    const ok=await loadScript('app-i18n.js?v=480ec862');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -1393,6 +1393,21 @@ async function saveChangedPassword(){
 function showPrivacy(){
     document.getElementById('pvClub').textContent = club?.name || 'club';
     document.getElementById('pvEmail').textContent = club?.email ? ` (${club.email})` : '';
+    // σύλλογος μόνο προπονήσεων (νέα clubs): το κείμενο μιλά για προπονήσεις, όχι για κρατήσεις & ανοιχτά ματς
+    if(club && club.bookings_enabled===false && newFeature()){
+        document.getElementById('pvKind').textContent='';
+        document.getElementById('pvArt').textContent='';   // «Αθλητικός Όμιλος…» — όχι «Το Αθλητικός…»
+        document.getElementById('pvWhat').innerHTML=`<b class="text-slate-800">Τι κρατάμε</b><br>
+            Ονοματεπώνυμο, email, τηλέφωνο, το γκρουπ σου, το πρόγραμμα, τις παρουσίες και απουσίες σου, τις αναπληρώσεις
+            και τις πληρωμές της συνδρομής σου (ποσό και ημερομηνία — όχι στοιχεία κάρτας).`;
+        document.getElementById('pvWhy').innerHTML=`<b class="text-slate-800">Γιατί</b><br>
+            Αποκλειστικά για να οργανώνει ο όμιλος τις προπονήσεις: ποιος είναι σε ποιο γκρουπ, ποιος ήρθε,
+            οι αναπληρώσεις και οι συνδρομές. <b>Δεν πουλάμε και δεν μοιραζόμαστε</b> τα στοιχεία σου με τρίτους για διαφήμιση.`;
+        document.getElementById('pvOthers').innerHTML=`<b class="text-slate-800">Ποιος τα βλέπει</b><br>
+            Η γραμματεία του ομίλου. Ο <b>προπονητής</b> σου βλέπει μόνο τους αθλητές των δικών του γκρουπ και τις παρουσίες τους·
+            αν έρθεις για αναπλήρωση σε άλλο γκρουπ, το όνομά σου το βλέπει και ο προπονητής εκείνου.
+            Οι άλλοι αθλητές <b>δεν</b> βλέπουν τα στοιχεία σου.`;
+    }
     document.getElementById('privacyModal').classList.remove('hidden');
 }
 function hidePrivacy(){ document.getElementById('privacyModal').classList.add('hidden'); }
@@ -1587,6 +1602,7 @@ function applyClubMode(){
     if(t1) t1.textContent='Επερχόμενες Προπονήσεις';
     const t2=document.getElementById('statTotalLbl');
     if(t2) t2.textContent='Στο πρόγραμμα';
+    const fk=document.getElementById('footKind'); if(fk && newFeature()) fk.textContent='προπονήσεων';
     const dh=document.getElementById('dailyHint');
     if(dh && newFeature()) dh.textContent='συνδρομές που πληρώθηκαν και ποιοι χρωστάνε';
     const eh=document.getElementById('exportHint');
