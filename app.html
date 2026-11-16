@@ -4956,7 +4956,7 @@ async function delGuest(id){ if(!confirm('Να ακυρωθεί αυτή η αν
 /* ══════════════ ΑΝΤΙΚΑΤΑΣΤΑΣΗ ΠΡΟΠΟΝΗΤΗ (μία ημερομηνία) ══════════════
    Πιλοτικά στη Νίκη· αν δουλέψει, ανοίγει για όλους. Γήπεδο και ώρα δεν αλλάζουν —
    μόνο ποιος κάνει εκείνη την προπόνηση. Το βλέπουν γραμματεία, αθλητές και οι δύο προπονητές. */
-const PILOT_CLUBS = new Set(['niki-demo','aoap']);
+const PILOT_CLUBS = new Set(['niki-demo','aoap','akadimia-demo']);
 const pilotOn = () => !!(club && PILOT_CLUBS.has(club.slug));
 const coachSubFor = (sid, date) => trainingOverrides.find(o=>o.kind==='coach' && o.schedule_id===sid && o.the_date===date) || null;
 let subOpenId=null;

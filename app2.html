@@ -5104,7 +5104,7 @@ async function delGuest(id){ if(!confirm('Να ακυρωθεί αυτή η αν
 /* ══════════════ ΑΝΤΙΚΑΤΑΣΤΑΣΗ ΠΡΟΠΟΝΗΤΗ (μία ημερομηνία) ══════════════
    Πιλοτικά στη Νίκη· αν δουλέψει, ανοίγει για όλους. Γήπεδο και ώρα δεν αλλάζουν —
    μόνο ποιος κάνει εκείνη την προπόνηση. Το βλέπουν γραμματεία, αθλητές και οι δύο προπονητές. */
-const PILOT_CLUBS = new Set(['niki-demo','aoap']);
+const PILOT_CLUBS = new Set(['niki-demo','aoap','akadimia-demo']);
 const pilotOn = () => !!(club && PILOT_CLUBS.has(club.slug));
 const coachSubFor = (sid, date) => trainingOverrides.find(o=>o.kind==='coach' && o.schedule_id===sid && o.the_date===date) || null;
 let subOpenId=null;
@@ -8937,7 +8937,7 @@ async function saveAttendance(gid,date){
 }
 </script>
 <script>
-(function(){ var V='f9e6de69c1', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
+(function(){ var V='cdb11c23d8', L=(navigator.language||'el').slice(0,2), T={el:['Νέα έκδοση','Ανανέωση'],de:['Neue Version','Neu laden']}[L]||['New version','Reload'];
   function show(){ if(document.getElementById('cbNewVer')) return; var d=document.createElement('div'); d.id='cbNewVer';
     d.style.cssText='position:fixed;left:50%;bottom:16px;transform:translateX(-50%);z-index:9999;background:#0f172a;color:#fff;padding:10px 12px 10px 16px;border-radius:14px;font:600 13px -apple-system,system-ui,sans-serif;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:12px;align-items:center';
     d.innerHTML=T[0]+' <button style="background:#fff;color:#0f172a;border:0;border-radius:9px;padding:6px 12px;font-weight:700;cursor:pointer">'+T[1]+'</button>';
