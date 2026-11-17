@@ -431,7 +431,7 @@ footer a:hover{color:var(--ink)}
             <img class="logo-mark" src="img/logo.png" alt="">
             <span>Court<span style="color:var(--brand)">Book</span></span>
         </a>
-        <nav class="nav-links hidden lg:flex items-center gap-7" aria-label="Κύρια">
+        <nav class="nav-links hidden lg:flex items-center gap-7" aria-label="Κύρια" data-aria-el="Κύρια" data-aria-en="Main" data-aria-de="Hauptmenü">
             <a href="#features" data-i18n="k1">Δυνατότητες</a>
             <a href="#academy" data-i18n="k2">Ακαδημία</a>
             <a href="#screens" class="nx" data-i18n="k3">Οθόνες</a>
@@ -450,7 +450,7 @@ footer a:hover{color:var(--ink)}
         </div>
     </div>
     <!-- κινητό/tablet: καρτέλες ενοτήτων που κυλούν οριζόντια, με τη σειρά της σελίδας -->
-    <nav class="mtabs lg:hidden" aria-label="Ενότητες">
+    <nav class="mtabs lg:hidden" aria-label="Ενότητες" data-aria-el="Ενότητες" data-aria-en="Sections" data-aria-de="Bereiche">
         <div class="mtabs-in" id="mtabs">
             <a href="#academy" data-i18n="k2">Ακαδημία</a>
             <a href="#screens" data-i18n="k3">Οθόνες</a>
@@ -986,6 +986,7 @@ footer a:hover{color:var(--ink)}
             if (v != null) el.innerHTML = v;
         });
         document.documentElement.lang = lang;
+        document.querySelectorAll('[data-aria-el]').forEach(el => el.setAttribute('aria-label', el.getAttribute('data-aria-' + lang) || el.getAttribute('data-aria-el')));
         const m = t ? M[lang] : EL;
         document.title = m.title;
         if (metaEl) metaEl.content = m.desc;

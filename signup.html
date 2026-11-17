@@ -402,7 +402,7 @@ button.choice.tier .big{font-size:26px;line-height:1}
     <!-- ── πλοήγηση ── -->
     <footer id="navBar" class="navbar">
         <div class="wrap-q flex items-center gap-3">
-            <button type="button" id="backBtn" onclick="qPrev()" class="btn btn-ghost btn-round" data-i18n="back" aria-label="Πίσω">←</button>
+            <button type="button" id="backBtn" onclick="qPrev()" class="btn btn-ghost btn-round" data-i18n="back" aria-label="Πίσω" data-aria-el="Πίσω" data-aria-en="Back" data-aria-de="Zurück">←</button>
             <button type="button" id="skipBtn" onclick="qNext(true)" class="hidden skip" data-i18n="skip">Παράλειψη</button>
             <button type="button" id="nextBtn" onclick="qNext()" class="btn btn-ink flex-1" data-i18n="cont">Συνέχεια →</button>
         </div>
@@ -797,6 +797,7 @@ async function finish(){
     }
     function apply(lang){
         CB_LANG = lang;
+        document.querySelectorAll('[data-aria-el]').forEach(el => el.setAttribute('aria-label', el.getAttribute('data-aria-' + lang) || el.getAttribute('data-aria-el')));
         const t = CB_T[lang] || null;
         nodes.forEach(el => {
             const val = t ? t[el.dataset.i18n] : ORIG[el.dataset.i18n];
