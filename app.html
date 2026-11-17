@@ -1040,7 +1040,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=864be90b');
+    const ok=await loadScript('app-i18n.js?v=818bcfec');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -4326,7 +4326,7 @@ function renderPlanCard(){
         : st==='paused' ? 'Σε παύση' : 'Ενεργό';
     const line=(label,sub,price,on)=>`<div class="flex items-center justify-between gap-3 py-2">
         <div class="min-w-0"><p class="text-sm ${on?'font-semibold':'text-slate-400'}">${label}</p>${sub?`<p class="text-[11px] text-slate-400">${sub}</p>`:''}</div>
-        <span class="text-sm flex-shrink-0 ${on?'font-bold':'text-slate-400'}">${on?price+'€':'+'+price+'€'}</span></div>`;
+        <span class="text-sm flex-shrink-0 ${on?'font-bold':'text-slate-400'}">${on?price+'€':'από '+price+'€'}</span></div>`;
     document.getElementById('planLines').innerHTML =
         line('Διαχείριση Club', max===Infinity ? `Απεριόριστα γήπεδα · έχεις ${courts.length}` : `Έως ${max} γήπεδα · έχεις ${courts.length}`, p.base, true)
       + line('Κρατήσεις γηπέδων', '', A.bookings, p.on.bookings)
