@@ -1065,7 +1065,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=8bb0d74f');
+    const ok=await loadScript('app-i18n.js?v=6266e938');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -2334,6 +2334,10 @@ function applyMemberMode(){
     // ο έλεγχος «Αθλητές» τρέχει ασύγχρονα — ξανακρύψ' το αν εμφανιστεί
     setTimeout(()=>document.getElementById('athletesTabBtn')?.classList.add('hidden'), 2500);
     const r=document.getElementById('rosterTabBtn'); if(r) r.textContent='👥 Μέλη';
+    // «Πελάτες» → «Μέλη», χωρίς φίλτρο επιπέδου
+    const h=document.getElementById('playersCount')?.parentElement; if(h && h.firstChild && h.firstChild.nodeType===3) h.firstChild.textContent='Μέλη ';
+    const all=document.querySelector('[onclick="showAllPlayers()"]'); if(all) all.textContent='Όλα τα μέλη';
+    document.getElementById('rosterLevel')?.classList.add('hidden');
     if(isOwner){ document.getElementById('accountsTabBtn')?.classList.remove('hidden'); mrAccBadge(); }
 }
 // σήμα: πόσοι είναι μπλοκαρισμένοι
@@ -8332,7 +8336,7 @@ function memberRow(p,nowKey){
                 <div class="min-w-0">
                     <p class="text-sm font-semibold flex flex-wrap items-center gap-x-1.5 gap-y-1 min-w-0"><span class="truncate max-w-full">${p.name}</span>${subM&&subAmtOn()&&subAmt(p)!=null?`<span class="text-[10px] bg-slate-100 text-slate-500 px-1.5 py-0.5 rounded-full font-semibold flex-shrink-0" title="Μηνιαία συνδρομή">${subAmt(p)}€/μήνα</span>`:''}${bookingsOn&&p.level!=null?`<span class="text-[10px] bg-blue-100 text-blue-700 px-1.5 py-0.5 rounded-full flex-shrink-0">Επ. ${p.level}</span>`:''}<span id="powe-${p.id}" title="${oweTitle(owedOf(p))}" class="${owedOf(p).total?'':'hidden'} text-[10px] bg-amber-100 text-amber-800 px-1.5 py-0.5 rounded-full font-bold flex-shrink-0">${oweLabel(owedOf(p))}</span></p>
                     <p class="text-[11px] text-slate-400 truncate">${p.phone||'—'}${p.email?` · ${p.email}`:''}</p>
-                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`🎾 ${gM} · `:''}🏃 ${tM}</p>
+                    <p class="text-[11px] text-slate-500 mt-0.5">Αυτόν τον μήνα: ${bookingsOn?`🎾 ${gM}${mrOn()?'':' · '}`:''}${mrOn()?'':`🏃 ${tM}`}</p>
                 </div>
                 <div class="flex items-center gap-2 flex-shrink-0">
                     ${payBtn}${subM?`<button onclick="event.stopPropagation();editPayment('${p.id}')" title="Ημερομηνία & σχόλιο" class="text-slate-400 hover:text-brand text-xs border border-slate-200 px-1.5 py-1 rounded-lg">📝</button>`:''}
@@ -8420,7 +8424,7 @@ function playerDetailHtml(id){
     const mName=k=>{ const [y,m]=k.split('-'); return _GRMONTH[+m-1]+' '+y; };
     // Σύλλογος μόνο-προπονήσεων: δεν παίζονται αγώνες, οπότε η μπάρα
     // δείχνει μόνο τον αριθμό προπονήσεων, όχι το πάντα-μηδενικό 🎾.
-    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">${bookingsOn?`🎾 ${months[k].g} · `:''}🏃 ${months[k].t}</span></div>`).join('')||`<p class="text-[11px] text-slate-400">${bookingsOn?'Καμία δραστηριότητα':'Καμία προπόνηση ακόμα'}</p>`;
+    const mRows=Object.keys(months).sort().reverse().map(k=>`<div class="flex justify-between text-[11px] py-0.5"><span class="text-slate-500">${mName(k)}</span><span class="font-medium">${bookingsOn?`🎾 ${months[k].g}${mrOn()?'':' · '}`:''}${mrOn()?'':`🏃 ${months[k].t}`}</span></div>`).join('')||`<p class="text-[11px] text-slate-400">${bookingsOn?'Καμία δραστηριότητα':'Καμία προπόνηση ακόμα'}</p>`;
     const courtName=cid=>(courts.find(c=>c.id===cid)||{}).name||'';
     const groupName=gid=>(groups.find(g=>g.id===gid)||{}).name||'';
     const gDates=a.games.slice().sort((x,y)=>(y.date+y.time).localeCompare(x.date+x.time)).map(g=>`<div class="text-[11px] text-slate-500 py-0.5">🎾 ${cbFmtDate(g.date)} · ${g.time}${courtName(g.court)?' · '+courtName(g.court):''}</div>`).join('')||'<p class="text-[11px] text-slate-400">—</p>';
@@ -8450,8 +8454,8 @@ function playerDetailHtml(id){
         <div class="bg-white rounded-lg p-2 mb-2">
             <p class="text-[10px] font-bold text-slate-500 uppercase mb-1">Ανά μήνα</p>${mRows}
         </div>
-        <div class="${bookingsOn?'grid grid-cols-2 gap-2':''}">
-            ${bookingsOn?gamesBox:''}${trainBox}
+        <div class="${bookingsOn&&!mrOn()?'grid grid-cols-2 gap-2':''}">
+            ${bookingsOn&&!mrOn()?gamesBox:''}${mrOn()?'':trainBox}
         </div>`;
 }
 
