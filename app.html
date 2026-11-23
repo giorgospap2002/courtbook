@@ -1065,7 +1065,7 @@ async function startLang(){
     const needUi = APP_LANG!=='el';                       // κείμενα της εφαρμογής
     const needContent = !!club && APP_LANG!==clubLang();  // κείμενα που έγραψε ο σύλλογος σε άλλη γλώσσα
     if(!needUi && !needContent) return;
-    const ok=await loadScript('app-i18n.js?v=6266e938');
+    const ok=await loadScript('app-i18n.js?v=02e7d262');
     if(!ok || !window.CBI18N){ if(needUi){ APP_LANG='el'; document.documentElement.lang='el'; } return; }
     if(needUi) localizeNames();
     CBI18N.start(APP_LANG, { ui:needUi });
@@ -2228,7 +2228,7 @@ function renderSlots(){
                 const allFit=durationsForCourt(court).every(d=>durationFits(court,time,d.minutes));
                 const hint = allFit ? '' :
                     `<p class="text-[10px] text-amber-600 mt-1.5">Ελεύθερο μέχρι τις ${gap.until} (${gap.minutes}′) — οι μεγαλύτερες διάρκειες δεν χωράνε.</p>`;
-                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${adminFields}${(mrOn()&&!isOwner)?mrFieldHtml():coPlayerField+openField}${noteField}${exField}${payField}${lx?`<p class="text-[10px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1 mb-2">💡 Μετά τη δύση (${cbM2T(sunsetMin(pDate))}) τα φώτα χρεώνονται αυτόματα ${lx.price}€.</p>`:''}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
+                card.innerHTML=`<div class="flex items-center justify-between mb-2"><span class="font-bold text-sm text-slate-700">${time}</span><button onclick="pickerSlot=null;renderSlots()" class="text-slate-400 text-xs">✕</button></div>${mrOn()?mrFieldHtml():adminFields+coPlayerField+openField}${noteField}${exField}${payField}${lx?`<p class="text-[10px] text-amber-700 bg-amber-50 rounded-lg px-2 py-1 mb-2">💡 Μετά τη δύση (${cbM2T(sunsetMin(pDate))}) τα φώτα χρεώνονται αυτόματα ${lx.price}€.</p>`:''}<p class="text-[10px] text-slate-400 mb-2 font-medium">Επίλεξε διάρκεια:</p><div class="flex gap-1.5">${btns}</div>${hint}`;
             } else if(!anyDurationFits(court,time)){
                 // Το slot είναι ελεύθερο, αλλά το κενό μέχρι την επόμενη κράτηση
                 // είναι μικρότερο από τη συντομότερη διάρκεια. Μην το προσφέρεις.
@@ -2256,7 +2256,7 @@ let pickerNote='';   // ελεύθερο σχόλιο της κράτησης π
 const mrOn=()=>!!(club && club.member_rules);
 const MR_DEF={ minutes:75, window_h:48, free_cancel_h:24, per_day:1, min_partners:1, max_partners:3, block_months:2, ext_min:15 };
 const mrR=k=>{ const r=(club&&club.member_rules)||{}; return r[k]!=null?r[k]:MR_DEF[k]; };
-let mrMe=[], mrBooker=null, mrList=[], mrListDate='', mrPlans=null;
+let mrMe=[], mrBooker=null, mrList=[], mrListDate='', mrPlans=null, mrDeskBooker=null;
 async function mrLoadMe(){
     if(!mrOn()||isOwner){ mrMe=[]; return; }
     const { data }=await sb.rpc('mr_me',{ p_club:club.id }); mrMe=data||[];
@@ -2280,12 +2280,13 @@ function mrRefreshBox(){ const b=document.getElementById('mrBox'); if(b) b.outer
 function mrFieldHtml(){
     const date=document.getElementById('datePicker').value||cbToday();
     if(mrListDate!==date){ mrLoadList(date).then(mrRefreshBox); return '<div id="mrBox" class="mb-2 text-[11px] text-slate-400">Φόρτωση μελών…</div>'; }
+    if(isOwner) return mrDeskHtml();
     if(!mrMe.length) return '<div id="mrBox" class="mb-2 p-2 bg-amber-50 rounded-lg text-[11px] text-amber-800">Οι κρατήσεις είναι μόνο για μέλη του Ομίλου. Αν είσαι μέλος, ζήτησε από τη γραμματεία να περάσει το email σου στην καρτέλα σου.</div>';
     const meP=mrMe.find(p=>p.id===mrBooker)||mrMe[0];
     const who=mrMe.length>1?`<div class="flex items-center gap-2 mb-1.5"><span class="text-[11px] text-slate-500">Παίζει:</span><select onchange="mrBooker=this.value;pickerCoPlayers=pickerCoPlayers.filter(p=>p.id!==this.value);mrRefreshBox()" class="flex-1 px-2 py-1 border border-slate-200 rounded-lg text-xs bg-white">${mrMe.map(p=>`<option value="${p.id}"${p.id===meP.id?' selected':''}>${cbEsc(p.name)}</option>`).join('')}</select></div>`:'';
     if(meP.blocked) return `<div id="mrBox" class="mb-2">${who}<div class="p-2 bg-red-50 rounded-lg text-[11px] text-red-700 font-semibold">⛔ Εκκρεμεί πληρωμή${Number(meP.owes)?' ('+eur(meP.owes)+')':''}. Οι κρατήσεις ανοίγουν ξανά μόλις εξοφληθεί στη γραμματεία.</div></div>`;
     const chosen=new Set(pickerCoPlayers.map(p=>p.id)), full=pickerCoPlayers.length>=mrR('max_partners');
-    const opts=mrList.filter(p=>p.id!==meP.id && !chosen.has(p.id)).map(p=>{
+    const opts=mrList.filter(p=>p.id!==meP.id && !chosen.has(p.id) && p.status==='ok').map(p=>{
         const why=p.status==='blocked'?' — εκκρεμεί πληρωμή':p.status==='played'?' — έχει ήδη παιχνίδι':'';
         return `<option value="${p.id}"${why?' disabled':''}>${cbEsc(p.name)}${why}</option>`; }).join('');
     const chips=pickerCoPlayers.map(p=>`<span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-[11px]">${cbEsc(p.name)}<button onclick="mrRemove('${p.id}')" class="text-blue-400 font-bold">✕</button></span>`).join('');
@@ -2297,6 +2298,20 @@ function mrFieldHtml(){
             <select onchange="pickerOpenSpots=parseInt(this.value)||0" class="px-2 py-1 border border-slate-200 rounded-lg text-xs bg-white">${[0,1,2,3].filter(n=>n<=mrR('max_partners')-pickerCoPlayers.length).map(n=>`<option value="${n}"${pickerOpenSpots===n?' selected':''}>${n?n+(n===1?' παίκτη':' παίκτες'):'κανέναν'}</option>`).join('')}</select>
             <span class="text-[10px] text-slate-400">→ Ανοιχτό ματς για τα μέλη</span></div>`:''}
         <p class="text-[10px] text-slate-400 mt-1">Δωρεάν ακύρωση έως ${mrR('free_cancel_h')} ώρες πριν· μετά η ώρα χρεώνεται κανονικά.</p></div>`;
+}
+// γραμματεία: κράτηση για μέλος — μόνο όσοι είναι εντάξει και δεν έχουν παιχνίδι εκείνη τη μέρα
+function mrDeskHtml(){
+    const ok=mrList.filter(p=>p.status==='ok'), chosen=new Set(pickerCoPlayers.map(p=>p.id));
+    const opt=(p,sel)=>`<option value="${p.id}"${sel?' selected':''}>${cbEsc(p.name)}</option>`;
+    const bSel=`<select onchange="mrDeskBooker=this.value||null;pickerCoPlayers=pickerCoPlayers.filter(p=>p.id!==this.value);mrRefreshBox()" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"><option value="">— Διάλεξε μέλος —</option>${ok.filter(p=>!chosen.has(p.id)).map(p=>opt(p,p.id===mrDeskBooker)).join('')}</select>`;
+    const chips=pickerCoPlayers.map(p=>`<span class="inline-flex items-center gap-1 bg-blue-100 text-blue-700 rounded-full px-2 py-0.5 text-[11px]">${cbEsc(p.name)}<button onclick="mrRemove('${p.id}')" class="text-blue-400 font-bold">✕</button></span>`).join('');
+    const full=pickerCoPlayers.length>=mrR('max_partners');
+    const pSel=full?'':`<select onchange="mrAdd(this.value)" class="w-full px-2 py-1.5 border border-slate-200 rounded-lg text-xs bg-white"><option value="">+ Διάλεξε συμπαίκτη…</option>${ok.filter(p=>p.id!==mrDeskBooker && !chosen.has(p.id)).map(p=>opt(p,false)).join('')}</select>`;
+    return `<div id="mrBox" class="mb-2 p-2 bg-indigo-50 rounded-lg">
+        <p class="text-[10px] text-indigo-600 font-bold mb-1">📞 Κράτηση για μέλος</p>${bSel}
+        <p class="text-[10px] text-slate-500 font-bold mt-2 mb-1">👥 Συμπαίκτες · ${mrR('min_partners')} για μονό, ${mrR('max_partners')} για διπλό</p>
+        <div class="flex flex-wrap gap-1 mb-1">${chips}</div>${pSel}
+        <p class="text-[10px] text-slate-400 mt-1">Εμφανίζονται μόνο τα μέλη που είναι εντάξει με τις πληρωμές και δεν έχουν παιχνίδι αυτή τη μέρα.</p></div>`;
 }
 function mrAdd(id){ const p=mrList.find(x=>x.id===id);
     if(p && p.status==='ok' && !pickerCoPlayers.some(x=>x.id===id) && pickerCoPlayers.length<mrR('max_partners')) pickerCoPlayers.push({ id, name:p.name });
@@ -2486,7 +2501,7 @@ async function mrSetCat(pid,planId){
     const p=(typeof playersFull!=='undefined'?playersFull:[]).find(x=>x.id===pid); if(p) p.sub_plan_id=planId||null;
     cbToast('✓ Αποθηκεύτηκε');
 }
-function openPicker(court,time){ if(!bookingsOn) return; if(mrOn()) mrListDate=''; pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerPrivate=false; pickerSplit=false; pickerNote=''; pickerPayNow=true; pickerExtras={}; pickerSlot={court,time}; renderSlots(); }
+function openPicker(court,time){ if(!bookingsOn) return; if(mrOn()){ mrListDate=''; mrDeskBooker=null; } pickerCoPlayers=[]; pickerGuests=[]; pickerBookFor=null; pickerNewName=''; pickerNewPhone=''; pickerOpenSpots=0; pickerPrivate=false; pickerSplit=false; pickerNote=''; pickerPayNow=true; pickerExtras={}; pickerSlot={court,time}; renderSlots(); }
 
 /* ══════════════ ΑΝΟΙΧΤΑ ΜΑΤΣ ══════════════ */
 let pickerOpenSpots=0;   // πόσους παίκτες ψάχνει η κράτηση που φτιάχνεται
@@ -2773,6 +2788,12 @@ async function doBook(court,time,durMin,price){
         else if(pickerCoPlayers.length+pickerOpenSpots<mrR('min_partners') || pickerCoPlayers.length+pickerOpenSpots>mrR('max_partners')) why='MR_PARTNERS';
         if(why){ _booking=false; cbToast(mrErr(why),'err'); return; }
     }
+    if(mrOn() && isOwner){
+        let why=null;
+        if(!mrDeskBooker) why='Διάλεξε το μέλος που κλείνει';
+        else if(pickerCoPlayers.length<mrR('min_partners') || pickerCoPlayers.length>mrR('max_partners')) why=mrErr('MR_PARTNERS');
+        if(why){ _booking=false; cbToast(why,'err'); return; }
+    }
     let prof;
     try{ prof=await sb.from('profiles').select('name,phone').eq('id',me.id).maybeSingle(); }
     catch(e){ _booking=false; cbToast('Πρόβλημα σύνδεσης — δοκίμασε ξανά','err'); return; }
@@ -2793,6 +2814,7 @@ async function doBook(court,time,durMin,price){
             else  { uName='Κράτηση γραμματείας'; uPhone=ph||''; uEmail=''; }
         }
     }
+    if(mrOn() && isOwner){ uName=(mrList.find(p=>p.id===mrDeskBooker)||{}).name||uName; uPhone=''; uEmail=''; }
     // κράτα τους συμπαίκτες ΠΡΙΝ σβηστεί η κάρτα
     const coPlayerIds=pickerCoPlayers.map(p=>p.id);
     const guests=pickerGuests.slice();
@@ -2818,11 +2840,11 @@ async function doBook(court,time,durMin,price){
             ...(priv?{ match_private:true }:{}),
             ...(split?{ split_pay:true, players_total:1+coPlayerIds.length+guests.length+openSpots }:{}),
             ...(exList.length?{ extras:exList }:{}),
-            ...(mrMember?{ member_ids:[mrBooker, ...coPlayerIds] }:{})
+            ...(mrOn()?{ member_ids:[mrMember?mrBooker:mrDeskBooker, ...coPlayerIds] }:{})
         }).select('id').single();
         if(error) throw error;
         const allPlayerIds=[...new Set([...(bookForId?[bookForId]:[]), ...coPlayerIds])];
-        if(allPlayerIds.length && ins?.id && !mrMember){
+        if(allPlayerIds.length && ins?.id && !mrOn()){
             await sb.from('booking_players').insert(allPlayerIds.map(pid=>({ booking_id:ins.id, player_id:pid })));
         }
         const end=cbM2T(cbT2M(time)+durMin);
