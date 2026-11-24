@@ -1903,9 +1903,9 @@ async function loadDay(silent){
         // πρόσθεσε τις επαναλαμβανόμενες προπονήσεις αυτής της ημέρας (κλείνουν το slot)
         const wd=new Date(date+'T00:00:00').getDay();
         const cancelled=new Set(trainingOverrides.filter(o=>o.kind==='cancel' && o.the_date===date).map(o=>o.schedule_id));
-        trainingSchedule.filter(t=>t.active!==false && t.weekday===wd && !cancelled.has(t.id)).forEach(t=>{
+        trainingSchedule.filter(t=>t.active!==false && t.weekday===wd && !cancelled.has(t.id) && schedExistedOn(t,date)).forEach(t=>{
             const coach=t.coach||t.training_groups?.coach||'';
-            const label=(t.training_groups?.name||'Προπόνηση')+(coach?(' · '+coach):'');
+            const label=(gNameAt(t.group_id,t.training_groups?.name,date)||'Προπόνηση')+(coach?(' · '+coach):'');
             dayData.push({ court_id:schedCourt(t,date), start_time:t.start_time, duration_min:t.duration_min, mine:false, training:true, group_name:label, schedule_id:t.id });
         });
         // έκτακτες προπονήσεις & ιδιαίτερα μαθήματα μόνο γι' αυτή την ημερομηνία
@@ -1915,7 +1915,7 @@ async function loadDay(silent){
                 ? 'Clinic: '+o.client_name+(o.coach?(' / '+o.coach):'')
                 : o.client_name
                 ? (o.trial?'Δοκιμαστικό: ':'Ιδιαίτερο: ')+o.client_name+(o.coach?(' / '+o.coach):'')
-                : (o.training_groups?.name||'Προπόνηση')+(oCoach?(' · '+oCoach):'')+(o.makeup_for?' (αναπλήρωση)':' (έκτακτη)');
+                : (gNameAt(o.group_id,o.training_groups?.name,date)||'Προπόνηση')+(oCoach?(' · '+oCoach):'')+(o.makeup_for?' (αναπλήρωση)':' (έκτακτη)');
             dayData.push({ court_id:o.court_id, start_time:o.start_time, duration_min:o.duration_min, mine:false, training:true, group_name:label, override_id:o.id, trial:!!o.trial });
         });
     }catch(e){ if(!silent)cbToast('Σφάλμα φόρτωσης','err'); }
@@ -2016,14 +2016,26 @@ async function confirmFreeCourt(court_id, date, start_time, duration_min, ign){
     return confirm(`Το ${courtName(court_id)} στις ${cbFmtDate(date)} ${start_time} είναι ήδη πιασμένο:\n${clash}\n\nΝα μπει παρόλα αυτά;`);
 }
 
+let groupNameLog={};
 async function loadTrainingSchedule(){
-    const [sRes,oRes]=await Promise.all([
+    const [sRes,oRes,nRes]=await Promise.all([
         sb.from('training_schedule').select('*, training_groups(name,coach)').eq('club_id',club.id),
-        sb.from('training_overrides').select('*, training_groups(name,coach)').eq('club_id',club.id)
+        sb.from('training_overrides').select('*, training_groups(name,coach)').eq('club_id',club.id),
+        sb.from('group_name_log').select('group_id,name,from_ts').order('from_ts')
     ]);
     trainingSchedule=sRes.data||[];
     trainingOverrides=oRes.data||[];
+    groupNameLog={}; (nRes&&!nRes.error&&nRes.data||[]).forEach(e=>(groupNameLog[e.group_id]=groupNameLog[e.group_id]||[]).push(e));
 }
+/* Σε περασμένες μέρες: το όνομα που είχε τότε το γκρουπ (τα γκρουπ μετονομάζονται/ξαναστήνονται)
+   και μόνο προπονήσεις που υπήρχαν ήδη εκείνη τη μέρα. Σήμερα και μετά: ό,τι ισχύει τώρα. */
+function gNameAt(gid, cur, date){
+    if(!date || date>=cbToday()) return cur;
+    const L=groupNameLog[gid]; if(!L||!L.length) return cur;
+    let n=L[0].name; for(const e of L){ if(cbDateStr(new Date(e.from_ts))<=date) n=e.name; else break; }
+    return n||cur;
+}
+const schedExistedOn=(t,date)=> !date || date>=cbToday() || !t.created_at || cbDateStr(new Date(t.created_at))<=date;
 
 /* ══════════════ SLOTS RENDER ══════════════ */
 function covering(court_id,time){
@@ -3228,12 +3240,12 @@ function toggleBooking(id){ _openBooking = _openBooking===id ? null : id; render
 function trainingItemsOnDate(date){
     const out=trainingsOnDate(date).map(t=>({
         date, start_time:t.start_time, duration_min:t.duration_min, court_id:schedCourt(t,date),
-        title:(t.training_groups?.name||'Προπόνηση'),
+        title:(gNameAt(t.group_id,t.training_groups?.name,date)||'Προπόνηση'),
         coach:(coachSubFor(t.id,date)?.coach || t.coach||t.training_groups?.coach||''), kind:coachSubFor(t.id,date)?'αντικατάσταση':'εβδομαδιαία'
     }));
     trainingOverrides.filter(o=>o.kind==='extra' && o.the_date===date).forEach(o=>out.push({
         date, start_time:o.start_time, duration_min:o.duration_min, court_id:o.court_id,
-        title:(o.clinic_id ? 'Clinic: '+o.client_name : o.client_name ? (o.trial?'Δοκιμαστικό: ':'Ιδιαίτερο: ')+o.client_name : (o.training_groups?.name||'Προπόνηση')),
+        title:(o.clinic_id ? 'Clinic: '+o.client_name : o.client_name ? (o.trial?'Δοκιμαστικό: ':'Ιδιαίτερο: ')+o.client_name : (gNameAt(o.group_id,o.training_groups?.name,date)||'Προπόνηση')),
         coach:(o.coach||o.training_groups?.coach||''),
         kind:(o.clinic_id?'clinic':o.lesson_id?'online':o.trial?'δοκιμαστικό':o.makeup_for?'αναπλήρωση':'έκτακτη')
     }));
@@ -5443,7 +5455,7 @@ async function cancelTrainingDate(scheduleId, date){
 function trainingsOnDate(date){
     const wd=new Date(date+'T12:00:00').getDay();
     const cancelled=new Set(trainingOverrides.filter(o=>o.kind==='cancel' && o.the_date===date).map(o=>o.schedule_id));
-    return trainingSchedule.filter(t=>t.active!==false && t.weekday===wd && !cancelled.has(t.id));
+    return trainingSchedule.filter(t=>t.active!==false && t.weekday===wd && !cancelled.has(t.id) && schedExistedOn(t,date));
 }
 
 function renderRainBar(){
